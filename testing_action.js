@@ -8,6 +8,9 @@ module.exports = {
 		return series_data;
 	},
 	getCharacterDataFromSeries(external , series_id){
+		if(series_id == undefined){
+			return this._generateError("series id must be defined");
+		}
 		return this._getData(
 			JSON.parse(fs.readFileSync('assets/mocks/character_data.json')),
 			function(character){
@@ -21,6 +24,9 @@ module.exports = {
 				));
 	},
 	getEpisodesFromSeries(external,series_id){
+		if(series_id == undefined){
+			return this._generateError("series id must be defined");
+		}
 		return this._getData(
 			JSON.parse(fs.readFileSync('assets/mocks/episode_data.json')),
 			function(episode){
