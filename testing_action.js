@@ -174,7 +174,7 @@ module.exports = {
 	},
 
 	postNewTimestamp(params){
-		var episode = params.episode.toString();
+		var episode = params.episode_id.toString();
 		var start_time = parseInt(params.start_time);
 
 		var new_timestamp_id = this._generateId(8).toString(36);
