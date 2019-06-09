@@ -7,16 +7,18 @@ module.exports = {
 		series_data = JSON.parse(fs.readFileSync('assets/mocks/series_data.json','utf8'));
 		return series_data;
 	},
-	getCharacterDataFromSeries(series_id){
+	getCharacterDataFromSeries(external , series_id){
 		return this._getData(
 			JSON.parse(fs.readFileSync('assets/mocks/character_data.json')),
 			function(character){
 				return character.series_id
 			},
-			this._getArray(series_id).map(
+			(external ? this._getArray(series_id).map(
 				function(id){
 					return parseInt(id);
-				}));
+				}):
+				series_id
+				));
 	},
 	getEpisodesFromSeries(external,series_id){
 		return this._getData(
@@ -171,10 +173,66 @@ module.exports = {
 		return new_episode;
 	},
 
-	_generateId(length){
-		return (10 ^ (length-1)) + Math.floor( + Math.random() * 9 * (10 ^ (length-1)));
+	postNewTimestamp(params){
+		var episode = params.episode.toString();
+		var start_time = parseInt(params.start_time);
+
+		var new_timestamp_id = this._generateId(8).toString(36);
+
+		if(episode == undefined || start_time == undefined){
+			return this._generateError('episode / start_time needs to be provides');
+		}
+		var series_id = parseInt(episode.split("_")[0]);
+		if(!this.getEpisodesFromSeries(false, [series_id]).map(function(episode){return episode.episode_id}).includes(episode)){
+			return this._generateError('invalid episode');
+		}
+		var character_relation =  JSON.parse(fs.readFileSync('assets/mocks/CharacterToTimestamp_relation.json'));
+		if(params.characters !== undefined){
+			var characters = this._getArray( params.characters).map(function(character){return parseInt(character)});
+			character_ids_from_series = this.getCharacterDataFromSeries(false, [series_id]).map(function(character){return character.character_id});
+			if(characters.length !== this._intersect(character_ids_from_series,characters).length){
+				return this._generateError("all characters ids must be from the same series");
+			}
+			characters.forEach(function(char){
+				character_relation.push({
+				"timestamp_id":new_timestamp_id,
+				"character_id":char		
+				});
+			})
+		}
+		var category_relation =  JSON.parse(fs.readFileSync('assets/mocks/CategoryToTimestamp_relation.json'));
+		if(params.categories !== undefined){
+			var categories = this._getArray( params.categories).map(function(category){return parseInt(category)});
+			categories.forEach(function(cat){
+				category_relation.push({
+				"timestamp_id":new_timestamp_id,
+				"character_id":cat		
+				});
+			});
+
+		}
+		var new_timestamp = 
+		{
+			"timestamp_id" : new_timestamp_id,
+			"start_time" : start_time,
+			"episode_id" : episode
+		};
+
+		var timestamp_data = JSON.parse(fs.readFileSync('assets/mocks/timestamp_data.json'));
+		timestamp_data.push(new_timestamp);
+
+		this._updateFile('assets/mocks/CharacterToTimestamp_relation.json',character_relation );
+		this._updateFile('assets/mocks/CategoryToTimestamp_relation.json',category_relation );
+		this._updateFile('assets/mocks/timestamp_data.json',timestamp_data );
+
+		return new_timestamp;
+
 	},
-	_updateFile(file, data, callback){
+
+	_generateId(length){
+		return (Math.pow(10, length-1)) + Math.floor( + Math.random() * 9 * Math.pow(10 , (length-1)));
+	},
+	_updateFile(file, data){
 		fs.writeFileSync(file, '');
 		fs.writeFileSync(file, JSON.stringify(data));
 
