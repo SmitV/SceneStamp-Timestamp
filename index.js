@@ -96,6 +96,14 @@ var endpoints = [
 		function(req, res){
 			res.send('Production not ready, set testing = true');
 		}),
+	new Endpoint(
+		'/newCharacter',
+		function(req, res){ 
+			res.end(JSON.stringify(testing_action.postNewCharacter((req.query.series_id) , req.query.name)));
+		},
+		function(req, res){
+			res.send('Production not ready, set testing = true');
+		})
 	];
 
 endpoints.forEach(function(endpoint){

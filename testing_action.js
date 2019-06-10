@@ -134,7 +134,7 @@ module.exports = {
 
 	//Post methods
 	postNewSeries(name){
-		if(typeof name !== String){
+		if(name == undefined){
 			return this._generateError('series name must be provided');
 		}
 		series_data = JSON.parse(fs.readFileSync('assets/mocks/series_data.json','utf8'));
@@ -155,9 +155,40 @@ module.exports = {
 		return new_series;
 	}, 
 
+	postNewCharacter(series_id, name){
+
+		if( name == undefined  || series_id  == undefined){
+			return this._generateError('series id / character name must be provided');
+		}
+		series_id = this._getArray(series_id).map(function(id){return parseInt(id)})[0];
+
+		series_data = JSON.parse(fs.readFileSync('assets/mocks/series_data.json','utf8'));
+		if(!series_data.map(function(series){ return series.series_id}).includes(series_id)){
+			return this._generateError('invalid series_id');
+		}
+
+		var character_names_from_series = this.getCharacterDataFromSeries(false, [series_id]).map(function(character){return character.name.toLowerCase()});
+		if(character_names_from_series.includes(name.toLowerCase())){
+			return this._generateError("character with same name exists in series");
+		}
+		
+		var new_character_id = this._generateId(8);
+		var new_character = {
+			"series_id": series_id,
+			"name":name,
+			"character_id":new_character_id
+		};
+		var character_data = JSON.parse(fs.readFileSync('assets/mocks/character_data.json'));
+		character_data.push(new_character);
+
+		this._updateFile('assets/mocks/character_data.json', character_data);
+		return new_character;
+
+	},
+
 	postNewEpisode(episode, series_id, title){
 
-		if( title == undefined  || series_id  == undefined   || title == undefined ){
+		if( title == undefined  || series_id  == undefined   || episode == undefined ){
 			return this._generateError('series id / title / episode must be provided');
 		}
 		series_data = JSON.parse(fs.readFileSync('assets/mocks/series_data.json','utf8'));
