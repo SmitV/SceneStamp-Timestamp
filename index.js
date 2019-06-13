@@ -1,5 +1,6 @@
  var express = require('express');
 var testing_action = require('./testing_action.js');
+var production_action = require('./production/production_actions.js');
 var app = express();
 
 class Endpoint{
@@ -30,7 +31,10 @@ var endpoints = [
 			res.end(JSON.stringify(testing_action.getAllSeries()));
 		},
 		function(req, res){
-			res.send('Production not ready, set testing = true');
+			production_action.getAllSeriesData(function(data){
+				res.send(data);
+			});
+			
 		}),
 	new Endpoint(
 		'/getCharacterDataFromSeries',
@@ -38,7 +42,7 @@ var endpoints = [
 			res.end(JSON.stringify(testing_action.getCharacterDataFromSeries(true, req.query.series_id)));
 		},
 		function(req, res){
-			res.send('Production not ready, set testing = true');
+			res.end(production_action.testAction());
 		}),
 	new Endpoint(
 		'/getEpisodeDataFromSeries',
@@ -75,10 +79,13 @@ var endpoints = [
 	new Endpoint(
 		'/newSeries',
 		function(req, res){ 
+			var data
 			res.end(JSON.stringify(testing_action.postNewSeries(req.query.series_name)));
 		},
 		function(req, res){
-			res.send('Production not ready, set testing = true');
+			production_action.insertNewSeries(req,function(data){
+				res.send(data);
+			});
 		}),
 	new Endpoint(
 		'/newEpisode',
