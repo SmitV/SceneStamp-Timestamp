@@ -42,7 +42,9 @@ var endpoints = [
 			res.end(JSON.stringify(testing_action.getCharacterDataFromSeries(true, req.query.series_id)));
 		},
 		function(req, res){
-			res.end(production_action.testAction());
+			production_action.getAllCharacterData(function(data){
+				res.send(data);
+			},req.query.series_id);
 		}),
 	new Endpoint(
 		'/getEpisodeDataFromSeries',
@@ -109,7 +111,9 @@ var endpoints = [
 			res.end(JSON.stringify(testing_action.postNewCharacter((req.query.series_id) , req.query.name)));
 		},
 		function(req, res){
-			res.send('Production not ready, set testing = true');
+			production_action.insertNewCharacter(req.query.name, req.query.series_id,function(data){
+				res.send(data);
+			});
 		})
 	];
 
