@@ -171,7 +171,7 @@ module.exports = {
 		var t = this;
 		pool.query(sql, params, function(err, results){
 			if(err){
-				callback("Error with sql query")
+				callback(err)
 			}
 			else{
 				callback(null, t._toJSON(results))

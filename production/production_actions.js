@@ -60,7 +60,10 @@ module.exports = {
 			return 
 		}
 		db.getTimestampData(timestamp_id, function(er, data){
-			if(data.length === 0 ){
+			if(data === undefined){
+				t._generateError(final_callback,method, "Invalid timestamp id");
+			}
+			else if(data.length === 0 ){
 				t._generateError(final_callback,method, "Invalid timestamp id");
 				return 
 			}
@@ -76,7 +79,8 @@ module.exports = {
 		}
 		callback()
 	},
-	insertNewSeries(req,final_callback){
+	insertNewSeries(series_name,final_callback){
+		console.log(series_name)
 		var t = this;
 		var method = "insertNewSeries";
 		var callback = function(err, data){
@@ -86,22 +90,27 @@ module.exports = {
 			}
 			final_callback(data);
 		}
-		if(req.query.series_name == undefined ){
+		if(series_name == undefined ){
 			this._generateError(final_callback,method, "Invalid param series_name");
 		}else{
 			t.getAllSeriesData(function(data){
 				var id = t._generateId(ID_LENGTH.series,data.map(function(series){return series.series_id}));
-				if(data.map(function(series){return series.series_name.toLowerCase()}).includes(req.query.series_name.toLowerCase())){
+				if(data.map(function(series){return series.series_name.toLowerCase()}).includes(series_name.toString().toLowerCase())){
 					t._generateError(final_callback,method, "Series with same name exists");
 					return
 				}
-				db.insertSeries(id,req.query.series_name,callback);
+				db.insertSeries(id,series_name,callback);
 			});
 			
 		}
 	},
 
-	getAllCharacterData(final_callback, suc_callback, series_ids){
+	getAllCharacterData(series_ids, final_callback){
+		this.getCharacterData(final_callback, final_callback, series_ids)
+	},
+
+	getCharacterData(final_callback, suc_callback, series_ids){
+		console.log(series_ids)
 		var t = this;
 		var method = "getAllCharacters";
 		var callback = function(err, data){
@@ -111,7 +120,7 @@ module.exports = {
 			}
 			suc_callback(data);
 		}
-		if(series_ids && !Array.isArray(series_ids)) series_ids = series_ids.split(",").map(function(id){return parseInt(id)});
+		if(series_ids && !Array.isArray(series_ids) && series_ids !== undefined) series_ids = series_ids.split(",").map(function(id){return parseInt(id)});
 		db.getAllCharacterData(series_ids,callback)
 	},
 	insertNewCharacter(character_name, series_id,final_callback){
@@ -130,7 +139,7 @@ module.exports = {
 		}else{
 			series_id = parseInt(series_id)
 			t._assertSeriesIdExist(method, final_callback, series_id, function(){
-				t.getAllCharacterData(final_callback, function(character_data){
+				t.getCharacterData(final_callback, function(character_data){
 
 					var id = t._generateId(ID_LENGTH.character,character_data.map(function(character){return character.character_id}));
 					if(character_data.filter(function(character){return character.character_name.toLowerCase() == character_name.toLowerCase() && character.series_id == series_id}).length !== 0){
@@ -340,7 +349,7 @@ module.exports = {
 								characters = characters.split(",").map(function(id){return parseInt(id)});
 								t.getEpisodeData(timestamp[0].episode_id, final_callback,function(episode){
 									var series_id = episode[0].series_id;
-										t.getAllCharacterData(callback, function(character_data){
+										t.getCharacterData(callback, function(character_data){
 										if(characters.length !== t._intersect(character_data.map(function(ch){return ch.character_id;}), characters).length){
 											callback(null,"Characters passed are not all in series");
 											return
@@ -404,14 +413,16 @@ module.exports = {
 	},
 	_generateId(length, ids){
 		var id= (Math.pow(10, length-1)) + Math.floor( + Math.random() * 9 * Math.pow(10 , (length-1)));
-		if(ids){
-			while( ids.includes(id)){
-			id= (Math.pow(10, length-1)) + Math.floor( + Math.random() * 9 * Math.pow(10 , (length-1)));
-		}
+			if(ids){
+				while( ids.includes(id)){
+				id= (Math.pow(10, length-1)) + Math.floor( + Math.random() * 9 * Math.pow(10 , (length-1)));
+			}
 		}
 		return id;
 	},
 	_generateError(final_callback, method, err){
-		final_callback({"method":method, "err":err})
+		var error_id = this._generateId(8, []); 
+		console.log({'id':error_id, "method":method, "err":err});
+		final_callback({'id':error_id, "method":method, "err":err})
 	}
 }
