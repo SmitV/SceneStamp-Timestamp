@@ -8,7 +8,7 @@ exports.connection = mysql.createConnection({
 });
 
 exports.pool = mysql.createPool({
-	connectionLimit: 15,
+	connectionLimit: 9,
  	host: "us-cdbr-iron-east-02.cleardb.net",
  	user: "ba52740f8673f9",
  	password: "6704fa0a",

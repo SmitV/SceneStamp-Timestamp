@@ -42,7 +42,11 @@ var endpoints = [
 			res.end(JSON.stringify(testing_action.getCharacterDataFromSeries(true, req.query.series_id)));
 		},
 		function(req, res){
-			production_action.getAllCharacterData(function(data){
+			production_action.getAllCharacterData(
+				function(data){
+				res.send(data);
+			},
+			function(data){
 				res.send(data);
 			},req.query.series_id);
 		}),
@@ -52,7 +56,9 @@ var endpoints = [
 			res.end(JSON.stringify(testing_action.getEpisodesFromSeries(true, req.query.series_id)));
 		},
 		function(req, res){
-			res.send('Production not ready, set testing = true');
+			production_action.getAllEpisodeData(function(data){
+				res.send(data);
+			},req.query.series_id);
 		}),
 	new Endpoint(
 		'/getCategories',
@@ -60,7 +66,9 @@ var endpoints = [
 			res.end(JSON.stringify(testing_action.getAllCategories()));
 		},
 		function(req, res){
-			res.send('Production not ready, set testing = true');
+			production_action.getAllCategoryData(function(data){
+				res.send(data);
+			});
 		}),
 	new Endpoint(
 		'/getTimestampsFromEpisode',
@@ -68,7 +76,11 @@ var endpoints = [
 			res.end(JSON.stringify(testing_action.getTimestampsFromEpisode(true, req.query.episode_id)));
 		},
 		function(req, res){
-			res.send('Production not ready, set testing = true');
+			production_action.getAllTimestampData(function(data){
+				console.log("end ")
+				console.log(data)
+				res.json(data);
+			},req.query.episode_id);
 		}),
 	new Endpoint(
 		'/queryForTimestamps',
@@ -95,7 +107,9 @@ var endpoints = [
 			res.end(JSON.stringify(testing_action.postNewEpisode(parseInt(req.query.episode), parseInt(req.query.series_id) , req.query.title)));
 		},
 		function(req, res){
-			res.send('Production not ready, set testing = true');
+			production_action.insertNewEpisode(req.query,function(data){
+				res.send(data);
+			});
 		}),
 	new Endpoint(
 		'/newTimestamp',
@@ -103,7 +117,19 @@ var endpoints = [
 			res.end(JSON.stringify(testing_action.postNewTimestamp(req.query)));
 		},
 		function(req, res){
-			res.send('Production not ready, set testing = true');
+			production_action.insertNewTimestamp(req.query.start_time, req.query.episode_id,function(data){
+				res.send(data);
+			});
+		}),
+	new Endpoint(
+		'/updateTimestamp',
+		function(req, res){ 
+			res.send('Testing not ready, use production');
+		},
+		function(req, res){
+			production_action.updateTimestamp(req.query.timestamp_id, req.query.characters,req.query.categories,function(data){
+				res.send(data);
+			});
 		}),
 	new Endpoint(
 		'/newCharacter',
@@ -112,6 +138,16 @@ var endpoints = [
 		},
 		function(req, res){
 			production_action.insertNewCharacter(req.query.name, req.query.series_id,function(data){
+				res.send(data);
+			});
+		}),
+	new Endpoint(
+		'/newCategory',
+		function(req, res){ 
+			res.send('Testing not ready');
+		},
+		function(req, res){
+			production_action.insertNewCategory(req.query.name,function(data){
 				res.send(data);
 			});
 		})
