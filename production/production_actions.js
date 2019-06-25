@@ -25,25 +25,23 @@ module.exports = {
 		}
 		db.getAllSeriesData(callback)
 	},
-	_assertSeriesIdExist(method, final_callback,series_id, sucsess_callback){
-		var method
+	_assertSeriesIdExist(method, final_callback,series_ids, sucsess_callback){
 		var t = this;
 		this.getAllSeriesData(function(series_data){
-			if(!series_data.map(function(series){return series.series_id}).includes(series_id)){
+			if(series_ids.length != t._intersect(series_data.map(function(series){return series.series_id}) , series_ids).length){
 				t._generateError(final_callback,method, "Invalid series id");
 				return 
 			}
 			else{
-				sucsess_callback();
+				sucsess_callback(series_data.filter(function(series){return series_ids.includes(series.series_id)}));
 			}
 		});
 	},
-	_assertEpisodeIdExist(method, final_callback,episode_id, sucsess_callback){
-		var method
+	_assertEpisodeIdExist(method, final_callback,episode_ids, sucsess_callback){
 		var t = this;
 		this.getAllEpisodeData(function(episode_data){
-			var episode = episode_data.filter(function(ep){return ep.episode_id == episode_id});
-			if(episode.length !== 1 ){
+			var episode = episode_data.filter(function(ep){return episode_ids.includes(ep.episode_id)});
+			if(episode.length !== episode_ids.length ){
 				t._generateError(final_callback,method, "Invalid episode id");
 				return 
 			}
@@ -53,7 +51,6 @@ module.exports = {
 		});
 	},
 	_assertTimestampIdExist(method, final_callback,timestamp_id, sucsess_callback){
-		var method
 		var t = this;
 		if(timestamp_id === undefined){
 			t._generateError(final_callback,method, "Invalid timestamp id");
@@ -80,7 +77,6 @@ module.exports = {
 		callback()
 	},
 	insertNewSeries(series_name,final_callback){
-		console.log(series_name)
 		var t = this;
 		var method = "insertNewSeries";
 		var callback = function(err, data){
@@ -110,7 +106,6 @@ module.exports = {
 	},
 
 	getCharacterData(final_callback, suc_callback, series_ids){
-		console.log(series_ids)
 		var t = this;
 		var method = "getAllCharacters";
 		var callback = function(err, data){
@@ -138,7 +133,7 @@ module.exports = {
 			return 		
 		}else{
 			series_id = parseInt(series_id)
-			t._assertSeriesIdExist(method, final_callback, series_id, function(){
+			t._assertSeriesIdExist(method, final_callback, [series_id], function(){
 				t.getCharacterData(final_callback, function(character_data){
 
 					var id = t._generateId(ID_LENGTH.character,character_data.map(function(character){return character.character_id}));
@@ -225,12 +220,12 @@ module.exports = {
 			}
 			final_callback(data);
 		}
-		if(params.episode_name == undefined || typeof params.episode_name !== "string" || params.series_id == undefined || typeof parseInt(params.series_id) !== "number"){
+		  if(params.episode_name == undefined || typeof params.episode_name !== "string" || params.series_id == undefined || typeof parseInt(params.series_id) !== "number"){
 			this._generateError(final_callback,method, "Invalid param episode_name / series_id");
 			return 
 		}else{
 			var series_id = parseInt(params.series_id)
-			t._assertSeriesIdExist(method, final_callback, series_id, function(){
+			t._assertSeriesIdExist(method, final_callback, [series_id], function(){
 				t.getAllEpisodeData(function(episode_data){
 					var id = t._generateId(ID_LENGTH.episode,episode_data.map(function(episode){return episode.episode_id}));
 
@@ -253,7 +248,7 @@ module.exports = {
 			});
 		}
 	},
-	getAllTimestampData(final_callback, episode_ids){
+	getAllTimestampData(final_callback, episode_ids, internal,suc_callback ){
 		var t = this;
 		var method = "getAllEpisode";
 		var direct_callback = function(err, data){
@@ -271,11 +266,11 @@ module.exports = {
 									callback(null, data[0])
 			})})});
 			async.parallel(tasks, function(err, result){
-				final_callback(result)
+				suc_callback(result)
 			})
 			return 
 		}
-		if(episode_ids) episode_ids = episode_ids.split(",").map(function(id){return parseInt(id)});
+		if(episode_ids & !internal ) episode_ids = episode_ids.split(",").map(function(id){return parseInt(id)});
 		db.getAllTimestampIds(episode_ids,direct_callback)
 	},
 	getTimestamp(timestamp_id, final_callback){
@@ -299,8 +294,12 @@ module.exports = {
 				},
 
 			},function(err, results){
-				data[0].characters = results.characters.map(function(rel){return rel.character_id});
-				data[0].categories = results.categories.map(function(rel){return rel.category_id});
+				if(results.characters){
+					data[0].characters = results.characters.map(function(rel){return rel.character_id});
+				}
+				if(results.categories){
+					data[0].categories = results.categories.map(function(rel){return rel.category_id});
+				}
 				sus_callback(data);
 			});
 			return 
@@ -326,13 +325,84 @@ module.exports = {
 		}else{
 			episode_id = parseInt(episode_id)
 			start_time = parseInt(start_time)
-			t._assertEpisodeIdExist(method, final_callback, episode_id, function(){
+			t._assertEpisodeIdExist(method, final_callback, [episode_id], function(){
 				db.getAllTimestampIds(null,function(data){
 					var id = t._generateId(ID_LENGTH.timestamp,);
 					db.insertNewTimestamp(id,start_time,episode_id, callback);
 				});
 			});
 		}
+	},
+
+	queryTimestamps(series_ids, episode_ids, character_ids, category_ids,final_callback){
+		var t = this;
+		var method = "updateTimestamp"
+
+		var getId =function(eps){
+			return eps.map(function(ep){return ep.episode_id});
+		}
+
+		var getEpisodeids = function(series_ids, episode_ids, callback){
+			if(episode_ids ){
+				episode_ids = episode_ids.split(",").map(function(id){return parseInt(id)})
+				t._assertEpisodeIdExist(method, final_callback, episode_ids, function(){
+					callback(episode_ids)
+				})
+
+
+			}else if(series_ids){
+				t._assertSeriesIdExist(method, final_callback, series_ids.split(",").map(function(id){return parseInt(id)}), function(){
+					t.getAllEpisodeData(function(episode_data){
+						callback(getId(episode_data))
+					},series_ids);
+				});
+			}else{
+				t.getAllEpisodeData(function(episode_data){
+					callback(getId(episode_data))
+				});
+
+			}
+		}
+
+		var filter_characters = function(timestamps, characters, callback){
+			if(characters == undefined){
+				callback(timestamps)
+			}
+			else{
+				callback(timestamps.filter(function(timestamp){
+					return ( t._intersect(characters.split(",").map(function(id){return parseInt(id)}), timestamp.characters) > 0)
+				}))
+			}
+		}
+
+		var filter_categories = function(timestamps, categories, callback){
+			if(categories == undefined){
+				callback(timestamps)
+			}
+			else{
+				callback(timestamps.filter(function(timestamp){
+					return ( t._intersect(categories.split(",").map(function(id){return parseInt(id)}), timestamp.categories) > 0)
+				}))
+			}
+		}
+
+		var filter_timestamps = function(timestamps,characters, categories, callback){
+			filter_characters(timestamps, characters, function(up_timestamps){
+				filter_categories(up_timestamps, categories, function(resulting_timestamps){
+					callback(resulting_timestamps)
+			})});
+		}
+
+		getEpisodeids(series_ids,episode_ids, function(up_episode_ids){
+			t.getAllTimestampData(final_callback,up_episode_ids, true, 
+				function(timestamp_data){
+					filter_timestamps(timestamp_data, character_ids, category_ids, function(timestamps){
+						final_callback(timestamps)
+					})
+				});
+		});
+
+
 	},
 	updateTimestamp(timestamp_id, characters,categories, final_callback){
 
@@ -396,20 +466,19 @@ module.exports = {
 			});
 	},
 	_intersect(a, b){
-		c = [...a];
-		d = [...b];
-		  var result = [];
-		  while( c.length > 0 && d.length > 0 )
-		  {  
-		     if      (c[0] < d[0] ){ c.shift(); }
-		     else if (c[0] > d[0] ){ d.shift(); }
-		     else /* they're equal */
-		     {
+		c = [...a.sort()];
+		d = [...b.sort()];
+		while( c.length >0 && d.length >0 )
+		{ 
+		    if      (c[0] < d[0] ){ c.shift(); }
+		    else if (c[0] > d[0] ){ d.shift(); }
+		    else /* they're equal */
+		    {
 		       result.push(c.shift());
 		       d.shift();
-		     }
-		  }
-		  return result;
+		    }
+		}
+		return result;
 	},
 	_generateId(length, ids){
 		var id= (Math.pow(10, length-1)) + Math.floor( + Math.random() * 9 * Math.pow(10 , (length-1)));

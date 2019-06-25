@@ -43,7 +43,9 @@ var endpoints = [
 		action : function(req, res){
 			production_action.getAllTimestampData(function(data){
 				res.json(data);
-			},req.query.episode_ids);
+			},req.query.episode_ids, false, function(data){
+				res.json(data);
+			});
 		}
 	},
 	{
@@ -96,6 +98,14 @@ var endpoints = [
 		url : 'newCategory', 
 		action : function(req, res){
 			production_action.insertNewCategory(req.query.category_name,function(data){
+				res.json(data);
+			});
+		}
+	},
+	{
+		url : 'queryTimestamp', 
+		action : function(req, res){
+			production_action.queryTimestamps(req.query.series_ids,req.query.episode_ids,req.query.character_ids,req.query.category_ids,function(data){
 				res.json(data);
 			});
 		}
