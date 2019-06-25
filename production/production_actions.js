@@ -468,6 +468,7 @@ module.exports = {
 	_intersect(a, b){
 		c = [...a.sort()];
 		d = [...b.sort()];
+		var result = [];
 		while( c.length >0 && d.length >0 )
 		{ 
 		    if      (c[0] < d[0] ){ c.shift(); }
