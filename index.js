@@ -49,12 +49,6 @@ var endpoints = [
 		}
 	},
 	{
-		url : 'queryForTimestamps', 
-		action : function(req, res){
-			res.send('Production not ready');
-		}
-	},
-	{
 		url : 'newSeries', 
 		action : function(req, res){
 			production_action.insertNewSeries(req.query.series_name,function(data){

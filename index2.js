@@ -1,0 +1,45 @@
+var express = require('express');
+var production_action = require('./prod2/actions.js');
+var app = express();
+
+
+var endpoints = [
+	{
+		url : 'getSeriesData',
+		action : function(req, res){
+					production_action.get_allSeriesData(function(data){
+						res.json(data);
+					});
+				}
+	},
+	{
+		url : 'newSeries',
+		action : function(req, res){
+					production_action.post_newSeries(req.query,function(data){
+						res.json(data);
+					});
+				}
+
+	}
+];
+
+app.all('*', function(req, res, next) {
+     var origin = req.get('origin');
+     res.header('Access-Control-Allow-Origin', origin);
+     res.header("Access-Control-Allow-Headers", "X-Requested-With");
+     res.header('Access-Control-Allow-Headers', 'Content-Type');
+     next();
+});
+
+
+
+endpoints.forEach(function(endpoint){
+	app.get('/'+ endpoint.url, function(req, res){
+		endpoint.action(req,res);
+	});
+})
+
+
+var server = app.listen(process.env.PORT || 8081, function () {
+   console.log("Scene Stamp Server Running @ port ",this.address().port )
+})

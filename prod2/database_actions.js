@@ -1,0 +1,134 @@
+var mysql = require('mysql');
+var db_credentials = require('./credentials');
+
+var pool = db_credentials.pool;
+
+var TABLES = {
+	'episode':{
+		"episode_id": "number",
+		"episode_name": "string",
+		"season": "number",
+		"episode": "number",
+		"air_date": "number"
+	},
+	'category':{
+		"category_id":"number",
+		"category_name":"string"
+	},
+	'character':{
+		"series_id":"number",
+		"character_name":"string",
+		"character_id":"number"
+	},
+	'series':{
+		"series_id":"number",
+		"series_name":"string"
+	},
+};
+
+
+/**
+GENERAL DESIGN
+ Each sql function will call the provided callback with the data retreived, or it will pass an additional error object
+ Will get callbacks and set errors in the passed baton
+ */
+
+module.exports = {
+
+	TABLES: TABLES,
+
+	getAllSeriesData(baton, callback){
+		baton.addMethod(this._formatMethod('getAllSeriesData'))
+		this._selectQuery('series', null,null,baton, callback)
+	},
+
+	insertSeries(baton,values, callback){
+		this._insertQuery('series',values, baton, function(){
+			callback(values)
+		});
+	},
+
+	//create insertNewSeries
+
+	_insertQuery(table, values, baton, callback){
+
+		var attr_string = ""
+		var values_string =""
+		var value_array = []
+		Object.keys(values).forEach(function(attr){
+			attr_string += attr + ','
+			values_string += "?,"
+			value_array.push(values[attr])
+		})
+		this._makequery("INSERT INTO "+table+"("+attr_string.slice(0,-1)+") VALUES"+"("+values_string.slice(0,-1)+")",value_array,baton, callback)
+	},
+
+	/**
+	 * Makes the SELECT _query
+	 * @param {string} table name of the table to get data
+	 * @param {string[]} attributes list of attributes to select from table
+	 * @param {json} conditions key is the attribute, value is an array of values for the conditions
+	 * @param {function} callback returning function with resulting data
+	 */
+	_selectQuery(table,attributes, conditions,baton, callback){
+		if(attributes == null) attributes = ['*'];
+		if(conditions == null) conditions = {};
+		var conditions_string = (conditions == null ? " " : " WHERE ")
+		Object.keys(conditions).forEach(function(attr){
+				conditions_string += this._multipleConditions(attr, conditions[attr]) + " OR"
+			})
+		this._makequery("SELECT "+ attributes.join(',')+ " FROM `"+table+"`"+conditions_string.slice(0,-3),null, baton, callback)
+	},
+
+	/**
+	 * Returns the intersection of two arrays
+	 */
+	_intersection(a, b){
+		c = [...a.sort()];
+		d = [...b.sort()];
+		var result = [];
+		while( c.length >0 && d.length >0 )
+		{
+		    if      (c[0] < d[0] ){ c.shift(); }
+		    else if (c[0] > d[0] ){ d.shift(); }
+		    else /* they're equal */
+		    {
+		       result.push(c.shift());
+		       d.shift();
+		    }
+		}
+		return result;
+	},
+	/**
+	 * Takes atrribute and creates proceeding conditions to append to _query
+	 * Assumption that all conditions will need the 'OR' conditional
+	 *
+ 	 */
+	_multipleConditions(atr, values){
+		var conditions = ""
+		values.forEach(function(value){conditions += atr + " = "+ value + " OR"})
+		return conditions.slice(0,-3)
+	},
+	/** makes the query
+	 * @param {function} callback function that will return with the data, or a sql error
+	 */
+	_makequery(sql, values, baton, callback){
+		var t = this;
+		pool.query(sql, values, function(err, results){
+			if(err){
+				baton.setError(err, 'An Error Occured During SQL Querying')
+				callback(null)
+			}
+			else{
+				callback(t._toJSON(results))
+			}
+		});
+	},
+	//converts the qery data to JSON parsable data in array
+		_toJSON(data){
+		return JSON.parse(JSON.stringify(data));
+	},
+	_formatMethod(method){
+		return 'DB_'+method;
+	}
+}
