@@ -7,7 +7,7 @@ var endpoints = [
 	{
 		url : 'getSeriesData',
 		action : function(req, res){
-					production_action.get_allSeriesData(function(data){
+					production_action.get_allSeriesData(req.query,function(data){
 						res.json(data);
 					});
 				}
@@ -20,7 +20,24 @@ var endpoints = [
 					});
 				}
 
-	}
+	},
+	{
+		url : 'getEpisodeData',
+		action : function(req, res){
+					production_action.get_allEpisodeData(req.query,function(data){
+						res.json(data);
+					});
+				}
+	},
+	{
+		url : 'newEpisode',
+		action : function(req, res){
+					production_action.post_newEpisode(req.query,function(data){
+						res.json(data);
+					});
+				}
+
+	},
 ];
 
 app.all('*', function(req, res, next) {

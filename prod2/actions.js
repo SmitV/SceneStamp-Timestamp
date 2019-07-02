@@ -1,6 +1,6 @@
 var db = require('./database_actions');
+var stub_db = require('./stub_database');
 var async = require('async');
-
 
 /**
 
@@ -22,10 +22,10 @@ var ID_LENGTH = {
 
 module.exports = {
 
-  get_allSeriesData(orig_callback){
-    var baton = this._getBaton('get_allSeriesData',orig_callback);
-    this.getAllSeriesData(baton,function(){
-      baton.callOrigCallback()
+  get_allSeriesData(params, orig_callback){
+    var baton = this._getBaton('get_allSeriesData',params, orig_callback);
+    this.getAllSeriesData(baton,function(data){
+      baton.callOrigCallback(data)
     });
   },
   getAllSeriesData(baton,callback){
@@ -37,10 +37,13 @@ module.exports = {
 	},
   post_newSeries(params, orig_callback){
     var t = this;
-    var baton = this._getBaton('post_newSeries',orig_callback);
+    var baton = this._getBaton('post_newSeries',params, orig_callback);
 
-    this._verifyParameter(baton,params.series_name, 'series', 'series_name',getSeriesData)
-
+    this._verifyParameter(baton,params.series_name, 'series', 'series_name',true /* singleValue */,function(series_name){
+      params.series_name = series_name;
+      getSeriesData();
+    })
+    
     function getSeriesData () {
       t.getAllSeriesData(baton,ensureUniqueSeriesName);
     }
@@ -50,14 +53,14 @@ module.exports = {
         baton.setError(
           {
             error:"existing series name",
-            series_name:params.series_name
-          },'Series Name exists')
+            series_name:params.series_name,
+            public_message:'Series Name exists'
+          })
         t._generateError(baton)
         return
       }
       addNewSeries(series_data);
     }
-
     function addNewSeries (series_data){
       var id = t._generateId(ID_LENGTH.series,series_data.map(function(series){return series.series_id}));
       db.insertSeries(baton, {'series_id':id,'series_name': params.series_name}, function(new_series){
@@ -67,19 +70,252 @@ module.exports = {
       })
     }
   },
-  _verifyParameter(baton, value, table, attr,callback){
-    console.log(db.TABLES[table][attr])
-    if(typeof value !== db.TABLES[table][attr]){
-      baton.setError(
-        {
-          error:"verification parameter",
-          value:value,
-          attribute : attr
-        },'Invalid value for  '+attr)
-      this._generateError(baton)
-      return
+  get_allEpisodeData(params, orig_callback){
+    var t = this;
+    var baton = this._getBaton('get_allEpisodeData',params,orig_callback);
+
+    if(params.series_ids && params.series_ids !== undefined){
+      this._verifyParameter(baton, params.series_ids, 'episode','series_id',false,function(series_ids){
+        params.series_ids = series_ids;
+        getEpisodeData()
+      })
     }
-    callback()
+    else{
+      params.series_ids == null;
+      getEpisodeData()
+    }
+
+    function getEpisodeData(){
+      t.getAllEpisodeData(baton,params.series_ids,function(data){
+        baton.callOrigCallback(data)
+      })
+    }
+  },
+  getAllEpisodeData(baton,series_ids, callback){
+    baton.addMethod('getAllEpisodeData');
+    var t = this;
+    db.getAllEpisodeData(baton,series_ids,function(data){
+      t._handleDBCall(baton, data,callback)
+    })
+  },
+
+  post_newEpisode(params, orig_callback){
+    var t = this;
+    var baton = this._getBaton('post_newEpisode',params, orig_callback);
+
+    function ensureEpisodeIsUnique(params,callback){
+      t.getAllEpisodeData(baton, [params.series_id], function(episode_data){
+        if(episode_data.map(function(ep){return ep.episode_name.toLowerCase()}).includes(params.episode_name.toLowerCase())){
+          baton.setError(
+          {
+            series_id:params.series_id,
+            episode_name:params.episode_name,
+            error:"Episode Name exists in series",
+            public_message:'Episode Name exists in series'
+          })
+          t._generateError(baton)
+          return
+        }
+        if(episode_data.filter(function(ep){return ep.season == params.season && ep.episode == params.episode}).length !== 0){
+          baton.setError(
+          {
+            season:params.season,
+            episode:params.episode,
+            error:"Episode with same season and episode in series",
+            public_message:'Episode with same season and episode in series'
+          })
+          t._generateError(baton)
+          return
+        }
+        //update params to include generated id
+        params.episode_id = t._generateId(ID_LENGTH.episode,episode_data.map(function(ep){return ep.episode_id}))
+        ensureSeriesIdExists(params, callback)
+      })
+    }
+
+    function ensureSeriesIdExists(params, callback){
+      t.getAllSeriesData(baton,function(series_data){
+        if(!series_data.map(function(ser){return ser.series_id}).includes(params.series_id)){
+          baton.setError(
+          {
+            series_id:params.series_id,
+            error:"Series id not registered",
+            public_message:'Invalid Series Id'
+          })
+        t._generateError(baton)
+        return
+        }
+        callback()
+      })
+    }
+
+    function ensureRequiredParamsPresent(params,callback){
+      if(!params.series_id || !params.episode_name ){
+         baton.setError(
+          {
+            series_id:params.series_id,
+            episode_name:params.episode_name,
+            error:"Required params not present",
+            public_message:'Required params not present'
+          })
+        t._generateError(baton)
+        return
+      }
+      if((params.season || params.episode ) && (!params.season || !params.episode)){
+        baton.setError(
+          {
+            season:params.season,
+            episode:params.episode,
+            error:"If present, season and episode both must be present",
+            public_message:'Invalid season /episode'
+          })
+        t._generateError(baton)
+        return
+      }
+      ensureEpisodeIsUnique(params, callback)
+    }
+
+    function insertNewEpisode(params, callback){
+      db.insertEpisode(baton,params,function(data){
+        t._handleDBCall(baton, data,callback)
+      })
+    }
+
+    function verifyParams(callback){
+      t._verifyMultipleParameters(baton,params, 'episode',function(verified_params){
+        ensureRequiredParamsPresent(verified_params,function(){
+          callback(verified_params)
+        })
+      })
+    }
+
+    //execute
+    verifyParams(function(params){
+      insertNewEpisode(params, function(episode_added){
+        baton.callOrigCallback(episode_added)
+      })
+    });
+
+    
+
+  },
+
+
+  /**
+   * Will run verification for multiple parameters 
+   * use will be to verify params for episode/timestamp/object in post requests
+   */
+  _verifyMultipleParameters(baton, valuesAndAttr, table, suc_callback){
+    var t = this;
+    var params = {}
+
+    Object.keys(valuesAndAttr).forEach(function(paramKey){
+      if(Object.keys(db.TABLES[table]).includes(paramKey)) params[paramKey] = valuesAndAttr[paramKey] 
+    })
+    
+    var createTasks = function(){
+      var tasks;
+      createVerifyWith(function(t){
+        return tasks = t
+      })
+      return tasks
+    }
+    var createVerifyWith = function(suc_callback){
+      var tasks = {};
+      Object.keys(params).forEach(function(key){
+        //each value will have string passed and if singleValue is required
+        tasks[key] = function(callback){
+          t._verifyParameter(baton, params[key], table, key,true /* singleValue */,callback,true/*multipleVerification*/)};
+      })
+      suc_callback(tasks)
+    }
+    async.parallel(createTasks(),
+      function(err, results){
+        if(err){
+          baton.setError(err)
+          t._generateError(baton);
+          return
+        }
+        else{
+          suc_callback(results)
+        }
+      });
+  },
+  /**
+   * Will verify if the parameters passed in request is correct type
+   * @param {[]} value array of parameters that needs to be checked
+   * @param {string} attr the type of variable the value array must be
+   * @param {string} table the corresponding table defined in database
+  */
+  _verifyParameter(baton, value, table, attr,singleValue,callback, multipleVerification){
+    var t = this;
+
+    if(!Array.isArray(value)) value = this._stringToArray(value)
+
+    var errorPresent = false;
+
+    var throwError = function(val,msg){
+      errorPresent = true;
+      var error = {
+              error:"verification parameter",
+              value:val,
+              attribute : attr,
+              public_message : (msg ? msg : 'Invalid value for '+attr)
+      };
+      if(!multipleVerification){
+        baton.setError(error);
+        t._generateError(baton);
+        return
+      }
+      callback(error)
+
+    };
+
+    var returnBasedOnMultiple = function(data){
+      if(multipleVerification){
+        callback(null, data)
+        return
+      }
+      callback(data)
+    }
+
+    //in case : attribute can only be one value (or nothing, for optional values)
+    //methods calling verification will check for required values
+    if(singleValue && value.length > 1) {
+      throwError(value.toString(),attr + ' should be single value')
+      return 
+    }
+
+    //check each value type
+    value.forEach(function(val){
+      if(db.TABLES[table][attr] == 'number'){
+        if(isNaN(parseInt(val))){
+          throwError(val) 
+          return 
+        }
+        else{
+          value[value.indexOf(val)] = parseInt(val)
+        }
+      }
+      else if(typeof val !== db.TABLES[table][attr]){
+        throwError(val);
+        return 
+      }
+    })
+
+    if(!errorPresent) {
+      if(singleValue){
+        returnBasedOnMultiple(value[0])
+        return
+      }
+      returnBasedOnMultiple(value)
+    }
+  },
+  _stringToArray(str,toInt){
+    if(str == undefined) return [undefined]
+    str = str.split(',')
+    if(toInt) str.map(function(s){return parseInt(s)})
+    return str
   },
   /**
    * Handles if error occurs from DB Call
@@ -97,14 +333,17 @@ module.exports = {
    * Original Callback will be stored, and method sequence will be stored, along with error
    * uses 'call-by-sharing' ; like call-by-reference, but only for properties of objects
    */
-  _getBaton(method, orig_callback){
+  _getBaton(method, params, orig_callback){
     var time = new Date();
     return {
       //id to reference detail log
       id:this._generateId(10),
       start_time:time.getTime(),
+      err :[],
       //the original callback set in 'post' / 'get' endpoint calls
-      orig_callback:orig_callback,
+      orig_callback: orig_callback,
+      //sets the stub for the database
+      use_stub_database:(params.stub_database ? params.stub_database : false),
       callOrigCallback: function(data){
         var end_time = new Date()
         this.duration = end_time.getTime() - this.start_time
@@ -117,21 +356,28 @@ module.exports = {
         this.methods.push(meth)
       },
       //the error object & public message to display
-      setError:function(err,public_message){
+      setError:function(error){
         var end_time = new Date()
         this.duration = end_time.getTime() - this.start_time
-        this.err = err;
-        this.public_message = public_message;
+        this.err.push(error);
       }
     }
   },
+  _makeDbCall(baton, call, ...params){
+    if(baton.use_stub_database){
+      db[call](params)
+    }
+    else{
+      stub_db[call](params)
+    }
+  },
   _generateError(baton){
+    console.log(baton)
 		var response = {
       'id':baton.id,
-      'error_message':baton.public_message,
+      'error_message':baton.err.map(function(err){return err.public_message}).join('.'),
       'method_seq':baton.methods
     };
-    console.log(baton)
     baton.orig_callback(response)
   },
   _generateId(length, ids){

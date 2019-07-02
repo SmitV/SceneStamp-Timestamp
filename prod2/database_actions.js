@@ -9,7 +9,8 @@ var TABLES = {
 		"episode_name": "string",
 		"season": "number",
 		"episode": "number",
-		"air_date": "number"
+		"air_date": "number",
+		"series_id":"number"
 	},
 	'category':{
 		"category_id":"number",
@@ -38,18 +39,25 @@ module.exports = {
 	TABLES: TABLES,
 
 	getAllSeriesData(baton, callback){
+
 		baton.addMethod(this._formatMethod('getAllSeriesData'))
 		this._selectQuery('series', null,null,baton, callback)
 	},
-
 	insertSeries(baton,values, callback){
 		this._insertQuery('series',values, baton, function(){
 			callback(values)
 		});
 	},
 
-	//create insertNewSeries
-
+	getAllEpisodeData(baton, series_ids, callback){
+		baton.addMethod(this._formatMethod('getAllSeriesData'))
+		this._selectQuery('episode', null,(series_ids ? {'series_id':series_ids} : null),baton, callback)
+	},
+	insertEpisode(baton,values, callback){
+		this._insertQuery('episode',values, baton, function(){
+			callback(values)
+		});
+	},
 	_insertQuery(table, values, baton, callback){
 
 		var attr_string = ""
@@ -71,11 +79,12 @@ module.exports = {
 	 * @param {function} callback returning function with resulting data
 	 */
 	_selectQuery(table,attributes, conditions,baton, callback){
+		var t = this;
 		if(attributes == null) attributes = ['*'];
 		if(conditions == null) conditions = {};
 		var conditions_string = (conditions == null ? " " : " WHERE ")
 		Object.keys(conditions).forEach(function(attr){
-				conditions_string += this._multipleConditions(attr, conditions[attr]) + " OR"
+				conditions_string += t._multipleConditions(attr, conditions[attr]) + " OR "
 			})
 		this._makequery("SELECT "+ attributes.join(',')+ " FROM `"+table+"`"+conditions_string.slice(0,-3),null, baton, callback)
 	},
@@ -106,7 +115,8 @@ module.exports = {
  	 */
 	_multipleConditions(atr, values){
 		var conditions = ""
-		values.forEach(function(value){conditions += atr + " = "+ value + " OR"})
+		console.log("values :"+values)
+		values.forEach(function(value){conditions += atr + " = "+ value + " OR "})
 		return conditions.slice(0,-3)
 	},
 	/** makes the query
