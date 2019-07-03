@@ -129,28 +129,12 @@ module.exports = {
         }
         //update params to include generated id
         params.episode_id = t._generateId(ID_LENGTH.episode,episode_data.map(function(ep){return ep.episode_id}))
-        ensureSeriesIdExists(params, callback)
-      })
-    }
-
-    function ensureSeriesIdExists(params, callback){
-      t.getAllSeriesData(baton,function(series_data){
-        if(!series_data.map(function(ser){return ser.series_id}).includes(params.series_id)){
-          baton.setError(
-          {
-            series_id:params.series_id,
-            error:"Series id not registered",
-            public_message:'Invalid Series Id'
-          })
-        t._generateError(baton)
-        return
-        }
         callback()
       })
     }
 
     function ensureRequiredParamsPresent(params,callback){
-      if(!params.series_id || !params.episode_name ){
+      if(params.series_id == undefined  || params.episode_name == undefined ){
          baton.setError(
           {
             series_id:params.series_id,
@@ -161,7 +145,7 @@ module.exports = {
         t._generateError(baton)
         return
       }
-      if((params.season || params.episode ) && (!params.season || !params.episode)){
+      if((params.season || params.episode ) && (params.season == undefined  || params.episode == undefined )){
         baton.setError(
           {
             season:params.season,
@@ -172,7 +156,9 @@ module.exports = {
         t._generateError(baton)
         return
       }
-      ensureEpisodeIsUnique(params, callback)
+      t.ensure_SeriesIdExists(baton,params, function(){
+        ensureEpisodeIsUnique(params, callback)
+      })
     }
 
     function insertNewEpisode(params, callback){
@@ -195,9 +181,123 @@ module.exports = {
         baton.callOrigCallback(episode_added)
       })
     });
+  },
 
-    
+  get_allCharacterData(params, orig_callback){
+    var t = this;
+    var baton = this._getBaton('get_allCharactereData',params,orig_callback);
 
+    if(params.series_ids && params.series_ids !== undefined){
+      this._verifyParameter(baton, params.series_ids, 'character','series_id',false,function(series_ids){
+        params.series_ids = series_ids;
+        getCharacterData()
+      })
+    }
+    else{
+      params.series_ids == null;
+      getCharacterData()
+    }
+
+    function getCharacterData(){
+      t.getAllCharacterData(baton,params.series_ids,function(data){
+        baton.callOrigCallback(data)
+      })
+    }
+  },
+
+  getAllCharacterData(baton,series_ids, callback){
+    baton.addMethod('getAllCharacterData');
+    var t = this;
+    db.getAllCharacterData(baton,series_ids,function(data){
+      t._handleDBCall(baton, data,callback)
+    })
+  },
+
+  post_newCharacter(params, orig_callback){
+    var t = this;
+    var baton = this._getBaton('post_newCharacter',params, orig_callback);
+
+    function ensureCharacterIsUnique(params,callback){
+      t.getAllCharacterData(baton, [params.series_id], function(character_data){
+        console.log('character data')
+        console.log(character_data)
+        if(character_data.map(function(ch){return ch.character_name.toLowerCase()}).includes(params.character_name.toLowerCase())){
+          baton.setError(
+          {
+            character_name:params.character_name,
+            series_id:params.series_id,
+            error:"Character Name exists in series",
+            public_message:'Character Name exists in series'
+          })
+          t._generateError(baton)
+          return
+        }
+        //update params to include generated id
+        params.character_id = t._generateId(ID_LENGTH.character,character_data.map(function(ch){return ch.character_id}))
+        callback()
+      })
+    }
+
+    function ensureRequiredParamsPresent(params,callback){
+      if(params.series_id == undefined || params.character_name == undefined  ){
+         baton.setError(
+          {
+            series_id:params.series_id,
+            character_name:params.character_name,
+            error:"Required params not present",
+            public_message:'Required params not present'
+          })
+        t._generateError(baton)
+        return
+      }
+      t.ensure_SeriesIdExists(baton,params, function(){
+        ensureCharacterIsUnique(params, callback)
+      })
+      
+    }
+
+    function verifyParams(callback){
+      t._verifyMultipleParameters(baton,params, 'character',function(verified_params){
+        ensureRequiredParamsPresent(verified_params,function(){
+          callback(verified_params)
+        })
+      })
+    }
+
+    function insertNewCharacter(params,callback){
+      console.log('insertNewCharacter')
+      console.log(params)
+      db.insertCharacter(baton,params,function(data){
+        t._handleDBCall(baton, data,callback)
+      })
+    }
+
+    //execute
+    verifyParams(function(params){
+      insertNewCharacter(params, function(character_added){
+        baton.callOrigCallback(character_added)
+      })
+    });
+
+  },
+
+
+  ensure_SeriesIdExists(baton, params, callback){
+    var t = this;
+    baton.addMethod('ensure_SeriesIdExists');
+    this.getAllSeriesData(baton,function(series_data){
+      if(!series_data.map(function(ser){return ser.series_id}).includes(params.series_id)){
+        baton.setError(
+        {
+          series_id:params.series_id,
+          error:"Series id not registered",
+          public_message:'Invalid Series Id'
+        })
+      t._generateError(baton)
+      return
+      }
+      callback()
+    })
   },
 
 

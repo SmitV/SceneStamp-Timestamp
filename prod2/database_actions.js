@@ -50,14 +50,26 @@ module.exports = {
 	},
 
 	getAllEpisodeData(baton, series_ids, callback){
-		baton.addMethod(this._formatMethod('getAllSeriesData'))
+		baton.addMethod(this._formatMethod('getAllEpisodeData'))
 		this._selectQuery('episode', null,(series_ids ? {'series_id':series_ids} : null),baton, callback)
 	},
 	insertEpisode(baton,values, callback){
+		baton.addMethod(this._formatMethod('insertEpisode'))
 		this._insertQuery('episode',values, baton, function(){
 			callback(values)
 		});
 	},
+	getAllCharacterData(baton, series_ids, callback){
+		baton.addMethod(this._formatMethod('getAllCharacterData'))
+		this._selectQuery('character', null,(series_ids ? {'series_id':series_ids} : null),baton, callback)
+	},
+	insertCharacter(baton,values, callback){
+		baton.addMethod(this._formatMethod('insertCharacter'))
+		this._insertQuery('character',values, baton, function(){
+			callback(values)
+		});
+	},
+
 	_insertQuery(table, values, baton, callback){
 
 		var attr_string = ""
@@ -68,7 +80,9 @@ module.exports = {
 			values_string += "?,"
 			value_array.push(values[attr])
 		})
-		this._makequery("INSERT INTO "+table+"("+attr_string.slice(0,-1)+") VALUES"+"("+values_string.slice(0,-1)+")",value_array,baton, callback)
+		console.log("INSERT INTO `"+table+"` ("+attr_string.slice(0,-1)+") VALUES"+"("+values_string.slice(0,-1)+")")
+		console.log(value_array)
+		this._makequery("INSERT INTO `"+table+"` ("+attr_string.slice(0,-1)+") VALUES"+"("+values_string.slice(0,-1)+")",value_array,baton, callback)
 	},
 
 	/**
@@ -115,7 +129,6 @@ module.exports = {
  	 */
 	_multipleConditions(atr, values){
 		var conditions = ""
-		console.log("values :"+values)
 		values.forEach(function(value){conditions += atr + " = "+ value + " OR "})
 		return conditions.slice(0,-3)
 	},
@@ -125,6 +138,7 @@ module.exports = {
 	_makequery(sql, values, baton, callback){
 		var t = this;
 		pool.query(sql, values, function(err, results){
+			console.log(results)
 			if(err){
 				baton.setError(err, 'An Error Occured During SQL Querying')
 				callback(null)

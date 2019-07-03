@@ -38,6 +38,23 @@ var endpoints = [
 				}
 
 	},
+	{
+		url : 'getCharacterData',
+		action : function(req, res){
+					production_action.get_allCharacterData(req.query,function(data){
+						res.json(data);
+					});
+				}
+	},
+	{
+		url : 'newCharacter',
+		action : function(req, res){
+					production_action.post_newCharacter(req.query,function(data){
+						res.json(data);
+					});
+				}
+
+	}
 ];
 
 app.all('*', function(req, res, next) {
