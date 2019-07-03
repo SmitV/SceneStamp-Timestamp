@@ -72,6 +72,23 @@ var endpoints = [
 				}
 
 	},
+	{
+		url : 'getTimestampData',
+		action : function(req, res){
+					production_action.get_allTimestampData(req.query,function(data){
+						res.json(data);
+					});
+				}
+	},
+	{
+		url : 'newTimestamp',
+		action : function(req, res){
+					production_action.post_newTimestamp(req.query,function(data){
+						res.json(data);
+					});
+				}
+
+	},
 ];
 
 app.all('*', function(req, res, next) {

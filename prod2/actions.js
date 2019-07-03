@@ -219,8 +219,6 @@ module.exports = {
 
     function ensureCharacterIsUnique(params,callback){
       t.getAllCharacterData(baton, [params.series_id], function(character_data){
-        console.log('character data')
-        console.log(character_data)
         if(character_data.map(function(ch){return ch.character_name.toLowerCase()}).includes(params.character_name.toLowerCase())){
           baton.setError(
           {
@@ -265,8 +263,6 @@ module.exports = {
     }
 
     function insertNewCharacter(params,callback){
-      console.log('insertNewCharacter')
-      console.log(params)
       db.insertCharacter(baton,params,function(data){
         t._handleDBCall(baton, data,callback)
       })
@@ -369,6 +365,85 @@ module.exports = {
     });
   },
 
+  get_allTimestampData(params, orig_callback){
+    var t = this;
+    var baton = this._getBaton('get_allTimestampData',params,orig_callback);
+
+    if(params.episode_ids && params.episode_ids !== undefined){
+      this._verifyParameter(baton, params.episode_ids, 'timestamp','episode_id',false,function(episode_ids){
+        params.episode_ids = episode_ids;
+        getTimestampData()
+      })
+    }
+    else{
+      params.episode_ids == null;
+      getTimestampData()
+    }
+
+    function getTimestampData(){
+      t.getAllTimestampData(baton,params.episode_ids,null/*timestamp_ids*/,function(data){
+        baton.callOrigCallback(data)
+      })
+    }
+  },
+
+  getAllTimestampData(baton,episode_ids,timestamp_ids, callback){
+    baton.addMethod('getAllTimestampData');
+    var t = this;
+    db.getAllTimestampData(baton,episode_ids,timestamp_ids,function(data){
+      t._handleDBCall(baton, data,callback)
+    })
+  },
+
+  post_newTimestamp(params, orig_callback){
+    var t = this;
+    var baton = this._getBaton('post_newTimestamp',params, orig_callback);
+
+    function createTimestampId(params,callback){
+      t.getAllTimestampData(baton, null, null,function(timestamp_data){
+        params.timestamp_id = t._generateId(ID_LENGTH.timestamp, timestamp_data.map(function(ts){return ts.timestamp_id}))
+        callback(params)
+      })
+    }
+
+
+    function ensureRequiredParamsPresent(params,callback){
+      if(params.start_time == undefined || params.episode_id == undefined  ){
+         baton.setError(
+          {
+            episode_id:params.episode_id,
+            start_time:params.start_time,
+            error:"Required params not present",
+            public_message:'Required params not present'
+          })
+        t._generateError(baton)
+        return
+      }
+      createTimestampId(params, callback)  
+    }
+
+    function verifyParams(callback){
+      t._verifyMultipleParameters(baton,params, 'timestamp',function(verified_params){
+        t.ensure_EpisodeIdExists(baton,verified_params, function(){
+          ensureRequiredParamsPresent(verified_params,callback)
+        })
+      })
+    }
+
+    function insertNewTimestamp(params,callback){
+      db.insertTimestamp(baton,params,function(data){
+        t._handleDBCall(baton, data,callback)
+      })
+    }
+
+    //execute
+    verifyParams(function(params){
+      insertNewTimestamp(params, function(timestamp_data){
+        baton.callOrigCallback(timestamp_data)
+      })
+    });
+  },
+
 
 
   ensure_SeriesIdExists(baton, params, callback){
@@ -381,6 +456,24 @@ module.exports = {
           series_id:params.series_id,
           error:"Series id not registered",
           public_message:'Invalid Series Id'
+        })
+      t._generateError(baton)
+      return
+      }
+      callback()
+    })
+  },
+
+  ensure_EpisodeIdExists(baton, params, callback){
+    var t = this;
+    baton.addMethod('ensure_EpisodeIdExists');
+    this.getAllEpisodeData(baton,null/*series_id*/,function(episode_data){
+      if(!episode_data.map(function(ep){return ep.episode_id}).includes(params.episode_id)){
+        baton.setError(
+        {
+          episode_id:params.episode_id,
+          error:"Episode id not registered",
+          public_message:'Invalid Episode Id'
         })
       t._generateError(baton)
       return
@@ -474,7 +567,6 @@ module.exports = {
       throwError(value.toString(),attr + ' should be single value')
       return 
     }
-
     //check each value type
     value.forEach(function(val){
       if(db.TABLES[table][attr] == 'number'){
@@ -561,7 +653,9 @@ module.exports = {
     }
   },
   _generateError(baton){
+    console.log('----------------')
     console.log(baton)
+    console.log()
 		var response = {
       'id':baton.id,
       'error_message':baton.err.map(function(err){return err.public_message}).join('.'),

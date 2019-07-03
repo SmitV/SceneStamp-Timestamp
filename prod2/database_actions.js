@@ -25,6 +25,11 @@ var TABLES = {
 		"series_id":"number",
 		"series_name":"string"
 	},
+	'timestamp':{
+		"timestamp_id":"number",
+		"start_time":"number",
+		"episode_id":"number"
+	}
 };
 
 
@@ -80,6 +85,20 @@ module.exports = {
 		});
 	},
 
+	getAllTimestampData(baton, episode_ids, timestamp_ids,callback){
+		baton.addMethod(this._formatMethod('getAllTimestampData'))
+		var data = {}
+		data.episode_id = (episode_ids ? episode_ids : null)
+		data.timestamp_id = (timestamp_ids ? timestamp_ids : null)
+		this._selectQuery('timestamp', null,data,baton, callback)
+	},
+	insertTimestamp(baton,values, callback){
+		baton.addMethod(this._formatMethod('insertTimestamp'))
+		this._insertQuery('timestamp',values, baton, function(){
+			callback(values)
+		});
+	},
+
 	_insertQuery(table, values, baton, callback){
 
 		var attr_string = ""
@@ -90,8 +109,6 @@ module.exports = {
 			values_string += "?,"
 			value_array.push(values[attr])
 		})
-		console.log("INSERT INTO `"+table+"` ("+attr_string.slice(0,-1)+") VALUES"+"("+values_string.slice(0,-1)+")")
-		console.log(value_array)
 		this._makequery("INSERT INTO `"+table+"` ("+attr_string.slice(0,-1)+") VALUES"+"("+values_string.slice(0,-1)+")",value_array,baton, callback)
 	},
 
@@ -108,8 +125,8 @@ module.exports = {
 		if(conditions == null) conditions = {};
 		var conditions_string = (conditions == null ? " " : " WHERE ")
 		Object.keys(conditions).forEach(function(attr){
-				conditions_string += t._multipleConditions(attr, conditions[attr]) + " OR "
-			})
+			if(conditions[attr]) conditions_string += t._multipleConditions(attr, conditions[attr]) + " OR "
+		})
 		this._makequery("SELECT "+ attributes.join(',')+ " FROM `"+table+"`"+conditions_string.slice(0,-3),null, baton, callback)
 	},
 
@@ -148,7 +165,6 @@ module.exports = {
 	_makequery(sql, values, baton, callback){
 		var t = this;
 		pool.query(sql, values, function(err, results){
-			console.log(results)
 			if(err){
 				baton.setError(err, 'An Error Occured During SQL Querying')
 				callback(null)
