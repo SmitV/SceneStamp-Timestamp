@@ -54,7 +54,24 @@ var endpoints = [
 					});
 				}
 
-	}
+	},
+	{
+		url : 'getCategoryData',
+		action : function(req, res){
+					production_action.get_allCategoryData(req.query,function(data){
+						res.json(data);
+					});
+				}
+	},
+	{
+		url : 'newCategory',
+		action : function(req, res){
+					production_action.post_newCategory(req.query,function(data){
+						res.json(data);
+					});
+				}
+
+	},
 ];
 
 app.all('*', function(req, res, next) {

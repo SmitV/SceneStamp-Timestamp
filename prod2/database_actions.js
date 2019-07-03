@@ -69,6 +69,16 @@ module.exports = {
 			callback(values)
 		});
 	},
+	getAllCategoryData(baton, series_ids, callback){
+		baton.addMethod(this._formatMethod('getAllCategoryData'))
+		this._selectQuery('category', null,(series_ids ? {'series_id':series_ids} : null),baton, callback)
+	},
+	insertCategory(baton,values, callback){
+		baton.addMethod(this._formatMethod('insertCategory'))
+		this._insertQuery('category',values, baton, function(){
+			callback(values)
+		});
+	},
 
 	_insertQuery(table, values, baton, callback){
 

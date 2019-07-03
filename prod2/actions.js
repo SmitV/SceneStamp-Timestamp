@@ -281,6 +281,95 @@ module.exports = {
 
   },
 
+  get_allCategoryData(params, orig_callback){
+    var t = this;
+    var baton = this._getBaton('get_allCategoryData',params,orig_callback);
+
+    if(params.series_ids && params.series_ids !== undefined){
+      this._verifyParameter(baton, params.series_ids, 'category','series_id',false,function(series_ids){
+        params.series_ids = series_ids;
+        getCharacterData()
+      })
+    }
+    else{
+      params.series_ids == null;
+      getCategoryData()
+    }
+
+    function getCategoryData(){
+      t.getAllCategoryData(baton,params.series_ids,function(data){
+        baton.callOrigCallback(data)
+      })
+    }
+  },
+
+  getAllCategoryData(baton,series_ids, callback){
+    baton.addMethod('getAllCategoryData');
+    var t = this;
+    db.getAllCategoryData(baton,series_ids,function(data){
+      t._handleDBCall(baton, data,callback)
+    })
+  },
+
+  post_newCategory(params, orig_callback){
+    var t = this;
+    var baton = this._getBaton('post_newCategory',params, orig_callback);
+
+    function ensureCategoryIsUnique(params,callback){
+      t.getAllCategoryData(baton, null, function(category_data){
+        if(category_data.map(function(ct){return ct.category_name.toLowerCase()}).includes(params.category_name.toLowerCase())){
+          baton.setError(
+          {
+            category_name:params.category_name,
+            error:"Category Name exists in series",
+            public_message:'Category Name exists in series'
+          })
+          t._generateError(baton)
+          return
+        }
+        //update params to include generated id
+        params.category_id = t._generateId(ID_LENGTH.category,category_data.map(function(ct){return ct.category_id}))
+        callback()
+      })
+    }
+
+    function ensureRequiredParamsPresent(params,callback){
+      if(params.category_name == undefined  ){
+         baton.setError(
+          {
+            category_name:params.category_name,
+            error:"Required params not present",
+            public_message:'Required params not present'
+          })
+        t._generateError(baton)
+        return
+      }
+      ensureCategoryIsUnique(params, callback)      
+    }
+
+    function verifyParams(callback){
+      t._verifyMultipleParameters(baton,params, 'category',function(verified_params){
+        ensureRequiredParamsPresent(verified_params,function(){
+          callback(verified_params)
+        })
+      })
+    }
+
+    function insertNewCategory(params,callback){
+      db.insertCategory(baton,params,function(data){
+        t._handleDBCall(baton, data,callback)
+      })
+    }
+
+    //execute
+    verifyParams(function(params){
+      insertNewCategory(params, function(character_added){
+        baton.callOrigCallback(character_added)
+      })
+    });
+  },
+
+
 
   ensure_SeriesIdExists(baton, params, callback){
     var t = this;
