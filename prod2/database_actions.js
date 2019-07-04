@@ -3,7 +3,7 @@ var db_credentials = require('./credentials');
 
 var pool = db_credentials.pool;
 
-var TABLES = {
+var DB_TABLES = {
 	'episode':{
 		"episode_id": "number",
 		"episode_name": "string",
@@ -28,8 +28,18 @@ var TABLES = {
 	'timestamp':{
 		"timestamp_id":"number",
 		"start_time":"number",
-		"episode_id":"number"
-	}
+		"episode_id":"number",
+		"character_id":"number",
+		"category_id":"number"
+	},
+	'timestamp_category':{
+		"timestamp_id":"number",
+		"category_id":"number"
+	},
+	'timestamp_characters':{
+		"timestamp_id":"number",
+		"character_id":"number"
+	},
 };
 
 
@@ -41,7 +51,7 @@ GENERAL DESIGN
 
 module.exports = {
 
-	TABLES: TABLES,
+	TABLES: DB_TABLES,
 
 	getAllSeriesData(baton, callback){
 
@@ -65,6 +75,8 @@ module.exports = {
 		});
 	},
 	getAllCharacterData(baton, series_ids, callback){
+		console.log('getAllCharacterData')
+		console.log(series_ids)
 		baton.addMethod(this._formatMethod('getAllCharacterData'))
 		this._selectQuery('character', null,(series_ids ? {'series_id':series_ids} : null),baton, callback)
 	},
@@ -98,7 +110,49 @@ module.exports = {
 			callback(values)
 		});
 	},
+	getAllTimestampCategory(baton, params, callback){
+		baton.addMethod(this._formatMethod('getAllTimestampCategory'))
+		var data = (params.timestamp_ids ? {'timestamp_id':params.timestamp_ids} : {})
+		data.category_id = (params.category_ids ? params.category_ids : null)
+		data = (data == {} ? null: data)
+		this._selectQuery('timestamp_category', null,data,baton, callback)
+	},
+	insertTimestampCategory(baton, values, callback){
+		baton.addMethod(this._formatMethod('insertTimestampCategory'))
+		this._insertMultipleQuery('timestamp_category',values, baton, function(){
+			callback(values)
+		});
+	},
+	removeTimestampCategory(baton,timestamp_ids, callback){
+		baton.addMethod(this._formatMethod('removeTimestampCategory'))
+		this._deleteQuery('timestamp_category',(timestamp_ids ? {'timestamp_id':timestamp_ids} : null),baton, callback)
+	},
+	getAllTimestampCharacter(baton, params, callback){
+		baton.addMethod(this._formatMethod('getAllTimestampCharacter'))
+		var data = (params.timestamp_ids ? {'timestamp_id':params.timestamp_ids} : {})
+		data.character_ids = (params.character_ids ? params.character_ids : null)
+		data = (data == {} ? null: data)
+		this._selectQuery('timestamp_characters', null,data,baton, callback)
+	},
+	insertTimestampCharacter(baton, values, callback){
+		baton.addMethod(this._formatMethod('insertTimestampCharacter'))
+		this._insertMultipleQuery('timestamp_characters',values, baton, function(){
+			callback(values)
+		});
+	},
+	removeTimestampCharacter(baton,timestamp_ids, callback){
+		baton.addMethod(this._formatMethod('removeTimestampCategory'))
+		this._deleteQuery('timestamp_characters',(timestamp_ids ? {'timestamp_id':timestamp_ids} : null),baton, callback)
+	},
 
+	_insertMultipleQuery(table,values, baton, callback){
+		var values_string = "?,".repeat(values[0].length).slice(0,-1)
+		var attr_string = Object.keys(DB_TABLES[table]).map(function(key){return key}).join(',')
+		console.log('_insertMultipleQuery')
+		console.log("INSERT INTO `"+table+"` ("+attr_string+") VALUES ("+values_string+")")
+		console.log(values)
+		this._makequery("INSERT INTO `"+table+"` ("+attr_string+") VALUES ?",[values],baton, callback)
+	},
 	_insertQuery(table, values, baton, callback){
 
 		var attr_string = ""
@@ -112,6 +166,15 @@ module.exports = {
 		this._makequery("INSERT INTO `"+table+"` ("+attr_string.slice(0,-1)+") VALUES"+"("+values_string.slice(0,-1)+")",value_array,baton, callback)
 	},
 
+	_deleteQuery(table, conditions,baton, callback){
+		var t = this;
+		var conditions_string = (conditions == null ? "   " : " WHERE ")
+		Object.keys(conditions).forEach(function(attr){
+			if(conditions[attr]) conditions_string += t._multipleConditions(attr, conditions[attr]) + " OR "
+		})
+		this._makequery("DELETE FROM `"+table+"`"+conditions_string.slice(0,-3),null, baton, callback)
+	},
+
 	/**
 	 * Makes the SELECT _query
 	 * @param {string} table name of the table to get data
@@ -123,7 +186,7 @@ module.exports = {
 		var t = this;
 		if(attributes == null) attributes = ['*'];
 		if(conditions == null) conditions = {};
-		var conditions_string = (conditions == null ? " " : " WHERE ")
+		var conditions_string = (conditions == null? " " : " WHERE ")
 		Object.keys(conditions).forEach(function(attr){
 			if(conditions[attr]) conditions_string += t._multipleConditions(attr, conditions[attr]) + " OR "
 		})

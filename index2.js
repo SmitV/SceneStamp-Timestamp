@@ -89,6 +89,15 @@ var endpoints = [
 				}
 
 	},
+	{
+		url : 'updateTimestamp',
+		action : function(req, res){
+					production_action.post_updateTimestamp(req.query,function(data){
+						res.json(data);
+					});
+				}
+
+	},
 ];
 
 app.all('*', function(req, res, next) {

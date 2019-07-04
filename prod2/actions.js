@@ -32,7 +32,7 @@ module.exports = {
     baton.addMethod('getAllSeriesData');
     var t = this;
 		db.getAllSeriesData(baton,function(data){
-      t._handleDBCall(baton, data,callback)
+      t._handleDBCall(baton, data,false/*multiple*/, callback)
     })
 	},
   post_newSeries(params, orig_callback){
@@ -64,7 +64,7 @@ module.exports = {
     function addNewSeries (series_data){
       var id = t._generateId(ID_LENGTH.series,series_data.map(function(series){return series.series_id}));
       db.insertSeries(baton, {'series_id':id,'series_name': params.series_name}, function(new_series){
-        t._handleDBCall(baton, new_series,function(data){
+        t._handleDBCall(baton, new_series,false/*multiple*/,function(data){
           baton.callOrigCallback(data)
         })
       })
@@ -95,7 +95,7 @@ module.exports = {
     baton.addMethod('getAllEpisodeData');
     var t = this;
     db.getAllEpisodeData(baton,series_ids,function(data){
-      t._handleDBCall(baton, data,callback)
+      t._handleDBCall(baton, data,false/*multiple*/,callback)
     })
   },
 
@@ -163,12 +163,12 @@ module.exports = {
 
     function insertNewEpisode(params, callback){
       db.insertEpisode(baton,params,function(data){
-        t._handleDBCall(baton, data,callback)
+        t._handleDBCall(baton, data,false/*multiple*/,callback)
       })
     }
 
     function verifyParams(callback){
-      t._verifyMultipleParameters(baton,params, 'episode',function(verified_params){
+      t._verifyMultipleParameters(baton,params, 'episode',null/*singleValues*/, function(verified_params){
         ensureRequiredParamsPresent(verified_params,function(){
           callback(verified_params)
         })
@@ -209,7 +209,7 @@ module.exports = {
     baton.addMethod('getAllCharacterData');
     var t = this;
     db.getAllCharacterData(baton,series_ids,function(data){
-      t._handleDBCall(baton, data,callback)
+      t._handleDBCall(baton, data,false/*multiple*/,callback)
     })
   },
 
@@ -255,7 +255,7 @@ module.exports = {
     }
 
     function verifyParams(callback){
-      t._verifyMultipleParameters(baton,params, 'character',function(verified_params){
+      t._verifyMultipleParameters(baton,params, 'character',null/*singleValues*/,function(verified_params){
         ensureRequiredParamsPresent(verified_params,function(){
           callback(verified_params)
         })
@@ -264,7 +264,7 @@ module.exports = {
 
     function insertNewCharacter(params,callback){
       db.insertCharacter(baton,params,function(data){
-        t._handleDBCall(baton, data,callback)
+        t._handleDBCall(baton, data,false/*multiple*/,callback)
       })
     }
 
@@ -303,7 +303,7 @@ module.exports = {
     baton.addMethod('getAllCategoryData');
     var t = this;
     db.getAllCategoryData(baton,series_ids,function(data){
-      t._handleDBCall(baton, data,callback)
+      t._handleDBCall(baton, data,false/*multiple*/,callback)
     })
   },
 
@@ -344,7 +344,7 @@ module.exports = {
     }
 
     function verifyParams(callback){
-      t._verifyMultipleParameters(baton,params, 'category',function(verified_params){
+      t._verifyMultipleParameters(baton,params, 'category',null/*singleValues*/,function(verified_params){
         ensureRequiredParamsPresent(verified_params,function(){
           callback(verified_params)
         })
@@ -353,7 +353,7 @@ module.exports = {
 
     function insertNewCategory(params,callback){
       db.insertCategory(baton,params,function(data){
-        t._handleDBCall(baton, data,callback)
+        t._handleDBCall(baton, data,false/*multiple*/,callback)
       })
     }
 
@@ -387,12 +387,43 @@ module.exports = {
     }
   },
 
-  getAllTimestampData(baton,episode_ids,timestamp_ids, callback){
+  //get character and categories for timestamps
+  getAllTimestampData(baton,params, callback){
     baton.addMethod('getAllTimestampData');
     var t = this;
-    db.getAllTimestampData(baton,episode_ids,timestamp_ids,function(data){
-      t._handleDBCall(baton, data,callback)
-    })
+
+
+    function dataLoader(){
+      var tasks = {}
+      task.allTimestamps = function(callback){
+        db.getAllTimestampData(baton,params.episode_ids,params.timestamp_ids,function(data){
+          t._handleDBCall(baton, data,true/*multiple*/,callback)
+        })
+      }
+      task.allCategory = function(callback){
+        db.getAllTimestampCategory(baton,{category_ids : params.category_ids},function(data){
+          t._handleDBCall(baton, data,true/*multiple*/,callback)
+        })
+      }
+      task.allCharacter= function(callback){
+        db.getAllTimestampCharacter(baton,{character_ids : params.character_ids},function(data){
+          t._handleDBCall(baton, data,true/*multiple*/,callback)
+        })
+      }
+    }
+
+    async.parallel(tasks,
+      function(err, results){
+        if(err){
+          t._generateError(baton);
+          return
+        }
+        else{
+          suc_callback()
+        }
+      });
+    
+
   },
 
   post_newTimestamp(params, orig_callback){
@@ -423,7 +454,7 @@ module.exports = {
     }
 
     function verifyParams(callback){
-      t._verifyMultipleParameters(baton,params, 'timestamp',function(verified_params){
+      t._verifyMultipleParameters(baton,params, 'timestamp',null/*singleValues*/,function(verified_params){
         t.ensure_EpisodeIdExists(baton,verified_params, function(){
           ensureRequiredParamsPresent(verified_params,callback)
         })
@@ -432,7 +463,7 @@ module.exports = {
 
     function insertNewTimestamp(params,callback){
       db.insertTimestamp(baton,params,function(data){
-        t._handleDBCall(baton, data,callback)
+        t._handleDBCall(baton, data,false/*multiple*/,callback)
       })
     }
 
@@ -442,6 +473,141 @@ module.exports = {
         baton.callOrigCallback(timestamp_data)
       })
     });
+  },
+
+  post_updateTimestamp(params, orig_callback){
+    var t = this;
+    var baton = this._getBaton('post_updateTimestamp',params, orig_callback);
+
+    function addCharactersAndCategories(params, suc_callback){
+      var tasks = {}
+      if(params.categories){
+        tasks.categories = function(callback){
+          var category_values = [];
+          params.categories.forEach(function(category){
+            category_values.push([params.timestamp_id[0], category]);
+          })
+          db.insertTimestampCategory(baton,category_values,function(data){
+            t._handleDBCall(baton, data,true/*multiple*/, callback)
+          })
+        }
+      }
+      if(params.characters){
+        tasks.characters = function(callback){
+          var character_values = [];
+          params.characters.forEach(function(character){
+            character_values.push([params.timestamp_id[0], character]);
+          })
+          db.insertTimestampCharacter(baton,character_values,function(data){
+            t._handleDBCall(baton, data,true/*multiple*/, callback)
+          })
+        }
+      }
+      
+      async.parallel(tasks,
+      function(err, results){
+        if(err){
+          t._generateError(baton);
+          return
+        }
+        else{
+          suc_callback()
+        }
+      });
+    }
+
+    function removeCharactersAndCategories(params, suc_callback){
+
+      function createTasks(after_task_created_callback){
+        var tasks = {}
+        if(params.categories){
+          tasks.categories = function(callback){
+            db.removeTimestampCategory(baton,params.timestamp_id,function(data){
+              t._handleDBCall(baton, data,true/*multiple*/, callback)
+            })
+          }
+        }
+        if(params.characters){
+          tasks.characters = function(callback){
+            db.removeTimestampCharacter(baton,params.timestamp_id,function(data){
+              t._handleDBCall(baton, data,true/*multiple*/, callback)
+            })
+          }
+        }
+        after_task_created_callback(tasks)
+      }
+
+      createTasks(function(tasks){
+        async.parallel(tasks,
+          function(err, results){
+            if(err){
+              t._generateError(baton);
+              return
+            }
+            else{
+              suc_callback()
+            }
+        });
+      })
+    }
+
+    function ensureRequiredParamsPresent(params,callback){
+      if(params.timestamp_id == undefined || (params.characters == undefined && params.categories == undefined )){
+         baton.setError(
+          {
+            characters:params.characters,
+            categories:params.categories,
+            timesamp_id:params.timestamp_id,
+            error:"Required params not present",
+            public_message:'Required params not present'
+          })
+        t._generateError(baton)
+        return
+      }
+      t.ensure_TimestampIdExists(baton,params, callback)  
+    }
+
+    function ensureCharactersFromSameSeries(characters, timestamp, callback){
+      t.ensure_EpisodeIdExists(baton, {episode_id : timestamp.episode_id}, function(episode){
+        episode = episode[0]
+        t.getAllCharacterData(baton, [episode.series_id], function(series_characters){
+          if(t._intersection(characters,series_characters.map(function(character){return character.character_id})).length !== characters.length){
+            baton.setError(
+            {
+              characters:params.characters,
+              series_id:episode.series_id,
+              timesamp_id:params.timestamp_id,
+              error:"Not all characters in series",
+              public_message:'Invalid characters'
+            })
+          t._generateError(baton)
+          return
+          }
+          callback()
+        })
+      })
+    }
+
+     function verifyParams(callback){
+      t._verifyMultipleParameters(baton,params, 'timestamp',{characters:false, categories:false,timestamp_id:false}/*singleValue*/,function(verified_params){
+        ensureRequiredParamsPresent(verified_params, function(timestamp_data){
+          ensureCharactersFromSameSeries(verified_params.characters, timestamp_data[0], function(){
+            callback(verified_params)
+          })
+        })
+      })
+    }
+
+    verifyParams(function(params){
+      //IF NEEDED, add check for if the characters are in the series
+      removeCharactersAndCategories(params,function(){
+        addCharactersAndCategories(params,function(){
+          baton.callOrigCallback(params)
+        })
+       })
+    })
+
+
   },
 
 
@@ -478,7 +644,26 @@ module.exports = {
       t._generateError(baton)
       return
       }
-      callback()
+      callback(episode_data.filter(function(ep){return ep.episode_id == params.episode_id}))
+    })
+  },
+
+  ensure_TimestampIdExists(baton, params, callback){
+    var t = this;
+    baton.addMethod('ensure_EpisodeIdExists');
+    console.log(params)
+    this.getAllTimestampData(baton,null/*episode_ids*/,params.timestamp_id, function(timestamp_data){
+      if(timestamp_data.length !== params.timestamp_id.length){
+        baton.setError(
+        {
+          timestamp_id:params.timestamp_id,
+          error:"Timestamp id not registered",
+          public_message:'Invalid Timestamp Id'
+        })
+      t._generateError(baton)
+      return
+      }
+      callback(timestamp_data)
     })
   },
 
@@ -487,7 +672,7 @@ module.exports = {
    * Will run verification for multiple parameters 
    * use will be to verify params for episode/timestamp/object in post requests
    */
-  _verifyMultipleParameters(baton, valuesAndAttr, table, suc_callback){
+  _verifyMultipleParameters(baton, valuesAndAttr, table,singleValues, suc_callback){
     var t = this;
     var params = {}
 
@@ -507,7 +692,7 @@ module.exports = {
       Object.keys(params).forEach(function(key){
         //each value will have string passed and if singleValue is required
         tasks[key] = function(callback){
-          t._verifyParameter(baton, params[key], table, key,true /* singleValue */,callback,true/*multipleVerification*/)};
+          t._verifyParameter(baton, params[key], table, key,(singleValues[key] !== undefined ?singleValues[key]:true ) /* singleValue */,callback,true/*multipleVerification*/)};
       })
       suc_callback(tasks)
     }
@@ -600,11 +785,21 @@ module.exports = {
   },
   /**
    * Handles if error occurs from DB Call
+   * in case of multiple, callback will be error,results
    */
-  _handleDBCall(baton, data,callback){
+  _handleDBCall(baton, data,multiple, callback){
     if(data == null){
       //the error would have been set on the DB side
+      if(multiple){
+        callback(true)
+        return 
+       }
+      //the error would have been set on the DB side
       this._generateError(baton)
+      return
+    }
+    if(multiple){
+      callback(null, data)
       return
     }
     callback(data)
@@ -644,6 +839,7 @@ module.exports = {
       }
     }
   },
+
   _makeDbCall(baton, call, ...params){
     if(baton.use_stub_database){
       db[call](params)
@@ -672,5 +868,24 @@ module.exports = {
 		}
 		return id;
 	},
+  /**
+   * Returns the intersection of two arrays
+   */
+  _intersection(a, b){
+    c = [...a.sort()];
+    d = [...b.sort()];
+    var result = [];
+    while( c.length >0 && d.length >0 )
+    {
+        if      (c[0] < d[0] ){ c.shift(); }
+        else if (c[0] > d[0] ){ d.shift(); }
+        else /* they're equal */
+        {
+           result.push(c.shift());
+           d.shift();
+        }
+    }
+    return result;
+  },
 
 }
