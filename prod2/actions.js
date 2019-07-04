@@ -369,19 +369,12 @@ module.exports = {
     var t = this;
     var baton = this._getBaton('get_allTimestampData',params,orig_callback);
 
-    if(params.episode_ids && params.episode_ids !== undefined){
-      this._verifyParameter(baton, params.episode_ids, 'timestamp','episode_id',false,function(episode_ids){
-        params.episode_ids = episode_ids;
-        getTimestampData()
+      t._verifyMultipleParameters(baton,params, 'timestamp',{character_ids:false,category_ids:false,episode_ids:false }/*singleValues*/,function(verified_params){
+        getTimestampData(verified_params)
       })
-    }
-    else{
-      params.episode_ids == null;
-      getTimestampData()
-    }
 
-    function getTimestampData(){
-      t.getAllTimestampData(baton,params.episode_ids,null/*timestamp_ids*/,function(data){
+    function getTimestampData(params){
+      t.getAllTimestampData(baton,params,function(data){
         baton.callOrigCallback(data)
       })
     }
@@ -392,38 +385,51 @@ module.exports = {
     baton.addMethod('getAllTimestampData');
     var t = this;
 
+    db.getAllTimestampData(baton,params.episode_ids,params.timestamp_ids,function(data){
+      t._handleDBCall(baton, data,false/*multiple*/,function(timestamp_data){
+        dataLoader(timestamp_data, function(results){
+          if(params.character_ids){
+            timestamp_data = timestamp_data.filter(function(timestamp){return t._intersection(params.character_ids, timestamp.characters).length >0});
+          }
+          if(params.category_ids){
+            timestamp_data = timestamp_data.filter(function(timestamp){return t._intersection(params.category_ids, timestamp.categories).length >0});
+          }
+         callback(timestamp_data)
 
-    function dataLoader(){
+        })
+      })
+    })
+
+
+    function dataLoader(timestamp_data,suc_callback){
+      var timestamp_ids = timestamp_data.map(function(timestamp){return timestamp.timestamp_id})
       var tasks = {}
-      task.allTimestamps = function(callback){
-        db.getAllTimestampData(baton,params.episode_ids,params.timestamp_ids,function(data){
+      tasks.allCategory = function(callback){
+        db.getAllTimestampCategory(baton,{timestamp_ids: timestamp_ids},function(data){
           t._handleDBCall(baton, data,true/*multiple*/,callback)
         })
       }
-      task.allCategory = function(callback){
-        db.getAllTimestampCategory(baton,{category_ids : params.category_ids},function(data){
+      tasks.allCharacter= function(callback){
+        db.getAllTimestampCharacter(baton,{timestamp_ids: timestamp_ids},function(data){
           t._handleDBCall(baton, data,true/*multiple*/,callback)
         })
       }
-      task.allCharacter= function(callback){
-        db.getAllTimestampCharacter(baton,{character_ids : params.character_ids},function(data){
-          t._handleDBCall(baton, data,true/*multiple*/,callback)
-        })
-      }
-    }
 
-    async.parallel(tasks,
-      function(err, results){
-        if(err){
-          t._generateError(baton);
-          return
-        }
-        else{
-          suc_callback()
-        }
-      });
-    
-
+      async.parallel(tasks,
+        function(err, results){
+          if(err){
+            t._generateError(baton);
+            return
+          }
+          else{ 
+            suc_callback(timestamp_data.forEach(function(timestamp){
+               timestamp.characters = results.allCharacter.filter(function(ch){return ch.timestamp_id == timestamp.timestamp_id}).map(function(ch){return ch.character_id});
+               timestamp.categories = results.allCategory.filter(function(ct){return ct.timestamp_id == timestamp.timestamp_id}).map(function(ct){return ct.category_id});
+            }))    
+          }
+        });
+      }
+   
   },
 
   post_newTimestamp(params, orig_callback){
@@ -431,7 +437,7 @@ module.exports = {
     var baton = this._getBaton('post_newTimestamp',params, orig_callback);
 
     function createTimestampId(params,callback){
-      t.getAllTimestampData(baton, null, null,function(timestamp_data){
+      t.getAllTimestampData(baton, {},function(timestamp_data){
         params.timestamp_id = t._generateId(ID_LENGTH.timestamp, timestamp_data.map(function(ts){return ts.timestamp_id}))
         callback(params)
       })
@@ -481,10 +487,10 @@ module.exports = {
 
     function addCharactersAndCategories(params, suc_callback){
       var tasks = {}
-      if(params.categories){
+      if(params.category_ids){
         tasks.categories = function(callback){
           var category_values = [];
-          params.categories.forEach(function(category){
+          params.category_ids.forEach(function(category){
             category_values.push([params.timestamp_id[0], category]);
           })
           db.insertTimestampCategory(baton,category_values,function(data){
@@ -492,10 +498,10 @@ module.exports = {
           })
         }
       }
-      if(params.characters){
+      if(params.character_ids){
         tasks.characters = function(callback){
           var character_values = [];
-          params.characters.forEach(function(character){
+          params.character_ids.forEach(function(character){
             character_values.push([params.timestamp_id[0], character]);
           })
           db.insertTimestampCharacter(baton,character_values,function(data){
@@ -517,17 +523,16 @@ module.exports = {
     }
 
     function removeCharactersAndCategories(params, suc_callback){
-
       function createTasks(after_task_created_callback){
         var tasks = {}
-        if(params.categories){
+        if(params.category_ids){
           tasks.categories = function(callback){
             db.removeTimestampCategory(baton,params.timestamp_id,function(data){
               t._handleDBCall(baton, data,true/*multiple*/, callback)
             })
           }
         }
-        if(params.characters){
+        if(params.character_ids){
           tasks.characters = function(callback){
             db.removeTimestampCharacter(baton,params.timestamp_id,function(data){
               t._handleDBCall(baton, data,true/*multiple*/, callback)
@@ -552,11 +557,11 @@ module.exports = {
     }
 
     function ensureRequiredParamsPresent(params,callback){
-      if(params.timestamp_id == undefined || (params.characters == undefined && params.categories == undefined )){
+      if(params.timestamp_id == undefined){
          baton.setError(
           {
-            characters:params.characters,
-            categories:params.categories,
+            character_ids:params.character_ids,
+            category_ids:params.category_ids,
             timesamp_id:params.timestamp_id,
             error:"Required params not present",
             public_message:'Required params not present'
@@ -574,7 +579,7 @@ module.exports = {
           if(t._intersection(characters,series_characters.map(function(character){return character.character_id})).length !== characters.length){
             baton.setError(
             {
-              characters:params.characters,
+              character_ids:params.character_ids,
               series_id:episode.series_id,
               timesamp_id:params.timestamp_id,
               error:"Not all characters in series",
@@ -589,11 +594,15 @@ module.exports = {
     }
 
      function verifyParams(callback){
-      t._verifyMultipleParameters(baton,params, 'timestamp',{characters:false, categories:false,timestamp_id:false}/*singleValue*/,function(verified_params){
+      t._verifyMultipleParameters(baton,params, 'timestamp',{character_ids:false, category_ids:false,timestamp_id:false}/*singleValue*/,function(verified_params){
         ensureRequiredParamsPresent(verified_params, function(timestamp_data){
-          ensureCharactersFromSameSeries(verified_params.characters, timestamp_data[0], function(){
-            callback(verified_params)
-          })
+          if(verified_params.character_ids){
+            ensureCharactersFromSameSeries(verified_params.character_ids, timestamp_data[0], function(){
+              callback(verified_params)
+            })
+            return
+          }
+          callback(verified_params) 
         })
       })
     }
@@ -651,8 +660,7 @@ module.exports = {
   ensure_TimestampIdExists(baton, params, callback){
     var t = this;
     baton.addMethod('ensure_EpisodeIdExists');
-    console.log(params)
-    this.getAllTimestampData(baton,null/*episode_ids*/,params.timestamp_id, function(timestamp_data){
+    this.getAllTimestampData(baton,{timestamp_ids : params.timestamp_id}, function(timestamp_data){
       if(timestamp_data.length !== params.timestamp_id.length){
         baton.setError(
         {
@@ -677,7 +685,7 @@ module.exports = {
     var params = {}
 
     Object.keys(valuesAndAttr).forEach(function(paramKey){
-      if(Object.keys(db.TABLES[table]).includes(paramKey)) params[paramKey] = valuesAndAttr[paramKey] 
+      if(Object.keys(db.TABLES[table]).includes(paramKey) && valuesAndAttr[paramKey] !== '') params[paramKey] = valuesAndAttr[paramKey] 
     })
     
     var createTasks = function(){
