@@ -168,7 +168,7 @@ module.exports = {
     }
 
     function verifyParams(callback){
-      t._verifyMultipleParameters(baton,params, 'episode',null/*singleValues*/, function(verified_params){
+      t._verifyMultipleParameters(baton,params, 'episode',{}/*singleValues*/, function(verified_params){
         ensureRequiredParamsPresent(verified_params,function(){
           callback(verified_params)
         })
@@ -255,7 +255,7 @@ module.exports = {
     }
 
     function verifyParams(callback){
-      t._verifyMultipleParameters(baton,params, 'character',null/*singleValues*/,function(verified_params){
+      t._verifyMultipleParameters(baton,params, 'character',{}/*singleValues*/,function(verified_params){
         ensureRequiredParamsPresent(verified_params,function(){
           callback(verified_params)
         })
@@ -344,7 +344,7 @@ module.exports = {
     }
 
     function verifyParams(callback){
-      t._verifyMultipleParameters(baton,params, 'category',null/*singleValues*/,function(verified_params){
+      t._verifyMultipleParameters(baton,params, 'category',{}/*singleValues*/,function(verified_params){
         ensureRequiredParamsPresent(verified_params,function(){
           callback(verified_params)
         })
@@ -460,7 +460,7 @@ module.exports = {
     }
 
     function verifyParams(callback){
-      t._verifyMultipleParameters(baton,params, 'timestamp',null/*singleValues*/,function(verified_params){
+      t._verifyMultipleParameters(baton,params, 'timestamp',{}/*singleValues*/,function(verified_params){
         t.ensure_EpisodeIdExists(baton,verified_params, function(){
           ensureRequiredParamsPresent(verified_params,callback)
         })
