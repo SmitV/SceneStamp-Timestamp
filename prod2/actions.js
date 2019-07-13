@@ -185,7 +185,7 @@ module.exports = {
 
   get_allCharacterData(params, orig_callback){
     var t = this;
-    var baton = this._getBaton('get_allCharactereData',params,orig_callback);
+    var baton = this._getBaton('get_allCharacterData',params,orig_callback);
 
     if(params.series_ids && params.series_ids !== undefined){
       this._verifyParameter(baton, params.series_ids, 'character','series_id',false,function(series_ids){

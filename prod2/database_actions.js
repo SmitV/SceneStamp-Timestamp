@@ -29,6 +29,7 @@ var DB_TABLES = {
 		"timestamp_id":"number",
 		"start_time":"number",
 		"episode_ids":"number",
+		"episode_id":"number",
 		"character_ids":"number",
 		"category_ids":"number"
 	},
