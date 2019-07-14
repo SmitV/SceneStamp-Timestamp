@@ -460,6 +460,7 @@ module.exports = {
     }
 
     function verifyParams(callback){
+      
       t._verifyMultipleParameters(baton,params, 'timestamp',{}/*singleValues*/,function(verified_params){
         t.ensure_EpisodeIdExists(baton,verified_params, function(){
           ensureRequiredParamsPresent(verified_params,callback)
@@ -525,14 +526,14 @@ module.exports = {
     function removeCharactersAndCategories(params, suc_callback){
       function createTasks(after_task_created_callback){
         var tasks = {}
-        if(params.category_ids){
+        if(params.category_ids || params.clearCategories){
           tasks.categories = function(callback){
             db.removeTimestampCategory(baton,params.timestamp_id,function(data){
               t._handleDBCall(baton, data,true/*multiple*/, callback)
             })
           }
         }
-        if(params.character_ids){
+        if(params.character_ids || params.clearCharacters){
           tasks.characters = function(callback){
             db.removeTimestampCharacter(baton,params.timestamp_id,function(data){
               t._handleDBCall(baton, data,true/*multiple*/, callback)
@@ -769,6 +770,12 @@ module.exports = {
         }
         else{
           value[value.indexOf(val)] = parseInt(val)
+        }
+      }
+      else if(db.TABLES[table][attr] == 'boolean'){
+        if(val != 'true' & val != 'false'){
+          throwError(val) 
+          return 
         }
       }
       else if(typeof val !== db.TABLES[table][attr]){

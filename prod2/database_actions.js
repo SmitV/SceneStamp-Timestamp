@@ -31,7 +31,9 @@ var DB_TABLES = {
 		"episode_ids":"number",
 		"episode_id":"number",
 		"character_ids":"number",
-		"category_ids":"number"
+		"category_ids":"number",
+		"clearCategories":"boolean",
+		"clearCharacters":"boolean"
 	},
 	'timestamp_category':{
 		"timestamp_id":"number",
