@@ -172,7 +172,8 @@ module.exports = {
 
 	_deleteQuery(table, conditions,baton, callback){
 		var t = this;
-		var conditions_string = (conditions == null || conditions == {}? "   " : " WHERE ")
+		if(conditions == null) conditions = {};
+		var conditions_string = (conditions == null ? "   " : " WHERE ")
 		Object.keys(conditions).forEach(function(attr){
 			if(conditions[attr]) conditions_string += t._multipleConditions(attr, conditions[attr]) + " OR "
 		})
@@ -189,6 +190,7 @@ module.exports = {
 	_selectQuery(table,attributes, conditions,baton, callback){
 		var t = this;
 		if(attributes == null) attributes = ['*'];
+		if(conditions == null) conditions = {};
 		var conditions_string = (conditions == null || conditions == {}? " " : " WHERE ")
 		Object.keys(conditions).forEach(function(attr){
 			if(conditions[attr]) conditions_string += t._multipleConditions(attr, conditions[attr]) + " OR "
