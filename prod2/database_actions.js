@@ -115,7 +115,7 @@ module.exports = {
 		baton.addMethod(this._formatMethod('getAllTimestampCategory'))
 		var data = (params.timestamp_ids ? {'timestamp_id':params.timestamp_ids} : {})
 		data.category_id = (params.category_ids ? params.category_ids : null)
-		data = (data == {} ? null: data)
+		data = (data == {} || data == null? null: data)
 		this._selectQuery('timestamp_category', null,data,baton, callback)
 	},
 	insertTimestampCategory(baton, values, callback){
@@ -134,7 +134,7 @@ module.exports = {
 		baton.addMethod(this._formatMethod('getAllTimestampCharacter'))
 		var data = (params.timestamp_ids ? {'timestamp_id':params.timestamp_ids} : {})
 		data.character_ids = (params.character_ids ? params.character_ids : null)
-		data = (data == {} ? null: data)
+		data = (data == {} || data == null ? null: data)
 		this._selectQuery('timestamp_characters', null,data,baton, callback)
 	},
 	insertTimestampCharacter(baton, values, callback){
