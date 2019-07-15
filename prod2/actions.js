@@ -405,12 +405,12 @@ module.exports = {
       var timestamp_ids = timestamp_data.map(function(timestamp){return timestamp.timestamp_id})
       var tasks = {}
       tasks.allCategory = function(callback){
-        db.getAllTimestampCategory(baton,{timestamp_ids: timestamp_ids},function(data){
+        db.getAllTimestampCategory(baton,(timestamp_ids.length > 0 ? null :{timestamp_ids: timestamp_ids}),function(data){
           t._handleDBCall(baton, data,true/*multiple*/,callback)
         })
       }
       tasks.allCharacter= function(callback){
-        db.getAllTimestampCharacter(baton,{timestamp_ids: timestamp_ids},function(data){
+        db.getAllTimestampCharacter(baton,(timestamp_ids.length > 0 ? null :{timestamp_ids: timestamp_ids}),function(data){
           t._handleDBCall(baton, data,true/*multiple*/,callback)
         })
       }
