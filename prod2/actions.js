@@ -22,10 +22,10 @@ var ID_LENGTH = {
 
 module.exports = {
 
-  get_allSeriesData(params, orig_callback){
-    var baton = this._getBaton('get_allSeriesData',params, orig_callback);
+  get_allSeriesData(params, res){
+    var baton = this._getBaton('get_allSeriesData',params, res);
     this.getAllSeriesData(baton,function(data){
-      baton.callOrigCallback(data)
+      baton.json(data)
     });
   },
   getAllSeriesData(baton,callback){
@@ -35,9 +35,9 @@ module.exports = {
       t._handleDBCall(baton, data,false/*multiple*/, callback)
     })
 	},
-  post_newSeries(params, orig_callback){
+  post_newSeries(params, res){
     var t = this;
-    var baton = this._getBaton('post_newSeries',params, orig_callback);
+    var baton = this._getBaton('post_newSeries',params, res);
 
     this._verifyParameter(baton,params.series_name, 'series', 'series_name',true /* singleValue */,function(series_name){
       params.series_name = series_name;
@@ -65,14 +65,14 @@ module.exports = {
       var id = t._generateId(ID_LENGTH.series,series_data.map(function(series){return series.series_id}));
       db.insertSeries(baton, {'series_id':id,'series_name': params.series_name}, function(new_series){
         t._handleDBCall(baton, new_series,false/*multiple*/,function(data){
-          baton.callOrigCallback(data)
+          baton.json(data)
         })
       })
     }
   },
-  get_allEpisodeData(params, orig_callback){
+  get_allEpisodeData(params, res){
     var t = this;
-    var baton = this._getBaton('get_allEpisodeData',params,orig_callback);
+    var baton = this._getBaton('get_allEpisodeData',params,res);
 
     if(params.series_ids && params.series_ids !== undefined){
       this._verifyParameter(baton, params.series_ids, 'episode','series_id',false,function(series_ids){
@@ -87,7 +87,7 @@ module.exports = {
 
     function getEpisodeData(){
       t.getAllEpisodeData(baton,params.series_ids,function(data){
-        baton.callOrigCallback(data)
+        baton.json(data)
       })
     }
   },
@@ -99,9 +99,9 @@ module.exports = {
     })
   },
 
-  post_newEpisode(params, orig_callback){
+  post_newEpisode(params, res){
     var t = this;
-    var baton = this._getBaton('post_newEpisode',params, orig_callback);
+    var baton = this._getBaton('post_newEpisode',params, res);
 
     function ensureEpisodeIsUnique(params,callback){
       t.getAllEpisodeData(baton, [params.series_id], function(episode_data){
@@ -178,14 +178,14 @@ module.exports = {
     //execute
     verifyParams(function(params){
       insertNewEpisode(params, function(episode_added){
-        baton.callOrigCallback(episode_added)
+        baton.json(episode_added)
       })
     });
   },
 
-  get_allCharacterData(params, orig_callback){
+  get_allCharacterData(params, res){
     var t = this;
-    var baton = this._getBaton('get_allCharacterData',params,orig_callback);
+    var baton = this._getBaton('get_allCharacterData',params,res);
 
     if(params.series_ids && params.series_ids !== undefined){
       this._verifyParameter(baton, params.series_ids, 'character','series_id',false,function(series_ids){
@@ -200,7 +200,7 @@ module.exports = {
 
     function getCharacterData(){
       t.getAllCharacterData(baton,params.series_ids,function(data){
-        baton.callOrigCallback(data)
+        baton.json(data)
       })
     }
   },
@@ -213,9 +213,9 @@ module.exports = {
     })
   },
 
-  post_newCharacter(params, orig_callback){
+  post_newCharacter(params, res){
     var t = this;
-    var baton = this._getBaton('post_newCharacter',params, orig_callback);
+    var baton = this._getBaton('post_newCharacter',params, res);
 
     function ensureCharacterIsUnique(params,callback){
       t.getAllCharacterData(baton, [params.series_id], function(character_data){
@@ -271,15 +271,15 @@ module.exports = {
     //execute
     verifyParams(function(params){
       insertNewCharacter(params, function(character_added){
-        baton.callOrigCallback(character_added)
+        baton.json(character_added)
       })
     });
 
   },
 
-  get_allCategoryData(params, orig_callback){
+  get_allCategoryData(params, res){
     var t = this;
-    var baton = this._getBaton('get_allCategoryData',params,orig_callback);
+    var baton = this._getBaton('get_allCategoryData',params,res);
 
     if(params.series_ids && params.series_ids !== undefined){
       this._verifyParameter(baton, params.series_ids, 'category','series_id',false,function(series_ids){
@@ -294,7 +294,7 @@ module.exports = {
 
     function getCategoryData(){
       t.getAllCategoryData(baton,params.series_ids,function(data){
-        baton.callOrigCallback(data)
+        baton.json(data)
       })
     }
   },
@@ -307,9 +307,9 @@ module.exports = {
     })
   },
 
-  post_newCategory(params, orig_callback){
+  post_newCategory(params, res){
     var t = this;
-    var baton = this._getBaton('post_newCategory',params, orig_callback);
+    var baton = this._getBaton('post_newCategory',params, res);
 
     function ensureCategoryIsUnique(params,callback){
       t.getAllCategoryData(baton, null, function(category_data){
@@ -360,14 +360,14 @@ module.exports = {
     //execute
     verifyParams(function(params){
       insertNewCategory(params, function(character_added){
-        baton.callOrigCallback(character_added)
+        baton.json(character_added)
       })
     });
   },
 
-  get_allTimestampData(params, orig_callback){
+  get_allTimestampData(params, res){
     var t = this;
-    var baton = this._getBaton('get_allTimestampData',params,orig_callback);
+    var baton = this._getBaton('get_allTimestampData',params,res);
 
       t._verifyMultipleParameters(baton,params, 'timestamp',{character_ids:false,category_ids:false,episode_ids:false }/*singleValues*/,function(verified_params){
         getTimestampData(verified_params)
@@ -375,7 +375,7 @@ module.exports = {
 
     function getTimestampData(params){
       t.getAllTimestampData(baton,params,function(data){
-        baton.callOrigCallback(data)
+        baton.json(data)
       })
     }
   },
@@ -432,9 +432,9 @@ module.exports = {
    
   },
 
-  post_newTimestamp(params, orig_callback){
+  post_newTimestamp(params, res){
     var t = this;
-    var baton = this._getBaton('post_newTimestamp',params, orig_callback);
+    var baton = this._getBaton('post_newTimestamp',params, res);
 
     function createTimestampId(params,callback){
       t.getAllTimestampData(baton, {},function(timestamp_data){
@@ -477,14 +477,14 @@ module.exports = {
     //execute
     verifyParams(function(params){
       insertNewTimestamp(params, function(timestamp_data){
-        baton.callOrigCallback(timestamp_data)
+        baton.json(timestamp_data)
       })
     });
   },
 
-  post_updateTimestamp(params, orig_callback){
+  post_updateTimestamp(params, res){
     var t = this;
-    var baton = this._getBaton('post_updateTimestamp',params, orig_callback);
+    var baton = this._getBaton('post_updateTimestamp',params,res);
 
     function addCharactersAndCategories(params, suc_callback){
       var tasks = {}
@@ -612,7 +612,7 @@ module.exports = {
       //IF NEEDED, add check for if the characters are in the series
       removeCharactersAndCategories(params,function(){
         addCharactersAndCategories(params,function(){
-          baton.callOrigCallback(params)
+          baton.json(params)
         })
        })
     })
@@ -824,22 +824,22 @@ module.exports = {
    * Original Callback will be stored, and method sequence will be stored, along with error
    * uses 'call-by-sharing' ; like call-by-reference, but only for properties of objects
    */
-  _getBaton(method, params, orig_callback){
+  _getBaton(method, params, res){
     var time = new Date();
     return {
       //id to reference detail log
       id:this._generateId(10),
       start_time:time.getTime(),
       err :[],
-      //the original callback set in 'post' / 'get' endpoint calls
-      orig_callback: orig_callback,
+      //the res for the request
+      res:res,
       //sets the stub for the database
       use_stub_database:(params.stub_database ? params.stub_database : false),
-      callOrigCallback: function(data){
+      json:function(data){
         var end_time = new Date()
         this.duration = end_time.getTime() - this.start_time
         console.log(this.methods[0] + " | "+ this.duration )
-        this.orig_callback(data)
+        res.json(data)
       },
       //method sequence
       methods:[method],
@@ -864,15 +864,20 @@ module.exports = {
     }
   },
   _generateError(baton){
+
+    var printableBaton = {}
+    Object.keys(baton).forEach(function(key){
+      if(typeof baton[key]!== 'function') printableBaton[key] = baton[key]
+    });
+    delete printableBaton.res
     console.log('----------------')
-    console.log(baton)
+    console.log(printableBaton)
     console.log()
 		var response = {
       'id':baton.id,
-      'error_message':baton.err.map(function(err){return err.public_message}).join('.'),
-      'method_seq':baton.methods
+      'error_message':baton.err.map(function(err){return err.public_message}).join('.')
     };
-    baton.orig_callback(response)
+    baton.json(response)
   },
   _generateId(length, ids){
 		var id= (Math.pow(10, length-1)) + Math.floor( + Math.random() * 9 * Math.pow(10 , (length-1)));
