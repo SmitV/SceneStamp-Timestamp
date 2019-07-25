@@ -12,79 +12,252 @@ var fakeRes = {
 	}
 }
 
+function assertErrorMessage(res, msg) {
+	expect(res.data).to.have.property('error_message')
+	expect(res.data.error_message).to.contain(msg)
+}
+
 
 
 describe('timestamp server tests', function() {
 
-	/*  getting data calls
-		
-		for series/episode/character/category/timestamp
+			/*  getting data calls
+				
+				for series/episode/character/category/timestamp
 
-		also test filtering
-	*/
-	var fakeRes;
-	beforeEach(function() {
+				also test filtering
+			*/
+			var sandbox;
 
-		fakeRes = {
-			data: null,
-			json: function(data) {
-				this.data = data;
-			}
-		}
-	});
+			var fakeRes;
+			var fakeSeriesData;
+			var fakeEpisodeData;
 
+			beforeEach(function() {
+				sandbox = sinon.sandbox.create()
+				fakeRes = {
+					data: null,
+					json: function(data) {
+						this.data = data;
+					}
+				}
+				fakeSeriesData = [{
+					"series_id": 0,
+					"series_name": "Test Series 1"
+				}, {
+					"series_id": 1,
+					"series_name": "Test Series 2"
+				}]
 
-	function getError(res){
-		expect(res.data).to.have.property('error_message')
-		return res.data
-	}
+				fakeEpisodeData = [{
+					"episode_id": 1,
+					"episode_name": "Test Episode 1",
+					"season": 1,
+					"episode": 1,
+					"air_date": 1564034876,
+					"series_id": 0
+				}, {
+					"episode_id": 2,
+					"episode_name": "Test Episode 2",
+					"season": 1,
+					"episode": 2,
+					"air_date": 1564038876,
+					"series_id": 0
+				}, {
+					"episode_id": 3,
+					"episode_name": "Test Episode 3",
+					"season": 1,
+					"episode": 1,
+					"air_date": 1569038876,
+					"series_id": 1
+				}]
+			});
 
-	describe('series', function() {
-
-		//stub get all series dat for all tests
-		sinon.stub(dbActions, 'getAllSeriesData').callsFake(function(baton, callback) {
-			return callback(fakeSeriesData)
-		})
-
-		var fakeSeriesData;
-
-		beforeEach(function() {
-			fakeSeriesData = [{
-				"series_id": 1,
-				"series_name": "Test Series 1"
-			}, {
-				"series_id": 2,
-				"series_name": "Test Series 2"
-			}]
-		})
-
-		it('should return all series data', function() {
-			actions.get_allSeriesData({}, fakeRes)
-			expect(fakeRes.data).equal(fakeSeriesData)
-		})
-
-		it('should create new series', function() {
-			sinon.stub(dbActions, 'insertSeries').callsFake(function(baton, newSeries, callback) {
-				fakeSeriesData.push(newSeries)
-				return callback(fakeSeriesData)
+			afterEach(function() {
+				sandbox.restore()
 			})
 
-			var series_name = 'InTest Series'
-			actions.post_newSeries({series_name:series_name}, fakeRes)
-
-			expect(fakeRes.data.length).equal(3)
-			expect(fakeRes.data[2].series_name).equal(series_name)
-		})
-
-		it('should throw error when same series data', function() {
-			var series_name = 'InTest Series'
-			fakeSeriesData[0].series_name = series_name
-			actions.post_newSeries({series_name:series_name}, fakeRes)
-
-			var error = getError(fakeRes)
-			expect(error.error_message).to.contain('Series Name exists')
-		})
-	})
 
 
-});
+			describe('series', function() {
+
+				beforeEach(function() {
+					//stub get all series dat for all tests
+					sandbox.stub(dbActions, 'getAllSeriesData').callsFake(function(baton, callback) {
+						return callback(fakeSeriesData)
+					})
+				})
+
+				it('should return all series data', function() {
+					actions.get_allSeriesData({}, fakeRes)
+					expect(fakeRes.data).equal(fakeSeriesData)
+				})
+
+				it('should create new series', function() {
+
+					sandbox.stub(actions, '_generateId').callsFake(function() {
+						return 10
+					})
+
+					sandbox.stub(dbActions, 'insertSeries').callsFake(function(baton, newSeries, callback) {
+						fakeSeriesData.push(newSeries)
+						return callback(fakeSeriesData)
+					})
+
+					var series_name = 'InTest Series'
+					actions.post_newSeries({
+						series_name: series_name
+					}, fakeRes)
+
+					expect(fakeRes.data.length).equal(3)
+					expect(fakeRes.data[2]).to.deep.equal({
+						series_id: 10,
+						series_name: series_name
+					})
+				})
+
+				it('should throw error when same series data', function() {
+					var series_name = 'InTest Series'
+					fakeSeriesData[0].series_name = series_name
+					actions.post_newSeries({
+						series_name: series_name
+					}, fakeRes)
+					assertErrorMessage(fakeRes, 'Series Name exists')
+				})
+			})
+
+			describe('episode', function() {
+
+				beforeEach(function() {
+
+					//stub get all series dat for all tests
+					sandbox.stub(dbActions, 'getAllEpisodeData').callsFake(function(baton, series_ids, callback) {
+						if (series_ids && series_ids.length > 0) {
+							return callback(fakeEpisodeData.filter(function(ep) {
+								return series_ids.includes(ep.series_id)
+							}))
+						}
+						return callback(fakeEpisodeData)
+					})
+				})
+
+
+				it('should return all episode data', function() {
+					actions.get_allEpisodeData({}, fakeRes)
+					expect(fakeRes.data).equal(fakeEpisodeData)
+				})
+
+				it('should filter by one series id', function() {
+					actions.get_allEpisodeData({
+						series_ids: "0"
+					}, fakeRes)
+					expect(fakeRes.data.length).equal(2)
+				})
+
+				it('should filter by multiple series id', function() {
+					actions.get_allEpisodeData({
+						series_ids: "0,1"
+					}, fakeRes)
+					expect(fakeRes.data.length).equal(fakeEpisodeData.length)
+				})
+
+				it('should throw error for invalid series_ids param', function() {
+					actions.get_allEpisodeData({
+						series_ids: "text"
+					}, fakeRes)
+					assertErrorMessage(fakeRes, 'Invalid value for series_id')
+				})
+
+				describe('inserting new episode', function() {
+
+					beforeEach(function() {
+
+						sandbox.stub(actions, '_generateId').callsFake(function() {
+							return 10
+						})
+
+						sandbox.stub(dbActions, 'getAllSeriesData').callsFake(function(baton, callback) {
+							return callback(fakeSeriesData)
+						})
+
+						sandbox.stub(dbActions, 'insertEpisode').callsFake(function(baton, episode, callback) {
+							fakeEpisodeData.push(episode)
+							return callback(episode)
+						})
+					})
+
+					it('should create new episode', function() {
+						var episode_data = {
+							series_id: "1",
+							episode_name: "InTest Episode"
+						}
+						actions.post_newEpisode(episode_data, fakeRes)
+						expect(fakeRes.data).to.deep.equal({
+							series_id: 1,
+							episode_name: episode_data.episode_name,
+							episode_id: 10
+
+						})
+					})
+
+					it('should throw error for requiring series_id & episode_name',function(){
+						var episode_data = {
+							episode_name: "InTest Episode"
+						}
+						actions.post_newEpisode(episode_data, fakeRes)
+						assertErrorMessage(fakeRes, 'Required params not present')
+
+						episode_data = {
+							series_id :"0"
+						}
+						actions.post_newEpisode(episode_data, fakeRes)
+						assertErrorMessage(fakeRes, 'Required params not present')
+					})
+
+					it('should create throw error for invalid series', function() {
+						var episode_data = {
+							series_id: "3",
+							episode_name: "InTest Episode"
+						}
+						actions.post_newEpisode(episode_data, fakeRes)
+						assertErrorMessage(fakeRes, 'Invalid Series Id')
+					})
+
+					it('should create throw error for existing episode name in same series', function() {
+						var episode_data = {
+							series_id: "0",
+							episode_name: fakeEpisodeData[0].episode_name
+						}
+						actions.post_newEpisode(episode_data, fakeRes)
+						assertErrorMessage(fakeRes, 'Episode Name exists in series')
+					})
+
+					it('should create episode with same name, but in different series', function() {
+						var episode_data = {
+							series_id: fakeEpisodeData[2].series_id.toString(),
+							episode_name: fakeEpisodeData[0].episode_name
+						}
+						actions.post_newEpisode(episode_data, fakeRes)
+						expect(fakeRes.data).to.deep.equal({
+							series_id: parseInt(episode_data.series_id),
+							episode_name: episode_data.episode_name,
+							episode_id: 10
+						})
+					})
+
+					it('should throw error for episode with same season and episode', function() {
+						var episode_data = {
+							series_id: fakeEpisodeData[0].series_id.toString(),
+							episode_name: "InTest Episode",
+							season: fakeEpisodeData[0].season.toString(),
+							episode: fakeEpisodeData[0].episode.toString()
+						}
+						actions.post_newEpisode(episode_data, fakeRes)
+						assertErrorMessage(fakeRes, 'Episode with same season and episode in series')
+					})
+
+				})
+			})
+
+
+			});
