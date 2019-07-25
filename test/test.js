@@ -83,7 +83,6 @@ describe('timestamp server tests', function() {
 
 			var error = getError(fakeRes)
 			expect(error.error_message).to.contain('Series Name exists')
-			expect(true).to.be.false()
 		})
 	})
 

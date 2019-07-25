@@ -9,7 +9,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "(https://github.com/kunal-rp/SceneStamp_Server.git)",
+    "url": "(https://github.com/kunal-rp/SceneStamp_Server.git)"
   },
   "pre-commit" : [
     "test"
