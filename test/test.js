@@ -397,5 +397,62 @@ describe('timestamp server tests', function() {
 
 	});
 
+	describe('category', function() {
+
+		beforeEach(function() {
+			//stub get all series dat for all tests
+			sandbox.stub(dbActions, 'getAllCategoryData').callsFake(function(baton, series_ids, callback) {
+				return callback(fakeCategoryData)
+			})
+		})
+
+
+		it('should return all category data', function() {
+			actions.get_allCategoryData({}, fakeRes)
+			expect(fakeRes.data).equal(fakeCategoryData)
+		})
+
+
+		describe('inserting new category', function() {
+
+			beforeEach(function() {
+
+				sandbox.stub(actions, '_generateId').callsFake(function() {
+					return 10
+				})
+
+				sandbox.stub(dbActions, 'insertCategory').callsFake(function(baton, values, callback) {
+					fakeCategoryData.push(values)
+					return callback(values)
+				})
+			})
+
+			it('should create new categoy', function() {
+				var category_values = {
+					category_name: "InTest Category"
+				}
+				actions.post_newCategory(category_values, fakeRes)
+				category_values.category_id = 10
+				expect(fakeRes.data).to.deep.equal(category_values)
+			})
+
+			it('chould throw error for invalid params', function() {
+				var category_values = {}
+				actions.post_newCategory(category_values, fakeRes)
+				assertErrorMessage(fakeRes, 'Required params not present')
+			})
+
+
+			it('should create throw error for existing episode name in same series', function() {
+				var category_values = {
+					category_name: fakeCategoryData[0].category_name
+				}
+				actions.post_newCategory(category_values, fakeRes)
+				assertErrorMessage(fakeRes, 'Category Name exists in series')
+			})
+
+		});
+	});
+
 
 });
