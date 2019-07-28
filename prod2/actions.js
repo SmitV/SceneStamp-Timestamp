@@ -395,7 +395,6 @@ module.exports = {
             timestamp_data = timestamp_data.filter(function(timestamp){return t._intersection(params.category_ids, timestamp.categories).length >0});
           }
          callback(timestamp_data)
-
         })
       })
     })
@@ -422,7 +421,7 @@ module.exports = {
             return
           }
           else{ 
-            suc_callback(timestamp_data.forEach(function(timestamp){
+          suc_callback(timestamp_data.forEach(function(timestamp) {
                timestamp.characters = results.allCharacter.filter(function(ch){return ch.timestamp_id == timestamp.timestamp_id}).map(function(ch){return ch.character_id});
                timestamp.categories = results.allCategory.filter(function(ct){return ct.timestamp_id == timestamp.timestamp_id}).map(function(ct){return ct.category_id});
             }))    

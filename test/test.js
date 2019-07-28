@@ -17,6 +17,7 @@ function assertErrorMessage(res, msg) {
 	expect(res.data.error_message).to.contain(msg)
 }
 
+var EXTENDED_TIMEOUT = 25;
 
 
 describe('timestamp server tests', function() {
@@ -42,6 +43,7 @@ describe('timestamp server tests', function() {
 		fakeRes = {
 			data: null,
 			json: function(data) {
+				console.log('finished call ')
 				this.data = data;
 			}
 		}
@@ -97,13 +99,14 @@ describe('timestamp server tests', function() {
 		fakeCategoryData = [{
 			"category_id": 0,
 			"category_name": "Category 0"
-		},{
+		}, {
 			"category_id": 1,
 			"category_name": "Category 1"
-		},{
+		}, {
 			"category_id": 2,
 			"category_name": "Category 2"
-		}]
+		}];
+
 	});
 
 	afterEach(function() {
@@ -416,7 +419,6 @@ describe('timestamp server tests', function() {
 		describe('inserting new category', function() {
 
 			beforeEach(function() {
-
 				sandbox.stub(actions, '_generateId').callsFake(function() {
 					return 10
 				})
@@ -453,6 +455,101 @@ describe('timestamp server tests', function() {
 
 		});
 	});
+
+
+	describe('timestamp', function() {
+
+		beforeEach(function() {
+
+			fakeTimestampData = [{
+				"timestamp_id": 0,
+				"start_time": 0,
+				"episode_id": 0
+			}, {
+				"timestamp_id": 1,
+				"start_time": 0,
+				"episode_id": 0
+			}, {
+				"timestamp_id": 3,
+				"start_time": 0,
+				"episode_id": 1
+			}, {
+				"timestamp_id": 4,
+				"start_time": 0,
+				"episode_id": 1
+			}];
+
+			fakeTimestampCategoryData = [{
+				"timestamp_id": 3,
+				"category_id": 0
+			}, {
+				"timestamp_id": 4,
+				"category_id": 0
+			}];
+
+			fakeTimestampCharacterData = [{
+				"timestamp_id": 1,
+				"character_id": 1
+			}, {
+				"timestamp_id": 4,
+				"character_id": 1
+			}]
+
+			//stub get all timestamp data for all tests
+			sandbox.stub(dbActions, 'getAllTimestampData').callsFake(function(baton, episode_ids, timestamp_ids, callback) {
+				var result = [...fakeTimestampData]
+				if (episode_ids && episode_ids.length > 0) {
+					result = result.filter(function(tm) {
+						return episode_ids.includes(tm.episode_id)
+					})
+				}
+				if (timestamp_ids && timestamp_ids.length > 0) {
+					result = result.filter(function(tm) {
+						return timestamp_ids.includes(tm.timestamp_id)
+					})
+				}
+				return callback(result)
+			})
+
+			//stub for the category/character for timestamp
+			sandbox.stub(dbActions, 'getAllTimestampCategory').callsFake(function(baton, params, callback) {
+				var result = [...fakeTimestampCategoryData]
+				if(params.timestamp_ids && params.timestamp_ids > 0){
+					result = result.filter(function(tc){return params.timestamp_ids.includes(tc.timestamp_id)});
+				}
+				return callback(result)
+			})
+
+			//stub for the category/character for timestamp
+			sandbox.stub(dbActions, 'getAllTimestampCharacter').callsFake(function(baton, params, callback) {
+				var result = [...fakeTimestampCharacterData]
+				if(params.timestamp_ids && params.timestamp_ids > 0){
+					result = result.filter(function(tc){return params.timestamp_ids.includes(tc.timestamp_id)});
+				}
+				return callback(result)
+			})
+		})
+
+		it('should return all timestamp data', function(done) {
+			actions.get_allTimestampData({}, fakeRes)
+			//timeout to allow for endpoint to finish 
+			setTimeout(function() {
+				expect(fakeRes.data).to.deep.equal(fakeTimestampData)
+				done()
+			}, EXTENDED_TIMEOUT)
+		})
+
+		it('should filter for episode id', function(done) {
+			actions.get_allTimestampData({
+				episode_ids: "1"
+			}, fakeRes)
+			setTimeout(function() {
+				expect(fakeRes.data.length).to.deep.equal(fakeTimestampData.filter(function(ts){return ts.episode_id == 1}).length)
+				done()
+			}, EXTENDED_TIMEOUT)
+		})
+
+	})
 
 
 });
