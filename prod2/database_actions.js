@@ -125,8 +125,6 @@ module.exports = {
 		});
 	},
 	removeTimestampCategory(baton,timestamp_ids, callback){
-		console.log('removeTimestampCategory')
-		console.log(timestamp_ids)
 		baton.addMethod(this._formatMethod('removeTimestampCategory'))
 		this._deleteQuery('timestamp_category',(timestamp_ids ? {'timestamp_id':timestamp_ids} : null),baton, callback)
 	},
@@ -144,15 +142,11 @@ module.exports = {
 		});
 	},
 	removeTimestampCharacter(baton,timestamp_ids, callback){
-		console.log('removeTimestampCharacter')
-		console.log(timestamp_ids)
 		baton.addMethod(this._formatMethod('removeTimestampCategory'))
 		this._deleteQuery('timestamp_characters',(timestamp_ids ? {'timestamp_id':timestamp_ids} : null),baton, callback)
 	},
 
 	_insertMultipleQuery(table,values, baton, callback){
-		console.log("_insertMultipleQuery")
-		console.log(values)
 		var values_string = "?,".repeat(values[0].length).slice(0,-1)
 		var attr_string = Object.keys(DB_TABLES[table]).map(function(key){return key}).join(',')
 		this._makequery("INSERT INTO `"+table+"` ("+attr_string+") VALUES ?",[values],baton, callback)
