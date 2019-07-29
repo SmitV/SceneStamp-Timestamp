@@ -17,7 +17,8 @@ function assertErrorMessage(res, msg) {
 	expect(res.data.error_message).to.contain(msg)
 }
 
-var EXTENDED_TIMEOUT = 25;
+var TIMEOUT = 100;
+var EXTENDED_TIMEOUT = 500;
 
 
 describe('timestamp server tests', function() {
@@ -43,7 +44,6 @@ describe('timestamp server tests', function() {
 		fakeRes = {
 			data: null,
 			json: function(data) {
-				console.log('finished call ')
 				this.data = data;
 			}
 		}
@@ -514,8 +514,10 @@ describe('timestamp server tests', function() {
 			//stub for the category/character for timestamp
 			sandbox.stub(dbActions, 'getAllTimestampCategory').callsFake(function(baton, params, callback) {
 				var result = [...fakeTimestampCategoryData]
-				if(params.timestamp_ids && params.timestamp_ids > 0){
-					result = result.filter(function(tc){return params.timestamp_ids.includes(tc.timestamp_id)});
+				if (params.timestamp_ids && params.timestamp_ids > 0) {
+					result = result.filter(function(tc) {
+						return params.timestamp_ids.includes(tc.timestamp_id)
+					});
 				}
 				return callback(result)
 			})
@@ -523,8 +525,10 @@ describe('timestamp server tests', function() {
 			//stub for the category/character for timestamp
 			sandbox.stub(dbActions, 'getAllTimestampCharacter').callsFake(function(baton, params, callback) {
 				var result = [...fakeTimestampCharacterData]
-				if(params.timestamp_ids && params.timestamp_ids > 0){
-					result = result.filter(function(tc){return params.timestamp_ids.includes(tc.timestamp_id)});
+				if (params.timestamp_ids && params.timestamp_ids > 0) {
+					result = result.filter(function(tc) {
+						return params.timestamp_ids.includes(tc.timestamp_id)
+					});
 				}
 				return callback(result)
 			})
@@ -536,7 +540,7 @@ describe('timestamp server tests', function() {
 			setTimeout(function() {
 				expect(fakeRes.data).to.deep.equal(fakeTimestampData)
 				done()
-			}, EXTENDED_TIMEOUT)
+			}, TIMEOUT)
 		})
 
 		it('should filter for episode id', function(done) {
@@ -544,11 +548,191 @@ describe('timestamp server tests', function() {
 				episode_ids: "1"
 			}, fakeRes)
 			setTimeout(function() {
-				expect(fakeRes.data.length).to.deep.equal(fakeTimestampData.filter(function(ts){return ts.episode_id == 1}).length)
+				expect(fakeRes.data.length).to.deep.equal(fakeTimestampData.filter(function(ts) {
+					return ts.episode_id == 1
+				}).length)
 				done()
-			}, EXTENDED_TIMEOUT)
+			}, TIMEOUT)
 		})
 
+		it('should filter for character id', function(done) {
+			actions.get_allTimestampData({
+				character_ids: "1"
+			}, fakeRes)
+			setTimeout(function() {
+				expect(fakeRes.data.map(function(ts) {
+					return ts.timestamp_id
+				})).to.deep.equal(fakeTimestampCharacterData.map(function(ts) {
+					return ts.timestamp_id
+				}))
+				done()
+			}, TIMEOUT)
+		})
+
+		it('should filter for character id', function(done) {
+			actions.get_allTimestampData({
+				category_ids: "0"
+			}, fakeRes)
+			setTimeout(function() {
+				expect(fakeRes.data.map(function(ts) {
+					return ts.timestamp_id
+				})).to.deep.equal(fakeTimestampCategoryData.map(function(ts) {
+					return ts.timestamp_id
+				}))
+				done()
+			}, TIMEOUT)
+		})
+
+		it('should filter for character and category id', function(done) {
+			actions.get_allTimestampData({
+				character_ids: "1",
+				category_ids: '0'
+			}, fakeRes)
+			setTimeout(function() {
+				expect(fakeRes.data.map(function(ts) {
+					return ts.timestamp_id
+				})).to.deep.equal([4])
+				done()
+			}, TIMEOUT)
+		})
+
+		it('should throw error for invalid episode id', function(done) {
+			actions.get_allTimestampData({
+				episode_ids: 'text'
+			}, fakeRes)
+			setTimeout(function() {
+				assertErrorMessage(fakeRes, 'Invalid value for episode_ids')
+				done()
+			}, TIMEOUT)
+		})
+
+		it('should throw error for invalid character id', function(done) {
+			actions.get_allTimestampData({
+				category_ids: "0",
+				character_ids: 'text'
+			}, fakeRes)
+			setTimeout(function() {
+				assertErrorMessage(fakeRes, 'Invalid value for character_ids')
+				done()
+			}, TIMEOUT)
+		})
+
+		describe('updating timestamp data', function() {
+
+			//ensure character data matches series data
+
+			beforeEach(function() {
+				sandbox.stub(dbActions, 'insertTimestampCharacter').callsFake(function(baton, values, callback) {
+					fakeTimestampCharacterData = fakeTimestampCharacterData.filter(function(ts) {
+						return !values.map(function(v) {
+							return v[0]
+						}).includes(ts.timestamp_id)
+					})
+					values.forEach(function(v) {
+						fakeTimestampCharacterData.push({
+							'timestamp_id': v[0],
+							'character_id': v[1]
+						})
+					})
+					callback(values)
+				})
+
+				sandbox.stub(dbActions, 'insertTimestampCategory').callsFake(function(baton, values, callback) {
+					fakeTimestampCategoryData = fakeTimestampCategoryData.filter(function(ts) {
+						return !values.map(function(v) {
+							return v[0]
+						}).includes(ts.timestamp_id)
+					})
+					values.forEach(function(v) {
+						fakeTimestampCategoryData.push({
+							'timestamp_id': v[0],
+							'category_id': v[1]
+						})
+					})
+					callback(values)
+				})
+
+			})
+
+		})
+
+		describe('creating a new timestamp', function() {
+
+			beforeEach(function() {
+				sandbox.stub(actions, '_generateId').callsFake(function() {
+					return 10
+				})
+
+				//for ensureEpisodeIdExists
+				sandbox.stub(dbActions, 'getAllEpisodeData').callsFake(function(baton, series_ids, callback) {
+					if (series_ids && series_ids.length > 0) {
+						return callback(fakeEpisodeData.filter(function(ep) {
+							return series_ids.includes(ep.series_id)
+						}))
+					}
+					return callback(fakeEpisodeData)
+				})
+
+
+				sandbox.stub(dbActions, 'insertTimestamp').callsFake(function(baton, values, callback) {
+					fakeTimestampData.push(values)
+					callback(values)
+				})
+			})
+
+			it('should create new timestamp', function(done) {
+				var values = {
+					start_time: "100",
+					episode_id: "1"
+				}
+				actions.post_newTimestamp(values, fakeRes)
+				setTimeout(function() {
+					expect(fakeRes.data).to.deep.equal({
+						start_time: 100,
+						episode_id: 1,
+						timestamp_id: 10
+					})
+					done()
+				}, TIMEOUT)
+			})
+
+			it('should throw error for invalid start time(type)', function(done) {
+				var values = {
+					start_time: "test",
+					episode_id: "1"
+				}
+				actions.post_newTimestamp(values, fakeRes)
+				setTimeout(function() {
+					assertErrorMessage(fakeRes, 'Invalid value for start_time')
+					done()
+				}, TIMEOUT)
+			})
+
+			it('should throw error for invalid episode id (type)', function(done) {
+				var values = {
+					start_time: "100",
+					episode_id: "text"
+				}
+				actions.post_newTimestamp(values, fakeRes)
+				setTimeout(function() {
+					assertErrorMessage(fakeRes, 'Invalid value for episode_id')
+					done()
+				}, TIMEOUT)
+			})
+
+			it('should throw error for invalid episode id', function(done) {
+				var values = {
+					start_time: "100",
+					episode_id: "5"
+				}
+				actions.post_newTimestamp(values, fakeRes)
+				setTimeout(function() {
+					assertErrorMessage(fakeRes, 'Invalid Episode Id')
+					done()
+				}, TIMEOUT)
+			})
+
+		})
 	})
 
 
