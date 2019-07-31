@@ -113,8 +113,6 @@ describe('timestamp server tests', function() {
 		sandbox.restore()
 	})
 
-
-
 	describe('series', function() {
 
 		beforeEach(function() {
@@ -464,19 +462,19 @@ describe('timestamp server tests', function() {
 			fakeTimestampData = [{
 				"timestamp_id": 0,
 				"start_time": 0,
-				"episode_id": 0
+				"episode_id": 1
 			}, {
 				"timestamp_id": 1,
 				"start_time": 0,
-				"episode_id": 0
+				"episode_id": 1
 			}, {
 				"timestamp_id": 3,
 				"start_time": 0,
-				"episode_id": 1
+				"episode_id": 2
 			}, {
 				"timestamp_id": 4,
 				"start_time": 0,
-				"episode_id": 1
+				"episode_id": 2
 			}];
 
 			fakeTimestampCategoryData = [{
@@ -617,45 +615,6 @@ describe('timestamp server tests', function() {
 			}, TIMEOUT)
 		})
 
-		describe('updating timestamp data', function() {
-
-			//ensure character data matches series data
-
-			beforeEach(function() {
-				sandbox.stub(dbActions, 'insertTimestampCharacter').callsFake(function(baton, values, callback) {
-					fakeTimestampCharacterData = fakeTimestampCharacterData.filter(function(ts) {
-						return !values.map(function(v) {
-							return v[0]
-						}).includes(ts.timestamp_id)
-					})
-					values.forEach(function(v) {
-						fakeTimestampCharacterData.push({
-							'timestamp_id': v[0],
-							'character_id': v[1]
-						})
-					})
-					callback(values)
-				})
-
-				sandbox.stub(dbActions, 'insertTimestampCategory').callsFake(function(baton, values, callback) {
-					fakeTimestampCategoryData = fakeTimestampCategoryData.filter(function(ts) {
-						return !values.map(function(v) {
-							return v[0]
-						}).includes(ts.timestamp_id)
-					})
-					values.forEach(function(v) {
-						fakeTimestampCategoryData.push({
-							'timestamp_id': v[0],
-							'category_id': v[1]
-						})
-					})
-					callback(values)
-				})
-
-			})
-
-		})
-
 		describe('creating a new timestamp', function() {
 
 			beforeEach(function() {
@@ -730,6 +689,144 @@ describe('timestamp server tests', function() {
 					assertErrorMessage(fakeRes, 'Invalid Episode Id')
 					done()
 				}, TIMEOUT)
+			})
+
+			describe('updating timestamp data', function() {
+
+				beforeEach(function() {
+
+					//ensure character data matches series data
+					sandbox.stub(dbActions, 'getAllCharacterData').callsFake(function(baton, series_ids, callback) {
+						if (series_ids && series_ids.length > 0) {
+							return callback(fakeCharacterData.filter(function(ch) {
+								return series_ids.includes(ch.series_id)
+							}))
+						}
+						return callback(fakeCharacterData)
+					})
+
+					sandbox.stub(dbActions, 'removeTimestampCharacter').callsFake(function(baton, values, callback) {
+						fakeTimestampCharacterData = fakeTimestampCharacterData.filter(function(ts) {
+							return !values.map(function(v) {
+								return v[0]
+							}).includes(ts.timestamp_id)
+						})
+						callback(values)
+					})
+
+					sandbox.stub(dbActions, 'insertTimestampCharacter').callsFake(function(baton, values, callback) {
+						fakeTimestampCharacterData = fakeTimestampCharacterData.filter(function(ts) {
+							return !values.map(function(v) {
+								return v[0]
+							}).includes(ts.timestamp_id)
+						})
+						values.forEach(function(v) {
+							fakeTimestampCharacterData.push({
+								'timestamp_id': v[0],
+								'character_id': v[1]
+							})
+						})
+						callback(values)
+					})
+
+					sandbox.stub(dbActions, 'removeTimestampCategory').callsFake(function(baton, values, callback) {
+						fakeTimestampCategoryData = fakeTimestampCategoryData.filter(function(ts) {
+							return !values.map(function(v) {
+								return v[0]
+							}).includes(ts.timestamp_id)
+						})
+						callback(values)
+					})
+
+					sandbox.stub(dbActions, 'insertTimestampCategory').callsFake(function(baton, values, callback) {
+						values.forEach(function(v) {
+							fakeTimestampCategoryData.push({
+								'timestamp_id': v[0],
+								'category_id': v[1]
+							})
+						})
+						callback(values)
+					})
+
+				})
+
+				it('should update timestamp', function(done) {
+					var values = {
+						timestamp_id: "0",
+						character_ids: "1,2",
+						category_ids:"0,1"
+					}
+					actions.post_updateTimestamp(values, fakeRes)
+					setTimeout(function() {
+						expect(fakeRes.data.character_ids).to.deep.equal([1,2])
+						expect(fakeRes.data.category_ids).to.deep.equal([0,1])
+						done()
+					}, TIMEOUT)
+				})
+
+				it('should throw error for invalid character', function(done) {
+					var values = {
+						timestamp_id: "0",
+						character_ids: "10",
+						category_ids:"0,1"
+					}
+					actions.post_updateTimestamp(values, fakeRes)
+					setTimeout(function() {
+						assertErrorMessage(fakeRes, 'Invalid characters')
+						done()
+					}, TIMEOUT)
+				})
+
+				it('should throw error for valid character in different series', function(done) {
+					var values = {
+						timestamp_id: "0",
+						character_ids: "4",
+						category_ids:"0,1"
+					}
+					actions.post_updateTimestamp(values, fakeRes)
+					setTimeout(function() {
+						assertErrorMessage(fakeRes, 'Invalid characters')
+						done()
+					}, TIMEOUT)
+				})
+
+				//this needs to pass
+				/*
+				it('should throw error for invalid category id', function(done) {
+					var values = {
+						timestamp_id: "0",
+						character_ids: "1",
+						category_ids:"5"
+					}
+					actions.post_updateTimestamp(values, fakeRes)
+					setTimeout(function() {
+						assertErrorMessage(fakeRes, 'Invalid categories')
+						done()
+					}, TIMEOUT)
+				})
+				*/
+
+				it('should throw error for invalid timestamp id', function(done) {
+					var values = {
+						timestamp_id: "10",
+						character_ids: "1",
+						category_ids:"0,1"
+					}
+					actions.post_updateTimestamp(values, fakeRes)
+					setTimeout(function() {
+						assertErrorMessage(fakeRes, 'Invalid Timestamp Id')
+						done()
+					}, TIMEOUT)
+				})
+
+
+
+				/*
+					invalid character
+					valid characrer, but different series
+					invalid category
+					invalid timestamp id
+				*/
 			})
 
 		})
