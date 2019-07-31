@@ -291,21 +291,9 @@ module.exports = {
     var t = this;
     var baton = this._getBaton('get_allCategoryData', params, res);
 
-    if (params.series_ids && params.series_ids !== undefined) {
-      this._verifyParameter(baton, params.series_ids, 'category', 'series_id', false, function(series_ids) {
-        params.series_ids = series_ids;
-        getCharacterData()
-      })
-    } else {
-      params.series_ids == null;
-      getCategoryData()
-    }
-
-    function getCategoryData() {
-      t.getAllCategoryData(baton, function(data) {
+    t.getAllCategoryData(baton, function(data) {
         baton.json(data)
       })
-    }
   },
 
   getAllCategoryData(baton, callback) {
