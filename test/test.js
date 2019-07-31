@@ -402,7 +402,7 @@ describe('timestamp server tests', function() {
 
 		beforeEach(function() {
 			//stub get all series dat for all tests
-			sandbox.stub(dbActions, 'getAllCategoryData').callsFake(function(baton, series_ids, callback) {
+			sandbox.stub(dbActions, 'getAllCategoryData').callsFake(function(baton, callback) {
 				return callback(fakeCategoryData)
 			})
 		})
