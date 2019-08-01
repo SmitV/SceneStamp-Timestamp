@@ -754,12 +754,12 @@ describe('timestamp server tests', function() {
 					var values = {
 						timestamp_id: "0",
 						character_ids: "1,2",
-						category_ids:"0,1"
+						category_ids: "0,1"
 					}
 					actions.post_updateTimestamp(values, fakeRes)
 					setTimeout(function() {
-						expect(fakeRes.data.character_ids).to.deep.equal([1,2])
-						expect(fakeRes.data.category_ids).to.deep.equal([0,1])
+						expect(fakeRes.data.character_ids).to.deep.equal([1, 2])
+						expect(fakeRes.data.category_ids).to.deep.equal([0, 1])
 						done()
 					}, TIMEOUT)
 				})
@@ -768,7 +768,7 @@ describe('timestamp server tests', function() {
 					var values = {
 						timestamp_id: "0",
 						character_ids: "10",
-						category_ids:"0,1"
+						category_ids: "0,1"
 					}
 					actions.post_updateTimestamp(values, fakeRes)
 					setTimeout(function() {
@@ -781,7 +781,7 @@ describe('timestamp server tests', function() {
 					var values = {
 						timestamp_id: "0",
 						character_ids: "4",
-						category_ids:"0,1"
+						category_ids: "0,1"
 					}
 					actions.post_updateTimestamp(values, fakeRes)
 					setTimeout(function() {
@@ -810,7 +810,7 @@ describe('timestamp server tests', function() {
 					var values = {
 						timestamp_id: "10",
 						character_ids: "1",
-						category_ids:"0,1"
+						category_ids: "0,1"
 					}
 					actions.post_updateTimestamp(values, fakeRes)
 					setTimeout(function() {
