@@ -262,7 +262,7 @@ describe('timestamp server tests', function() {
 					episode_name: fakeEpisodeData[0].episode_name
 				}
 				actions.post_newEpisode(episode_data, fakeRes)
-				assertErrorMessage(fakeRes, 'Episode Name exists in series')
+				assertErrorMessage(fakeRes, 'Episode Name exists')
 			})
 
 			it('should create episode with same name, but in different series', function() {
@@ -448,7 +448,7 @@ describe('timestamp server tests', function() {
 					category_name: fakeCategoryData[0].category_name
 				}
 				actions.post_newCategory(category_values, fakeRes)
-				assertErrorMessage(fakeRes, 'Category Name exists in series')
+				assertErrorMessage(fakeRes, 'Category Name exists')
 			})
 
 		});
@@ -705,6 +705,11 @@ describe('timestamp server tests', function() {
 						return callback(fakeCharacterData)
 					})
 
+					//stub get all series dat for all tests
+					sandbox.stub(dbActions, 'getAllCategoryData').callsFake(function(baton, callback) {
+						return callback(fakeCategoryData)
+					})
+
 					sandbox.stub(dbActions, 'removeTimestampCharacter').callsFake(function(baton, values, callback) {
 						fakeTimestampCharacterData = fakeTimestampCharacterData.filter(function(ts) {
 							return !values.map(function(v) {
@@ -790,8 +795,6 @@ describe('timestamp server tests', function() {
 					}, TIMEOUT)
 				})
 
-				//this needs to pass
-				/*
 				it('should throw error for invalid category id', function(done) {
 					var values = {
 						timestamp_id: "0",
@@ -804,7 +807,7 @@ describe('timestamp server tests', function() {
 						done()
 					}, TIMEOUT)
 				})
-				*/
+				
 
 				it('should throw error for invalid timestamp id', function(done) {
 					var values = {

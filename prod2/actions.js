@@ -315,8 +315,8 @@ module.exports = {
           }).includes(params.category_name.toLowerCase())) {
           baton.setError({
             category_name: params.category_name,
-            error: "Category Name exists in series",
-            public_message: 'Category Name exists in series'
+            error: "Category Name exists",
+            public_message: 'Category Name exists'
           })
           t._generateError(baton)
           return
@@ -606,11 +606,51 @@ module.exports = {
               error: "Not all characters in series",
               public_message: 'Invalid characters'
             })
-            t._generateError(baton)
-            return
           }
           callback()
         })
+      })
+    }
+
+    function ensureCategoryIdsExist(categories, callback) {
+      t.getAllCategoryData(baton, function(category_data) {
+        if(t._intersection(category_data.map(function(cat){return cat.category_id;}),categories).length != categories.length){
+          baton.setError({
+            category_ids: categories,
+            error: "Invalid category ids",
+            public_message: 'Invalid categories'
+          })
+        }
+        callback()
+      })
+    }
+
+    function validateCategoryCharacterValues(params,timestamp_data, suc_callback){
+      function createTasks(after_task_created_callback) {
+        var tasks = []
+        if (params.category_ids) {
+          tasks.push(function(callback) {
+            ensureCategoryIdsExist(params.category_ids, callback)
+          })
+        }
+       
+        if (params.character_ids) {
+          tasks.push(function(callback) {
+            ensureCharactersFromSameSeries(params.character_ids, timestamp_data[0], callback)
+          })
+        }
+        after_task_created_callback(tasks)
+      }
+
+      createTasks(function(tasks) {
+        async.parallel(tasks,
+          function() {
+            if (baton.err.length > 0) {
+              t._generateError(baton);
+            } else {
+              suc_callback()
+            }
+          });
       })
     }
 
@@ -621,13 +661,7 @@ module.exports = {
         timestamp_id: false
       } /*singleValue*/ , function(verified_params) {
         ensureRequiredParamsPresent(verified_params, function(timestamp_data) {
-          if (verified_params.character_ids) {
-            ensureCharactersFromSameSeries(verified_params.character_ids, timestamp_data[0], function() {
-              callback(verified_params)
-            })
-            return
-          }
-          callback(verified_params)
+          validateCategoryCharacterValues(verified_params, timestamp_data, () => { callback(verified_params)})
         })
       })
     }
