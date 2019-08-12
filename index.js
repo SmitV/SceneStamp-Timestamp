@@ -91,7 +91,6 @@ var endpoints = [
 	{
 		url : 'newCompilation',
 		action : function(req, res){
-			console.log(req.body)
 			production_action.post_newCompilation(req.body,res);
 		},
 		post: true
