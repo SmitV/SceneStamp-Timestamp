@@ -11,7 +11,7 @@
     "type": "git",
     "url": "(https://github.com/kunal-rp/SceneStamp_Server.git)"
   },
-  "pre-commit" : [
+  "pre-commit": [
     "test"
   ],
   "author": "",

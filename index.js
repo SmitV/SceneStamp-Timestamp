@@ -1,6 +1,12 @@
 var express = require('express');
 var production_action = require('./prod2/actions.js');
+const bodyParser = require('body-parser');
+
 var app = express();
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({
+	extended: false
+}));
 
 
 var endpoints = [
@@ -83,8 +89,9 @@ var endpoints = [
 				}
 	},
 	{
-		url : 'newCompilationData',
+		url : 'newCompilation',
 		action : function(req, res){
+			console.log(req.body)
 			production_action.post_newCompilation(req.body,res);
 		},
 		post: true

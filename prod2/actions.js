@@ -113,14 +113,14 @@ module.exports = {
     function verifyParams(callback) {
       t._verifyMultipleParameters(baton, params, 'compilation', {
         compilation_ids: false,
-        timestamps_ids: false
+        timestamp_ids: false
       } /*singleValues*/ , function(verified_params) {
-        callback(verified_params)
+        callback(verified_params)  
       })
     }
 
     verifyParams(function(verified_params){
-       t.getAllCompilationData(baton, params, function(data) {
+       t.getAllCompilationData(baton, verified_params, function(data) {
       baton.json(data)
       });
     })
@@ -141,17 +141,17 @@ module.exports = {
 
     function getCompilationData(compilation_ids, callback) {
       db.getAllCompilationData(baton, {
-        compilation_ids: compilation_ids
+        compilation_ids: (params.timestamp_ids || params.compilation_ids ? compilation_ids : null)
       }, function(data) {
         t._handleDBCall(baton, data, false /*multiple*/ , callback)
       })
     }
 
 
-    function getCompilationTimestampData(params, callback) {
+    function getCompilationTimestampData(data, callback) {
       db.getAllCompilationTimestamp(baton, {
-        timestamp_ids: (params.timestamp_ids ? params.timestamp_ids : null),
-        compilation_ids: (params.compilation_ids ? params.compilation_ids : null),
+        timestamp_ids: data.timestamp_ids,
+        compilation_ids: data.compilation_ids,
       }, function(data) {
         t._handleDBCall(baton, data, false /*multiple*/ , callback)
       })
@@ -168,9 +168,9 @@ module.exports = {
         })] : [-1]), function(compilation_data) {
           //after getting all of the compilation ids, we now need to get all of the timestamps connected to those compilation ids
           getCompilationTimestampData({
-            compilation_ids: compilation_data.map((cp) => {
+            compilation_ids: (compilation_data.length > 0 ? compilation_data.map((cp) => {
               return cp.compilation_id
-            })
+            }): null)
           }, function(filtered_compilation_timestamp) {
             callback(compilation_data, filtered_compilation_timestamp)
           })
@@ -220,9 +220,7 @@ module.exports = {
         t._generateError(baton)
         return
       }
-      if (params.timestamps) {
-        //TODO: also check that timestamp_id exists
-
+      if (params.timestamps && params.timestamps.length > 0) {
         params.timestamps.map((timestamp) => {
           t._verifyMultipleParameters(baton, [timestamp], 'compilation_timestamp', {
             timestamps: false
@@ -243,7 +241,19 @@ module.exports = {
           return
         }
       }
-      createCompilationId(params, compilation_data, callback)
+      else{
+         baton.setError({
+            timestamps: params.timestamps,
+            error: "Timestamps cannot be empty",
+            public_message: 'Required params not present'
+          })
+          t._generateError(baton)
+          return
+
+      }
+       t.ensure_TimestampIdExists(baton, {timestamp_id:[...new Set(params.timestamps.map(timestamp => {return timestamp.timestamp_id}))]}, function(){
+           createCompilationId(params, compilation_data, callback)
+        })
     }
 
 
@@ -265,8 +275,7 @@ module.exports = {
 
     function insertCompilationTimestamps(compilation_id, timestamps, callback) {
       var values = timestamps.map(function(ts) {
-        ts.compilation_id = compilation_id
-        return ts
+        return [compilation_id, ts.timestamp_id, ts.duration, ts.end_time]
       })
       db.insertCompilationTimestamp(baton, values, function(data) {
         t._handleDBCall(baton, data, true /*multiple*/ , callback)
@@ -292,8 +301,8 @@ module.exports = {
             t._generateError(baton);
             return
           } else {
-            results.compilation.timestamps = results.timestamps
-            suc_callback(results.compilation)
+            results.compilation.timestamps = params.timestamps
+           suc_callback(results.compilation)
           }
         });
     }
@@ -641,7 +650,7 @@ module.exports = {
             t._generateError(baton);
             return
           } else {
-            suc_callback(timestamp_data.forEach(function(timestamp) {
+            suc_callback(timestamp_data.map(function(timestamp) {
               timestamp.characters = results.allCharacter.filter(function(ch) {
                 return ch.timestamp_id == timestamp.timestamp_id
               }).map(function(ch) {
@@ -652,6 +661,7 @@ module.exports = {
               }).map(function(ct) {
                 return ct.category_id
               });
+              return timestamp
             }))
           }
         });
@@ -1111,8 +1121,6 @@ module.exports = {
       err: [],
       //the res for the request
       res: res,
-      //sets the stub for the database
-      use_stub_database: (params.stub_database ? params.stub_database : false),
       json: function(data) {
         var end_time = new Date()
         this.duration = end_time.getTime() - this.start_time
@@ -1133,13 +1141,6 @@ module.exports = {
     }
   },
 
-  _makeDbCall(baton, call, ...params) {
-    if (baton.use_stub_database) {
-      db[call](params)
-    } else {
-      stub_db[call](params)
-    }
-  },
   _generateError(baton) {
 
     var printableBaton = {}
