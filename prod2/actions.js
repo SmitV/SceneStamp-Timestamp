@@ -189,6 +189,7 @@ module.exports = {
   post_newCompilation(params, res) {
     var t = this;
     var baton = this._getBaton('post_newCompilation', params, res);
+    baton.requestType = "POST"
 
     function createCompilationId(params, compilation_data, callback) {
       t.getAllCompilationData(baton, params, function(compilation_data) {
@@ -1121,11 +1122,15 @@ module.exports = {
       err: [],
       //the res for the request
       res: res,
+      requestType:"GET",
+      sendError:function(data){
+        res.status(500).json(data)
+      },
       json: function(data) {
         var end_time = new Date()
         this.duration = end_time.getTime() - this.start_time
         console.log(this.methods[0] + " | " + this.duration)
-        res.json(data)
+        res.status((this.requestType == "GET"? 200 : 201)).json(data)
       },
       //method sequence
       methods: [method],
@@ -1144,6 +1149,7 @@ module.exports = {
   _generateError(baton) {
 
     var printableBaton = {}
+    baton.duration = new Date().getTime() - baton.start_time
     Object.keys(baton).forEach(function(key) {
       if (typeof baton[key] !== 'function') printableBaton[key] = baton[key]
     });
@@ -1151,13 +1157,12 @@ module.exports = {
     console.log('----------------')
     console.log(printableBaton)
     console.log()
-    var response = {
+    baton.sendError({
       'id': baton.id,
       'error_message': baton.err.map(function(err) {
         return err.public_message
       }).join('.')
-    };
-    baton.json(response)
+    });
   },
   _generateId(length, ids) {
     var id = (Math.pow(10, length - 1)) + Math.floor(+Math.random() * 9 * Math.pow(10, (length - 1)));

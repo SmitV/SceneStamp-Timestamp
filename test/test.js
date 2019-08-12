@@ -5,14 +5,9 @@ var sinon = require('sinon')
 var actions = require('../prod2/actions')
 var dbActions = require('../prod2/database_actions')
 
-var fakeRes = {
-	data: null,
-	json: function(data) {
-		this.data = data;
-	}
-}
 
 function assertErrorMessage(res, msg) {
+	expect(res.endStatus).to.equal(500)
 	expect(res.data).to.have.property('error_message')
 	expect(res.data.error_message).to.contain(msg)
 }
@@ -45,6 +40,11 @@ describe('timestamp server tests', function() {
 
 		fakeRes = {
 			data: null,
+			endStatus: null,
+			status: function(endStatus) {
+				this.endStatus = endStatus
+				return this
+			},
 			json: function(data) {
 				this.data = data;
 			}
@@ -827,7 +827,7 @@ describe('timestamp server tests', function() {
 
 		})
 	})
-	
+
 	describe('compilation', function() {
 
 		beforeEach(function() {
@@ -939,18 +939,18 @@ describe('timestamp server tests', function() {
 				values.forEach(ct => {
 
 					fakeCompilationTimestampData.push({
-						'compilation_id':ct[0],
-						'timestamp_id':ct[1],
-						'duration':ct[2],
-						'end_time':ct[3],
+						'compilation_id': ct[0],
+						'timestamp_id': ct[1],
+						'duration': ct[2],
+						'end_time': ct[3],
 					})
 				})
 				callback(values.map(ct => {
 					return {
-						'compilation_id':ct[0],
-						'timestamp_id':ct[1],
-						'duration':ct[2],
-						'end_time':ct[3],
+						'compilation_id': ct[0],
+						'timestamp_id': ct[1],
+						'duration': ct[2],
+						'end_time': ct[3],
 					}
 				}))
 			})
@@ -1045,7 +1045,9 @@ describe('timestamp server tests', function() {
 				}
 				actions.post_newCompilation(values, fakeRes)
 				values.compilation_id = 10;
-				values.timestamps.forEach(ct => {ct.compilation_id = 10});
+				values.timestamps.forEach(ct => {
+					ct.compilation_id = 10
+				});
 				expect(fakeRes.data).to.deep.equal(values)
 				values.timestamps.forEach(timestamp => expect(fakeCompilationTimestampData).to.deep.include(timestamp))
 			})
@@ -1058,7 +1060,7 @@ describe('timestamp server tests', function() {
 						duration: 10,
 						end_time: 100
 					}, {
-						timestamp_id:1,
+						timestamp_id: 1,
 						duration: 10,
 						end_time: 100
 					}]
