@@ -106,6 +106,214 @@ module.exports = {
     })
   },
 
+  get_allCompilationData(params, res) {
+    var t = this;
+    var baton = this._getBaton('get_allCompilationData', params, res);
+
+    function verifyParams(callback) {
+      t._verifyMultipleParameters(baton, params, 'compilation', {
+        compilation_ids: false,
+        timestamps_ids: false
+      } /*singleValues*/ , function(verified_params) {
+        callback(verified_params)
+      })
+    }
+
+    verifyParams(function(verified_params){
+       t.getAllCompilationData(baton, params, function(data) {
+      baton.json(data)
+      });
+    })
+  },
+
+  getAllCompilationData(baton, params, callback) {
+    baton.addMethod('getAllCompilationData');
+    var t = this;
+
+    function addInTimestampData(compilation_data, compilation_timestamp, callback) {
+      callback(compilation_data.map(function(cp) {
+        cp.timestamps = compilation_timestamp.filter((ct) => {
+          return ct.compilation_id == cp.compilation_id
+        })
+        return cp
+      }))
+    }
+
+    function getCompilationData(compilation_ids, callback) {
+      db.getAllCompilationData(baton, {
+        compilation_ids: compilation_ids
+      }, function(data) {
+        t._handleDBCall(baton, data, false /*multiple*/ , callback)
+      })
+    }
+
+
+    function getCompilationTimestampData(params, callback) {
+      db.getAllCompilationTimestamp(baton, {
+        timestamp_ids: (params.timestamp_ids ? params.timestamp_ids : null),
+        compilation_ids: (params.compilation_ids ? params.compilation_ids : null),
+      }, function(data) {
+        t._handleDBCall(baton, data, false /*multiple*/ , callback)
+      })
+    }
+
+    function dataLoader(params, callback) {
+      //first get all of the compilation and timestamp data
+      //if there is timestamp_ids passed in, should filter 
+      getCompilationTimestampData(params, function(compilation_timestamp) {
+        //get all of the compilation data
+        //if there is timestamp ids provided, only need to get the the compilation ids that are filtered
+        getCompilationData((compilation_timestamp.length > 0 ? [...compilation_timestamp.map(function(ct) {
+          return ct.compilation_id
+        })] : [-1]), function(compilation_data) {
+          //after getting all of the compilation ids, we now need to get all of the timestamps connected to those compilation ids
+          getCompilationTimestampData({
+            compilation_ids: compilation_data.map((cp) => {
+              return cp.compilation_id
+            })
+          }, function(filtered_compilation_timestamp) {
+            callback(compilation_data, filtered_compilation_timestamp)
+          })
+        })
+      })
+    }
+
+
+    dataLoader(params, function(compilation_data, compilation_timestamp) {
+      addInTimestampData(compilation_data, compilation_timestamp, function(updateCompilationData) {
+        callback(updateCompilationData)
+      })
+    })
+  },
+
+  post_newCompilation(params, res) {
+    var t = this;
+    var baton = this._getBaton('post_newCompilation', params, res);
+
+    function createCompilationId(params, compilation_data, callback) {
+      t.getAllCompilationData(baton, params, function(compilation_data) {
+        params.compilation_id = t._generateId(ID_LENGTH.timestamp, compilation_data.map(function(cp) {
+          return cp.compilation_id
+        }))
+        callback(params)
+      })
+    }
+
+    function ensureRequiredParamsPresent(params, compilation_data, callback) {
+      if (params.compilation_name == undefined) {
+        baton.setError({
+          compilation_name: params.compilation_name,
+          error: "Compilation name not provided",
+          public_message: 'Required params not present'
+        })
+        t._generateError(baton)
+        return
+      }
+      if (compilation_data.map(function(cp) {
+          return cp.compilation_name
+        }).includes(params.compilation_name)) {
+        baton.setError({
+          compilation_name: params.compilation_name,
+          error: "Compilation name already exists",
+          public_message: 'Compilation name already used'
+        })
+        t._generateError(baton)
+        return
+      }
+      if (params.timestamps) {
+        //TODO: also check that timestamp_id exists
+
+        params.timestamps.map((timestamp) => {
+          t._verifyMultipleParameters(baton, [timestamp], 'compilation_timestamp', {
+            timestamps: false
+          } /*singleValues*/ , function(verified_timestamp) {
+            return verified_timestamp
+          }, false /*urlDecode*/ )
+        })
+        var firstInvalidTimestamp = params.timestamps.find((timestamp) => {
+          return timestamp.timestamp_id == undefined || timestamp.duration == undefined || timestamp.end_time == undefined
+        })
+        if (firstInvalidTimestamp) {
+          baton.setError({
+            timestamp: firstInvalidTimestamp,
+            error: "Required params not present",
+            public_message: 'Required params not present'
+          })
+          t._generateError(baton)
+          return
+        }
+      }
+      createCompilationId(params, compilation_data, callback)
+    }
+
+
+    function verifyParams(compilation_data, callback) {
+      t._verifyMultipleParameters(baton, params, 'compilation', {
+        timestamps: false,
+      } /*singleValues*/ , function(verified_params) {
+        ensureRequiredParamsPresent(verified_params, compilation_data, function() {
+          callback(verified_params)
+        })
+      })
+    }
+
+    function insertNewCompilation(params, callback) {
+      db.insertCompilation(baton, params, function(data) {
+        t._handleDBCall(baton, data, true /*multiple*/ , callback)
+      })
+    }
+
+    function insertCompilationTimestamps(compilation_id, timestamps, callback) {
+      var values = timestamps.map(function(ts) {
+        ts.compilation_id = compilation_id
+        return ts
+      })
+      db.insertCompilationTimestamp(baton, values, function(data) {
+        t._handleDBCall(baton, data, true /*multiple*/ , callback)
+      })
+    }
+
+    function insertAllData(params, suc_callback) {
+      var tasks = {}
+      tasks.compilation = function(callback) {
+        insertNewCompilation({
+          compilation_id: params.compilation_id,
+          compilation_name: params.compilation_name
+        }, callback)
+      }
+      tasks.timestamps = function(callback) {
+        insertCompilationTimestamps(params.compilation_id, params.timestamps, callback)
+      }
+
+      async.parallel(tasks,
+        function(err, results) {
+          if (err) {
+            baton.setError(err)
+            t._generateError(baton);
+            return
+          } else {
+            results.compilation.timestamps = results.timestamps
+            suc_callback(results.compilation)
+          }
+        });
+    }
+
+    function dataLoader(callback) {
+      t.getAllCompilationData(baton, {}, function(compilation_data) {
+        callback(compilation_data)
+      })
+    }
+
+    //execute
+    dataLoader(function(compilation_data) {
+      verifyParams(compilation_data, function(params) {
+        insertAllData(params, function(compilatin_added) {
+          baton.json(compilatin_added)
+        })
+      });
+    })
+  },
+
   post_newEpisode(params, res) {
     var t = this;
     var baton = this._getBaton('post_newEpisode', params, res);
@@ -292,8 +500,8 @@ module.exports = {
     var baton = this._getBaton('get_allCategoryData', params, res);
 
     t.getAllCategoryData(baton, function(data) {
-        baton.json(data)
-      })
+      baton.json(data)
+    })
   },
 
   getAllCategoryData(baton, callback) {
@@ -612,28 +820,18 @@ module.exports = {
       })
     }
 
-    function ensureCategoryIdsExist(categories, callback) {
-      t.getAllCategoryData(baton, function(category_data) {
-        if(t._intersection(category_data.map(function(cat){return cat.category_id;}),categories).length != categories.length){
-          baton.setError({
-            category_ids: categories,
-            error: "Invalid category ids",
-            public_message: 'Invalid categories'
-          })
-        }
-        callback()
-      })
-    }
-
-    function validateCategoryCharacterValues(params,timestamp_data, suc_callback){
+    function validateCategoryCharacterValues(params, timestamp_data, suc_callback) {
       function createTasks(after_task_created_callback) {
         var tasks = []
         if (params.category_ids) {
           tasks.push(function(callback) {
-            ensureCategoryIdsExist(params.category_ids, callback)
+            t.ensure_CategoryIdsExist(baton, params.category_ids, function(err) {
+              if (err) baton.setError(err)
+              callback()
+            })
           })
         }
-       
+
         if (params.character_ids) {
           tasks.push(function(callback) {
             ensureCharactersFromSameSeries(params.character_ids, timestamp_data[0], callback)
@@ -644,7 +842,7 @@ module.exports = {
 
       createTasks(function(tasks) {
         async.parallel(tasks,
-          function() {
+          function(err) {
             if (baton.err.length > 0) {
               t._generateError(baton);
             } else {
@@ -661,7 +859,9 @@ module.exports = {
         timestamp_id: false
       } /*singleValue*/ , function(verified_params) {
         ensureRequiredParamsPresent(verified_params, function(timestamp_data) {
-          validateCategoryCharacterValues(verified_params, timestamp_data, () => { callback(verified_params)})
+          validateCategoryCharacterValues(verified_params, timestamp_data, () => {
+            callback(verified_params)
+          })
         })
       })
     }
@@ -678,7 +878,22 @@ module.exports = {
 
   },
 
-
+  ensure_CategoryIdsExist(baton, categories, callback) {
+    var t = this;
+    t.getAllCategoryData(baton, function(category_data) {
+      if (t._intersection(category_data.map(function(cat) {
+          return cat.category_id;
+        }), categories).length != categories.length) {
+        callback({
+          category_ids: categories,
+          error: "Invalid category ids",
+          public_message: 'Invalid categories'
+        })
+        return
+      }
+      callback()
+    })
+  },
 
   ensure_SeriesIdExists(baton, params, callback) {
     var t = this;
@@ -744,7 +959,7 @@ module.exports = {
    * Will run verification for multiple parameters 
    * use will be to verify params for episode/timestamp/object in post requests
    */
-  _verifyMultipleParameters(baton, valuesAndAttr, table, singleValues, suc_callback) {
+  _verifyMultipleParameters(baton, valuesAndAttr, table, singleValues, suc_callback, urlDecode) {
     var t = this;
     var params = {}
 
@@ -764,7 +979,7 @@ module.exports = {
       Object.keys(params).forEach(function(key) {
         //each value will have string passed and if singleValue is required
         tasks[key] = function(callback) {
-          t._verifyParameter(baton, params[key], table, key, (singleValues[key] !== undefined ? singleValues[key] : true) /* singleValue */ , callback, true /*multipleVerification*/ )
+          t._verifyParameter(baton, params[key], table, key, (singleValues[key] !== undefined ? singleValues[key] : true) /* singleValue */ , callback, true /*multipleVerification*/ , urlDecode)
         };
       })
       suc_callback(tasks)
@@ -785,11 +1000,12 @@ module.exports = {
    * @param {[]} value array of parameters that needs to be checked
    * @param {string} attr the type of variable the value array must be
    * @param {string} table the corresponding table defined in database
+   * @param {boolean} urlDecode from url param to array values 
    */
-  _verifyParameter(baton, value, table, attr, singleValue, callback, multipleVerification) {
+  _verifyParameter(baton, value, table, attr, singleValue, callback, multipleVerification, urlDecode) {
     var t = this;
 
-    if (!Array.isArray(value)) value = this._stringToArray(value)
+    if (!Array.isArray(value) && urlDecode != false) value = this._stringToArray(value)
 
     var errorPresent = false;
 

@@ -34,6 +34,8 @@ describe('timestamp server tests', function() {
 	var fakeRes;
 	var fakeSeriesData;
 	var fakeEpisodeData;
+	var fakeCompilationData;
+	var fakeCompilationTimestampData;
 
 	beforeEach(function() {
 		sandbox = sinon.createSandbox()
@@ -454,6 +456,209 @@ describe('timestamp server tests', function() {
 		});
 	});
 
+	describe('compilation', function() {
+
+		beforeEach(function() {
+			fakeCompilationData = [{
+				"compilation_id": 101,
+				"compilation_name": "InTest Compilation 1"
+			}, {
+				"compilation_id": 102,
+				"compilation_name": "InTest Compilation 2"
+			}]
+
+			fakeCompilationTimestampData = [{
+				"compilation_id": 101,
+				"timestamp_id": 0,
+				"duration": 10,
+				"end_time": 100
+			}, {
+				"compilation_id": 101,
+				"timestamp_id": 1,
+				"duration": 30,
+				"end_time": 10
+			},
+			 {
+				"compilation_id": 102,
+				"timestamp_id": 1,
+				"duration": 30,
+				"end_time": 10
+			}]
+
+
+			sandbox.stub(actions, '_generateId').callsFake(function() {
+				return 10
+			})
+
+			//stub get all compilation data for all tests
+			sandbox.stub(dbActions, 'getAllCompilationData').callsFake(function(baton, params, callback) {
+				var result = [...fakeCompilationData]
+				if (params.compilation_ids) {
+					result = result.filter(function(ct) {
+						return params.compilation_ids.includes(ct.compilation_id)
+					})
+				}
+				if (params.timestamp_ids) {
+					result = result.filter(function(ct) {
+						return params.timestamp_ids.includes(ct.timestamp_id)
+					})
+				}
+				callback(result)
+			})
+
+			sandbox.stub(dbActions, 'insertCompilation').callsFake(function(baton, values, callback) {
+				fakeCompilationData.push(values)
+				callback(values)
+			})
+
+			//stub get all compilation timestamp data for all tests
+			sandbox.stub(dbActions, 'getAllCompilationTimestamp').callsFake(function(baton, params, callback) {
+				var result = [...fakeCompilationTimestampData]
+				if (params.compilation_ids) {
+					result = result.filter(function(ct) {
+						return params.compilation_ids.includes(ct.compilation_id)
+					})
+				}
+				if (params.timestamp_ids) {
+					result = result.filter(function(ct) {
+						return params.timestamp_ids.includes(ct.timestamp_id)
+					})
+				}
+				callback(result)
+			})
+
+			sandbox.stub(dbActions, 'insertCompilationTimestamp').callsFake(function(baton, values, callback){
+				fakeCompilationTimestampData = fakeCompilationTimestampData.concat(values)
+				callback(values)
+			})
+
+		})
+
+		function updateCompilationDataWithTimestamp() {
+			fakeCompilationData.forEach((cp) => {
+				cp.timestamps = fakeCompilationTimestampData.filter((ct) => {
+					return ct.compilation_id = cp.compilation_id
+				}).forEach((ct) => {
+					delete ct.compilation_id
+				})
+			})
+		}
+
+		function filterByTimestamp(timestamp_ids) {
+			var filterCompilationIds = fakeCompilationTimestampData.filter(function(ct) {
+				return timestamp_ids.includes(ct.timestamp_id)
+			}).map((ct) => {
+				return ct.compilation_id
+			})
+			return fakeCompilationData.filter((cp) => {
+				return filterCompilationIds.includes(cp.compilation_id)
+			})
+		}
+
+		it('should return all compilation data', function(done) {
+			actions.get_allCompilationData({}, fakeRes)
+			//timeout to allow for endpoint to finish 
+			setTimeout(function() {
+				updateCompilationDataWithTimestamp();
+				expect(fakeRes.data).to.deep.equal(fakeCompilationData)
+				done()
+			}, TIMEOUT)
+		})
+
+		it('should filter compilation data by timestamp id', function(done) {
+			var values = {
+				timestamp_ids: "1"
+			}
+			actions.get_allCompilationData(values, fakeRes)
+			//timeout to allow for endpoint to finish 
+			setTimeout(function() {
+				expect(fakeRes.data.map((cp) => {
+					return cp.compilation_id
+				})).to.deep.equal(fakeCompilationTimestampData.filter((ct) => {
+					return ct.timestamp_id == 1
+				}).map((ct) => {
+					return ct.compilation_id
+				}))
+				expect(fakeRes.data[0].timestamps).to.deep.equal(fakeCompilationTimestampData.filter(ct => {return ct.compilation_id == fakeRes.data[0].compilation_id}))
+				done()
+			}, TIMEOUT)
+		})
+
+		it('should filter compilation data by compilation id', function(done) {
+			var values = {
+				compilation_ids: "102"
+			}
+			actions.get_allCompilationData(values, fakeRes)
+			//timeout to allow for endpoint to finish 
+			setTimeout(function() {
+				expect(fakeRes.data.length).to.equal(1)
+				expect(fakeRes.data.map((cp) => {
+					return cp.compilation_id
+				})).to.deep.equal([102])
+				expect(fakeRes.data[0].timestamps).to.deep.equal(fakeCompilationTimestampData.filter(ct => {return ct.compilation_id == fakeRes.data[0].compilation_id}))
+				done()
+			}, TIMEOUT)
+		})
+
+
+		describe('insert new compilation ', function(){
+					it('should create new compilation', function() {
+			var values = {
+				compilation_name: "InTest Compilation",
+				timestamps:[{
+					timestamp_id : 1,
+					duration: 10,
+					end_time: 100
+				},
+				{
+					timestamp_id : 1,
+					duration: 40,
+					end_time: 400
+				}]
+			}
+			actions.post_newCompilation(values, fakeRes)
+			values.compilation_id = 10;
+			expect(fakeRes.data).to.deep.equal(values)
+			expect(values.timestamps.every(timestamp => fakeCompilationTimestampData.includes(timestamp))).to.equal(true);
+		})
+
+
+		it('should throw for missing data in timestamp', function() {
+			var values = {
+				compilation_name: "InTest Compilation",
+				timestamps:[{
+					timestamp_id: 1,
+					duration: 10,
+					end_time: 100
+				},{
+					//missing timestamp id here
+					duration: 10,
+					end_time: 100
+				}]
+			}
+			actions.post_newCompilation(values, fakeRes)
+			assertErrorMessage(fakeRes, 'Required params not present')
+		})
+
+		//should throw for invalid timesatmp id for filtering
+
+		it('should throw for required param compilation name', function() {
+			actions.post_newCompilation({}, fakeRes)
+			assertErrorMessage(fakeRes, 'Required params not present')
+		})
+
+		it('should throw for same compilation name', function() {
+			var values = {
+				compilation_name: fakeCompilationData[0].compilation_name
+			}
+			actions.post_newCompilation(values, fakeRes)
+			assertErrorMessage(fakeRes, 'Compilation name already used')
+		})
+		})
+		//check that timestamp_id exists
+
+	})
+
 
 	describe('timestamp', function() {
 
@@ -799,7 +1004,7 @@ describe('timestamp server tests', function() {
 					var values = {
 						timestamp_id: "0",
 						character_ids: "1",
-						category_ids:"5"
+						category_ids: "5"
 					}
 					actions.post_updateTimestamp(values, fakeRes)
 					setTimeout(function() {
@@ -807,7 +1012,7 @@ describe('timestamp server tests', function() {
 						done()
 					}, TIMEOUT)
 				})
-				
+
 
 				it('should throw error for invalid timestamp id', function(done) {
 					var values = {
@@ -821,15 +1026,6 @@ describe('timestamp server tests', function() {
 						done()
 					}, TIMEOUT)
 				})
-
-
-
-				/*
-					invalid character
-					valid characrer, but different series
-					invalid category
-					invalid timestamp id
-				*/
 			})
 
 		})

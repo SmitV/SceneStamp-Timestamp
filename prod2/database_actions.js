@@ -29,10 +29,11 @@ var DB_TABLES = {
 	'timestamp': {
 		"timestamp_id": "number",
 		"start_time": "number",
-		"episode_ids": "number",
 		"episode_id": "number",
 		"character_ids": "number",
 		"category_ids": "number",
+		//for filtering 
+		"episode_ids": "number",
 		"clearCategories": "boolean",
 		"clearCharacters": "boolean"
 	},
@@ -44,6 +45,20 @@ var DB_TABLES = {
 		"timestamp_id": "number",
 		"character_id": "number"
 	},
+	'compilation':{
+		'compilation_id':'number',
+		'compilation_name':'string',
+		'timestamps':'object',
+		//filtering
+		'timestamp_ids':'number',
+		'compilation_ids':'number'
+	},
+	'compilation_timestamp':{
+		'compilation_id':'number',
+		'timestamp_id':'number',
+		'duration':'number',
+		'end_time':'number'
+	}
 };
 
 
@@ -102,7 +117,6 @@ module.exports = {
 			callback(values)
 		});
 	},
-
 	getAllTimestampData(baton, episode_ids, timestamp_ids, callback) {
 		baton.addMethod(this._formatMethod('getAllTimestampData'))
 		var data = {}
@@ -160,6 +174,39 @@ module.exports = {
 			'timestamp_id': timestamp_ids
 		} : null), baton, callback)
 	},
+	getAllCompilationData(baton, params, callback) {
+		baton.addMethod(this._formatMethod('getAllCompilationData'))
+		var data = {}
+		data.compilation_id = (params.compilation_ids ? params.compilation_ids : null)
+		data.timestamp_id = (params.timestamp_ids ? params.timestamp_ids : null)
+		data = (Object.keys(data).filter(key => {
+			return data[key] != null
+		}).length == 0 ? null : data)
+		this._selectQuery('compilation', null, data, baton, callback)
+	},
+	insertCompilation(baton, values, callback) {
+		baton.addMethod(this._formatMethod('insertCategory'))
+		this._insertQuery('compilation', values, baton, function() {
+			callback(values)
+		});
+	},
+	getAllCompilationTimestamp(baton, params, callback) {
+		baton.addMethod(this._formatMethod('getAllCompilationTimestamp'))
+		var data = {}
+		data.compilation_id = (params.compilation_ids ? params.compilation_ids : null)
+		data.timestamp_id = (params.timestamp_ids ? params.timestamp_ids : null)
+		data = (Object.keys(data).filter(key => {
+			return data[key] != null
+		}).length == 0 ? null : data)
+		this._selectQuery('compilation_timestamp', null, data, baton, callback)
+	},
+	insertCompilationTimestamp(baton, values, callback) {
+		baton.addMethod(this._formatMethod('insertCompilationTimestamp'))
+		this._insertMultipleQuery('compilation_timestamp', values, baton, function() {
+			callback(values)
+		});
+	},
+
 	_insertMultipleQuery(table, values, baton, callback) {
 		var attr_string = Object.keys(DB_TABLES[table]).map(function(key) {
 			return key

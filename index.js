@@ -76,6 +76,19 @@ var endpoints = [
 				}
 
 	},
+	{
+		url : 'getCompilationData',
+		action : function(req, res){
+					production_action.get_allCompilationData(req.query,res);
+				}
+	},
+	{
+		url : 'newCompilationData',
+		action : function(req, res){
+			production_action.post_newCompilation(req.body,res);
+		},
+		post: true
+	},
 ];
 
 app.all('*', function(req, res, next) {
@@ -89,8 +102,14 @@ app.all('*', function(req, res, next) {
 
 
 endpoints.forEach(function(endpoint){
-	app.get('/'+ endpoint.url, function(req, res){
-		endpoint.action(req,res);
+	if (endpoint.post) {
+		app.post('/' + endpoint.url, function(req, res) {
+			endpoint.action(req, res);
+		});
+		return
+	}
+	app.get('/' + endpoint.url, function(req, res) {
+		endpoint.action(req, res);
 	});
 })
 

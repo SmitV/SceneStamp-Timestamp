@@ -104,7 +104,7 @@ describe('db tests', () => {
 			})
 		})
 
-		it('get all timestamp category data filted category ', function() {
+		it('get all timestamp category data filtered category ', function() {
 			dbActions.getAllTimestampCategory(fakeBaton, {
 				category_ids: [1, 2]
 			}, function() {
@@ -164,6 +164,58 @@ describe('db tests', () => {
 			})
 
 		})
+	})
+
+	describe('compilation', function(){
+
+		it('should get all compilation data ', () => {
+
+			dbActions.getAllCompilationData(fakeBaton, {},() => {
+				expect(sqlQuery).to.equal('SELECT * FROM `compilation`');
+			})
+
+		})
+
+		it('insert new episode', () => {
+
+			var values = {
+				compilation_id: 101,
+				compilation_name: 'InTest Compilation'
+			}
+
+			dbActions.insertCompilation(fakeBaton, values, () => {
+				expect(sqlQuery).to.equal('INSERT INTO `compilation` (compilation_id,compilation_name) VALUES(?,?)');
+				expect(sqlValues).to.deep.equal([values.compilation_id, values.compilation_name])
+			})
+		})
+
+		it('get all compilation timestamp data', function() {
+			dbActions.getAllCompilationTimestamp(fakeBaton, {}, function() {
+				expect(sqlQuery.trim()).to.equal("SELECT * FROM `compilation_timestamp`");
+			})
+		})
+
+		it('get all compilation timestamp data filtered ', function() {
+			dbActions.getAllCompilationTimestamp(fakeBaton, {
+				compilation_ids: [1, 2],
+				timestamp_ids:[5]
+			}, function() {
+				expect(sqlQuery.trim()).to.equal("SELECT * FROM `compilation_timestamp` WHERE compilation_id = 1 OR compilation_id = 2  OR timestamp_id = 5");
+			})
+		})
+
+		it('insert compilation timestamp', () => {
+
+			var values = [
+				[1,2,100, 20],[3,4,45, 90] 
+			]
+
+			dbActions.insertCompilationTimestamp(fakeBaton, values, () => {
+				expect(sqlQuery).to.equal('INSERT INTO `compilation_timestamp` (compilation_id,timestamp_id,duration,end_time) VALUES ?');
+				expect(sqlValues).to.deep.equal([values])
+			})
+		})
+
 	})
 
 })
