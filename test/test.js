@@ -854,17 +854,17 @@ describe('timestamp server tests', function() {
 				"compilation_id": 101,
 				"timestamp_id": 0,
 				"duration": 10,
-				"end_time": 100
+				"start_time": 100
 			}, {
 				"compilation_id": 101,
 				"timestamp_id": 1,
 				"duration": 30,
-				"end_time": 10
+				"start_time": 10
 			}, {
 				"compilation_id": 102,
 				"timestamp_id": 1,
 				"duration": 30,
-				"end_time": 10
+				"start_time": 10
 			}]
 
 
@@ -942,7 +942,7 @@ describe('timestamp server tests', function() {
 						'compilation_id': ct[0],
 						'timestamp_id': ct[1],
 						'duration': ct[2],
-						'end_time': ct[3],
+						'start_time': ct[3],
 					})
 				})
 				callback(values.map(ct => {
@@ -950,7 +950,7 @@ describe('timestamp server tests', function() {
 						'compilation_id': ct[0],
 						'timestamp_id': ct[1],
 						'duration': ct[2],
-						'end_time': ct[3],
+						'start_time': ct[3],
 					}
 				}))
 			})
@@ -1036,11 +1036,11 @@ describe('timestamp server tests', function() {
 					timestamps: [{
 						timestamp_id: 1,
 						duration: 10,
-						end_time: 100
+						start_time: 100
 					}, {
 						timestamp_id: 1,
 						duration: 40,
-						end_time: 400
+						start_time: 400
 					}]
 				}
 				actions.post_newCompilation(values, fakeRes)
@@ -1058,11 +1058,11 @@ describe('timestamp server tests', function() {
 					timestamps: [{
 						timestamp_id: 100, //iun
 						duration: 10,
-						end_time: 100
+						start_time: 100
 					}, {
 						timestamp_id: 1,
 						duration: 10,
-						end_time: 100
+						start_time: 100
 					}]
 				}
 				actions.post_newCompilation(values, fakeRes)
@@ -1077,11 +1077,11 @@ describe('timestamp server tests', function() {
 					timestamps: [{
 						timestamp_id: 1,
 						duration: 10,
-						end_time: 100
+						start_time: 100
 					}, {
 						//missing timestamp id here
 						duration: 10,
-						end_time: 100
+						start_time: 100
 					}]
 				}
 				actions.post_newCompilation(values, fakeRes)

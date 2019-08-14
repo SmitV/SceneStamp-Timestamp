@@ -211,7 +211,7 @@ describe('db tests', () => {
 			]
 
 			dbActions.insertCompilationTimestamp(fakeBaton, values, () => {
-				expect(sqlQuery).to.equal('INSERT INTO `compilation_timestamp` (compilation_id,timestamp_id,duration,end_time) VALUES ?');
+				expect(sqlQuery).to.equal('INSERT INTO `compilation_timestamp` (compilation_id,timestamp_id,duration,start_time) VALUES ?');
 				expect(sqlValues).to.deep.equal([values])
 			})
 		})

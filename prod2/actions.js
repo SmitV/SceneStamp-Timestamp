@@ -230,7 +230,7 @@ module.exports = {
           }, false /*urlDecode*/ )
         })
         var firstInvalidTimestamp = params.timestamps.find((timestamp) => {
-          return timestamp.timestamp_id == undefined || timestamp.duration == undefined || timestamp.end_time == undefined
+          return timestamp.timestamp_id == undefined || timestamp.duration == undefined || timestamp.start_time == undefined
         })
         if (firstInvalidTimestamp) {
           baton.setError({
@@ -276,7 +276,7 @@ module.exports = {
 
     function insertCompilationTimestamps(compilation_id, timestamps, callback) {
       var values = timestamps.map(function(ts) {
-        return [compilation_id, ts.timestamp_id, ts.duration, ts.end_time]
+        return [compilation_id, ts.timestamp_id, ts.duration, ts.start_time]
       })
       db.insertCompilationTimestamp(baton, values, function(data) {
         t._handleDBCall(baton, data, true /*multiple*/ , callback)

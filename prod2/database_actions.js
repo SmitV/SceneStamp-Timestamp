@@ -57,7 +57,7 @@ var DB_TABLES = {
 		'compilation_id':'number',
 		'timestamp_id':'number',
 		'duration':'number',
-		'end_time':'number'
+		'start_time':'number'
 	}
 };
 
