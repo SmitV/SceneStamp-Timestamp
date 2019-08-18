@@ -57,13 +57,13 @@ const MAIN_SCHEME = {
 		}
 	},
 	'timestamp': {
-		'character_id': {
+		'episode_id': {
 			'type': 'number',
 		},
-		'character_name': {
-			'type': 'string',
+		'start_time': {
+			'type': 'number',
 		},
-		'series_id': {
+		'timestamp_id': {
 			'type': 'number'
 		}
 	},
@@ -169,10 +169,10 @@ module.exports = {
 
 	TABLES: DB_TABLES,
 	SCHEME: DB_SCHEME,
-	setScheme(scheme){
+	setScheme(scheme) {
 		DB_SCHEME = scheme;
 	},
-	resetScheme(){
+	resetScheme() {
 		DB_SCHEME = MAIN_SCHEME
 	},
 	//the above is for testing only
@@ -313,43 +313,48 @@ module.exports = {
 	},
 
 	_insertMultipleQuery(table, values, baton, callback) {
+		var t = this
 		var attr_string = Object.keys(DB_SCHEME[table]).map(function(key) {
 			return key
 		}).join(',')
 		var value_array = []
-		values.forEach(function(value){
-			var single_val = []
-			Object.keys(DB_SCHEME[table]).forEach(function(attr) {
-				if (value[attr] !== undefined && value[attr] !== null) {
-					if (typeof value[attr] !== DB_SCHEME[table][attr].type) {
+			values.every(function(value) {
+				var single_val = []
+				Object.keys(DB_SCHEME[table]).forEach(function(attr) {
+					if (value[attr] !== undefined && value[attr] !== null) {
+						if (typeof value[attr] !== DB_SCHEME[table][attr].type) {
+							baton.setError({
+								details: 'DB Actions: type of value not valid',
+								table: table,
+								attr: attr,
+								expected_type: DB_SCHEME[table][attr].type,
+								object: value
+							})
+							callback()
+							return false
+						}
+						single_val.push(value[attr])
+
+					} else if (DB_SCHEME[table][attr].optional !== true) {
 						baton.setError({
-							details: 'DB Actions: type of value not valid',
+							details: 'DB Actions: non-optional value not present',
 							table: table,
 							attr: attr,
-							expected_type: DB_SCHEME[table][attr].type,
-							 object: value
+							object: value
 						})
-						callback(null)
-						return
+						callback()
+						return false
+					}else{
+						single_val.push(null)
 					}
-
-				} else if (DB_SCHEME[table][attr].optional !== true) {
-					baton.setError({
-						details: 'DB Actions: non-optional value not present',
-						table: table,
-						attr: attr,
-						object: value
-					})
-					callback(null)
-					return
+				})
+				value_array.push(single_val)
+				if(value_array.length === values.length){
+					//the values need to be in three arrays 
+					// [[[value],[value]]]
+					t._makequery("INSERT INTO `" + table + "` (" + attr_string + ") VALUES ?", [value_array], baton, callback)
 				}
-				single_val.push(value[attr])
 			})
-			value_array.push(single_val)
-		})
-		//the values need to be in three arrays 
-		// [[[value],[value]]]
-		this._makequery("INSERT INTO `" + table + "` (" + attr_string + ") VALUES ?", [value_array], baton, callback)
 	},
 
 	_deleteQuery(table, conditions, baton, callback) {
@@ -423,7 +428,7 @@ module.exports = {
 		pool.query(sql, values, function(err, results) {
 			if (err) {
 				baton.setError(err)
-				callback(null)
+				callback()
 			} else {
 				callback(t._toJSON(results))
 			}

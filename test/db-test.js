@@ -148,9 +148,9 @@ describe('db tests', () => {
 
 			dbActions.insertEpisode(fakeBaton, values, () => {
 				expect(sqlQuery).to.equal('INSERT INTO `episode` (episode_id,episode_name,series_id,season,episode,air_date) VALUES ?');
-				values.season = undefined
-				values.episode = undefined
-				values.air_date = undefined
+				values.season = null
+				values.episode = null
+				values.air_date = null
 				expect(sqlValues).to.deep.equal([jsonToArray([values])])
 			})
 		})

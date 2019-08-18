@@ -1092,7 +1092,7 @@ module.exports = {
    * in case of multiple, callback will be error,results
    */
   _handleDBCall(baton, data, multiple, callback) {
-    if (data == null) {
+    if (baton.err.length > 0) {
       //the error would have been set on the DB side
       if (multiple) {
         callback(true)
