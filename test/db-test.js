@@ -19,7 +19,6 @@ describe('db tests', () => {
 
 	function jsonToArray(values) {
 		var values_array = []
-		console.log(values)
 		values.forEach(function(value) {
 			var single = []
 			Object.keys(value).forEach(function(attr) {
@@ -42,8 +41,6 @@ describe('db tests', () => {
 				this.methods.push(method)
 			},
 			setError(err) {
-				console.log('error ')
-				console.log(err)
 				this.err.push(err)
 			}
 		}
@@ -154,7 +151,6 @@ describe('db tests', () => {
 				values.season = undefined
 				values.episode = undefined
 				values.air_date = undefined
-				console.log(values)
 				expect(sqlValues).to.deep.equal([jsonToArray([values])])
 			})
 		})

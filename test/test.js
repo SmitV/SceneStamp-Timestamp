@@ -727,8 +727,6 @@ describe('timestamp server tests', function() {
 								return v[0]
 							}).includes(ts.timestamp_id)
 						})
-						console.log('insert timestamp character ')
-						console.log(values)
 
 						values.forEach(function(v) {
 							fakeTimestampCharacterData.push(v)
