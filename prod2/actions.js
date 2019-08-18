@@ -276,7 +276,7 @@ module.exports = {
 
     function insertCompilationTimestamps(compilation_id, timestamps, callback) {
       var values = timestamps.map(function(ts) {
-        return [compilation_id, ts.timestamp_id, ts.duration, ts.start_time]
+        return {compilation_id : compilation_id, timestamp_id:ts.timestamp_id, duration: ts.duration, start_time:ts.start_time}
       })
       db.insertCompilationTimestamp(baton, values, function(data) {
         t._handleDBCall(baton, data, true /*multiple*/ , callback)
@@ -731,7 +731,7 @@ module.exports = {
         tasks.categories = function(callback) {
           var category_values = [];
           params.category_ids.forEach(function(category) {
-            category_values.push([params.timestamp_id[0], category]);
+            category_values.push({timestamp_id : params.timestamp_id[0], category_id : category});
           })
           db.insertTimestampCategory(baton, category_values, function(data) {
             t._handleDBCall(baton, data, true /*multiple*/ , callback)
@@ -742,7 +742,7 @@ module.exports = {
         tasks.characters = function(callback) {
           var character_values = [];
           params.character_ids.forEach(function(character) {
-            character_values.push([params.timestamp_id[0], character]);
+            character_values.push({timestamp_id : params.timestamp_id[0],character_id: character});
           })
           db.insertTimestampCharacter(baton, character_values, function(data) {
             t._handleDBCall(baton, data, true /*multiple*/ , callback)

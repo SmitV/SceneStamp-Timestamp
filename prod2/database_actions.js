@@ -4,6 +4,103 @@ var db_credentials = require('./credentials');
 var pool = db_credentials.pool;
 
 
+//internal use only, used when inserting new data or selecting data
+const MAIN_SCHEME = {
+	'series': {
+		'series_id': {
+			'type': 'number',
+		},
+		'series_name': {
+			'type': 'string',
+		}
+	},
+	'episode': {
+		'episode_id': {
+			'type': 'number',
+		},
+		'episode_name': {
+			'type': 'string',
+		},
+		'series_id': {
+			'type': 'number',
+		},
+		'season': {
+			'type': 'number',
+			'optional': true
+		},
+		'episode': {
+			'type': 'number',
+			'optional': true
+		},
+		'air_date': {
+			'type': 'number',
+			'optional': true
+		}
+	},
+	'category': {
+		'category_id': {
+			'type': 'number',
+		},
+		'category_name': {
+			'type': 'string',
+		},
+	},
+	'character': {
+		'character_id': {
+			'type': 'number',
+		},
+		'character_name': {
+			'type': 'string',
+		},
+		'series_id': {
+			'type': 'number'
+		}
+	},
+	'timestamp': {
+		'character_id': {
+			'type': 'number',
+		},
+		'character_name': {
+			'type': 'string',
+		},
+		'series_id': {
+			'type': 'number'
+		}
+	},
+	'timestamp_category': {
+		'timestamp_id': {
+			'type': 'number',
+		},
+		'category_id': {
+			'type': 'number',
+		},
+	},
+	'timestamp_characters': {
+		'timestamp_id': {
+			'type': 'number',
+		},
+		'character_id': {
+			'type': 'number',
+		},
+	},
+	'compilation_timestamp': {
+		'compilation_id': {
+			'type': 'number',
+		},
+		'timestamp_id': {
+			'type': 'number',
+		},
+		'duration': {
+			'type': 'number',
+		},
+		'start_time': {
+			'type': 'number',
+		},
+	}
+}
+
+var DB_SCHEME = MAIN_SCHEME
+
 var DB_TABLES = {
 	'episode': {
 		"episode_id": "number",
@@ -45,19 +142,19 @@ var DB_TABLES = {
 		"timestamp_id": "number",
 		"character_id": "number"
 	},
-	'compilation':{
-		'compilation_id':'number',
-		'compilation_name':'string',
-		'timestamps':'object',
+	'compilation': {
+		'compilation_id': 'number',
+		'compilation_name': 'string',
+		'timestamps': 'object',
 		//filtering
-		'timestamp_ids':'number',
-		'compilation_ids':'number'
+		'timestamp_ids': 'number',
+		'compilation_ids': 'number'
 	},
-	'compilation_timestamp':{
-		'compilation_id':'number',
-		'timestamp_id':'number',
-		'duration':'number',
-		'start_time':'number'
+	'compilation_timestamp': {
+		'compilation_id': 'number',
+		'timestamp_id': 'number',
+		'duration': 'number',
+		'start_time': 'number'
 	}
 };
 
@@ -71,6 +168,14 @@ GENERAL DESIGN
 module.exports = {
 
 	TABLES: DB_TABLES,
+	SCHEME: DB_SCHEME,
+	setScheme(scheme){
+		DB_SCHEME = scheme;
+	},
+	resetScheme(){
+		DB_SCHEME = MAIN_SCHEME
+	},
+	//the above is for testing only
 
 	getAllSeriesData(baton, callback) {
 
@@ -78,7 +183,7 @@ module.exports = {
 		this._selectQuery('series', null, null, baton, callback)
 	},
 	insertSeries(baton, values, callback) {
-		this._insertQuery('series', values, baton, function() {
+		this._insertMultipleQuery('series', [values], baton, function() {
 			callback(values)
 		});
 	},
@@ -91,7 +196,7 @@ module.exports = {
 	},
 	insertEpisode(baton, values, callback) {
 		baton.addMethod(this._formatMethod('insertEpisode'))
-		this._insertQuery('episode', values, baton, function() {
+		this._insertMultipleQuery('episode', [values], baton, function() {
 			callback(values)
 		});
 	},
@@ -103,7 +208,7 @@ module.exports = {
 	},
 	insertCharacter(baton, values, callback) {
 		baton.addMethod(this._formatMethod('insertCharacter'))
-		this._insertQuery('character', values, baton, function() {
+		this._insertMultipleQuery('character', [values], baton, function() {
 			callback(values)
 		});
 	},
@@ -113,7 +218,7 @@ module.exports = {
 	},
 	insertCategory(baton, values, callback) {
 		baton.addMethod(this._formatMethod('insertCategory'))
-		this._insertQuery('category', values, baton, function() {
+		this._insertMultipleQuery('category', [values], baton, function() {
 			callback(values)
 		});
 	},
@@ -126,7 +231,7 @@ module.exports = {
 	},
 	insertTimestamp(baton, values, callback) {
 		baton.addMethod(this._formatMethod('insertTimestamp'))
-		this._insertQuery('timestamp', values, baton, function() {
+		this._insertMultipleQuery('timestamp', [values], baton, function() {
 			callback(values)
 		});
 	},
@@ -186,7 +291,7 @@ module.exports = {
 	},
 	insertCompilation(baton, values, callback) {
 		baton.addMethod(this._formatMethod('insertCategory'))
-		this._insertQuery('compilation', values, baton, function() {
+		this._insertMultipleQuery('compilation', [values], baton, function() {
 			callback(values)
 		});
 	},
@@ -208,22 +313,43 @@ module.exports = {
 	},
 
 	_insertMultipleQuery(table, values, baton, callback) {
-		var attr_string = Object.keys(DB_TABLES[table]).map(function(key) {
+		var attr_string = Object.keys(DB_SCHEME[table]).map(function(key) {
 			return key
 		}).join(',')
-		this._makequery("INSERT INTO `" + table + "` (" + attr_string + ") VALUES ?", [values], baton, callback)
-	},
-	_insertQuery(table, values, baton, callback) {
-
-		var attr_string = ""
-		var values_string = ""
 		var value_array = []
-		Object.keys(values).forEach(function(attr) {
-			attr_string += attr + ','
-			values_string += "?,"
-			value_array.push(values[attr])
+		values.forEach(function(value){
+			var single_val = []
+			Object.keys(DB_SCHEME[table]).forEach(function(attr) {
+				if (value[attr] !== undefined && value[attr] !== null) {
+					if (typeof value[attr] !== DB_SCHEME[table][attr].type) {
+						baton.setError({
+							details: 'DB Actions: type of value not valid',
+							table: table,
+							attr: attr,
+							expected_type: DB_SCHEME[table][attr].type,
+							 object: value
+						})
+						callback(null)
+						return
+					}
+
+				} else if (DB_SCHEME[table][attr].optional !== true) {
+					baton.setError({
+						details: 'DB Actions: non-optional value not present',
+						table: table,
+						attr: attr,
+						object: value
+					})
+					callback(null)
+					return
+				}
+				single_val.push(value[attr])
+			})
+			value_array.push(single_val)
 		})
-		this._makequery("INSERT INTO `" + table + "` (" + attr_string.slice(0, -1) + ") VALUES" + "(" + values_string.slice(0, -1) + ")", value_array, baton, callback)
+		//the values need to be in three arrays 
+		// [[[value],[value]]]
+		this._makequery("INSERT INTO `" + table + "` (" + attr_string + ") VALUES ?", [value_array], baton, callback)
 	},
 
 	_deleteQuery(table, conditions, baton, callback) {
@@ -296,7 +422,7 @@ module.exports = {
 		var t = this;
 		pool.query(sql, values, function(err, results) {
 			if (err) {
-				baton.setError(err, 'An Error Occured During SQL Querying')
+				baton.setError(err)
 				callback(null)
 			} else {
 				callback(t._toJSON(results))

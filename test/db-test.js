@@ -17,6 +17,19 @@ describe('db tests', () => {
 
 	var fakeBaton;
 
+	function jsonToArray(values) {
+		var values_array = []
+		console.log(values)
+		values.forEach(function(value) {
+			var single = []
+			Object.keys(value).forEach(function(attr) {
+				single.push(value[attr])
+			})
+			values_array.push(single)
+		})
+		return values_array
+	}
+
 
 	beforeEach(() => {
 		sqlQuery = null;
@@ -24,8 +37,14 @@ describe('db tests', () => {
 
 		fakeBaton = {
 			methods: [],
+			err: [],
 			addMethod: function(method) {
 				this.methods.push(method)
+			},
+			setError(err) {
+				console.log('error ')
+				console.log(err)
+				this.err.push(err)
 			}
 		}
 
@@ -38,6 +57,47 @@ describe('db tests', () => {
 
 	afterEach(function() {
 		sandbox.restore()
+	})
+
+	describe('insert query', function() {
+
+		var originalscheme = dbActions.DB_SCHEME
+		beforeEach(function() {
+
+			dbActions.setScheme({
+				'test_table': {
+					'test_attr1': {
+						'type': 'number'
+					},
+					'test_attr2': {
+						'type': 'number',
+						'optional': true
+					}
+				},
+			})
+		})
+
+		afterEach(function() {
+			dbActions.resetScheme()
+		})
+
+		it('should throw error for non optional field', () => {
+			var values = {
+				test_attr2: 101
+			}
+			dbActions._insertMultipleQuery('test_table', [values], fakeBaton, function() {
+				expect(fakeBaton.err[0].details).to.equal('DB Actions: non-optional value not present')
+			})
+		})
+
+		it('should throw error for invalid type field', () => {
+			var values = {
+				test_attr1: 'test'
+			}
+			dbActions._insertMultipleQuery('test_table', [values], fakeBaton, function() {
+				expect(fakeBaton.err[0].details).to.equal('DB Actions: type of value not valid')
+			})
+		})
 	})
 
 	describe('series', function() {
@@ -56,8 +116,8 @@ describe('db tests', () => {
 			}
 
 			dbActions.insertSeries(fakeBaton, values, () => {
-				expect(sqlQuery).to.equal('INSERT INTO `series` (series_id,series_name) VALUES(?,?)');
-				expect(sqlValues).to.deep.equal([values.series_id, values.series_name])
+				expect(sqlQuery).to.equal('INSERT INTO `series` (series_id,series_name) VALUES ?');
+				expect(sqlValues).to.deep.equal([jsonToArray([values])])
 			})
 		})
 	})
@@ -90,8 +150,12 @@ describe('db tests', () => {
 			}
 
 			dbActions.insertEpisode(fakeBaton, values, () => {
-				expect(sqlQuery).to.equal('INSERT INTO `episode` (episode_id,episode_name,series_id) VALUES(?,?,?)');
-				expect(sqlValues).to.deep.equal([values.episode_id, values.episode_name, values.series_id])
+				expect(sqlQuery).to.equal('INSERT INTO `episode` (episode_id,episode_name,series_id,season,episode,air_date) VALUES ?');
+				values.season = undefined
+				values.episode = undefined
+				values.air_date = undefined
+				console.log(values)
+				expect(sqlValues).to.deep.equal([jsonToArray([values])])
 			})
 		})
 
@@ -121,13 +185,19 @@ describe('db tests', () => {
 
 		it('insert timestamp category', () => {
 
-			var values = [
-				[1,2]
-			]
+			var values = [{
+				timestamp_id: 1,
+				category_id: 3
+			}, {
+				timestamp_id: 1,
+				category_id: 3
+			}]
+
 
 			dbActions.insertTimestampCategory(fakeBaton, values, () => {
+
 				expect(sqlQuery).to.equal('INSERT INTO `timestamp_category` (timestamp_id,category_id) VALUES ?');
-				expect(sqlValues).to.deep.equal([values])
+				expect(sqlValues).to.deep.equal([jsonToArray(values)])
 			})
 		})
 
@@ -148,13 +218,20 @@ describe('db tests', () => {
 
 		it('insert timestamp character', () => {
 
-			var values = [
-				[1,2], [3,4], [5,6]
-			]
+			var values = [{
+				timestamp_id: 1,
+				character_id: 2
+			}, {
+				timestamp_id: 3,
+				character_id: 4
+			}, {
+				timestamp_id: 5,
+				character_id: 6
+			}]
 
 			dbActions.insertTimestampCharacter(fakeBaton, values, () => {
 				expect(sqlQuery).to.equal('INSERT INTO `timestamp_characters` (timestamp_id,character_id) VALUES ?');
-				expect(sqlValues).to.deep.equal([values])
+				expect(sqlValues).to.deep.equal([jsonToArray(values)])
 			})
 		})
 
@@ -166,27 +243,14 @@ describe('db tests', () => {
 		})
 	})
 
-	describe('compilation', function(){
+	describe('compilation', function() {
 
 		it('should get all compilation data ', () => {
 
-			dbActions.getAllCompilationData(fakeBaton, {},() => {
+			dbActions.getAllCompilationData(fakeBaton, {}, () => {
 				expect(sqlQuery).to.equal('SELECT * FROM `compilation`');
 			})
 
-		})
-
-		it('insert new episode', () => {
-
-			var values = {
-				compilation_id: 101,
-				compilation_name: 'InTest Compilation'
-			}
-
-			dbActions.insertCompilation(fakeBaton, values, () => {
-				expect(sqlQuery).to.equal('INSERT INTO `compilation` (compilation_id,compilation_name) VALUES(?,?)');
-				expect(sqlValues).to.deep.equal([values.compilation_id, values.compilation_name])
-			})
 		})
 
 		it('get all compilation timestamp data', function() {
@@ -198,7 +262,7 @@ describe('db tests', () => {
 		it('get all compilation timestamp data filtered ', function() {
 			dbActions.getAllCompilationTimestamp(fakeBaton, {
 				compilation_ids: [1, 2],
-				timestamp_ids:[5]
+				timestamp_ids: [5]
 			}, function() {
 				expect(sqlQuery.trim()).to.equal("SELECT * FROM `compilation_timestamp` WHERE compilation_id = 1 OR compilation_id = 2  OR timestamp_id = 5");
 			})
@@ -206,13 +270,16 @@ describe('db tests', () => {
 
 		it('insert compilation timestamp', () => {
 
-			var values = [
-				[1,2,100, 20],[3,4,45, 90] 
-			]
+			var values = [{
+				compilation_id: 1,
+				timestamp_id: 2,
+				duration: 100,
+				start_time: 30
+			}]
 
 			dbActions.insertCompilationTimestamp(fakeBaton, values, () => {
 				expect(sqlQuery).to.equal('INSERT INTO `compilation_timestamp` (compilation_id,timestamp_id,duration,start_time) VALUES ?');
-				expect(sqlValues).to.deep.equal([values])
+				expect(sqlValues).to.deep.equal([jsonToArray(values)])
 			})
 		})
 

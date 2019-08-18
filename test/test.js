@@ -727,11 +727,11 @@ describe('timestamp server tests', function() {
 								return v[0]
 							}).includes(ts.timestamp_id)
 						})
+						console.log('insert timestamp character ')
+						console.log(values)
+
 						values.forEach(function(v) {
-							fakeTimestampCharacterData.push({
-								'timestamp_id': v[0],
-								'character_id': v[1]
-							})
+							fakeTimestampCharacterData.push(v)
 						})
 						callback(values)
 					})
@@ -747,10 +747,7 @@ describe('timestamp server tests', function() {
 
 					sandbox.stub(dbActions, 'insertTimestampCategory').callsFake(function(baton, values, callback) {
 						values.forEach(function(v) {
-							fakeTimestampCategoryData.push({
-								'timestamp_id': v[0],
-								'category_id': v[1]
-							})
+							fakeTimestampCategoryData.push(v)
 						})
 						callback(values)
 					})
@@ -767,6 +764,8 @@ describe('timestamp server tests', function() {
 					setTimeout(function() {
 						expect(fakeRes.data.character_ids).to.deep.equal([1, 2])
 						expect(fakeRes.data.category_ids).to.deep.equal([0, 1])
+						expect(fakeTimestampCharacterData[3]).to.deep.equal({timestamp_id:0, character_id:2});
+						expect(fakeTimestampCategoryData[2]).to.deep.equal({timestamp_id:0, category_id:0});
 						done()
 					}, TIMEOUT)
 				})
@@ -937,22 +936,9 @@ describe('timestamp server tests', function() {
 
 			sandbox.stub(dbActions, 'insertCompilationTimestamp').callsFake(function(baton, values, callback) {
 				values.forEach(ct => {
-
-					fakeCompilationTimestampData.push({
-						'compilation_id': ct[0],
-						'timestamp_id': ct[1],
-						'duration': ct[2],
-						'start_time': ct[3],
-					})
+					fakeCompilationTimestampData.push(ct)
 				})
-				callback(values.map(ct => {
-					return {
-						'compilation_id': ct[0],
-						'timestamp_id': ct[1],
-						'duration': ct[2],
-						'start_time': ct[3],
-					}
-				}))
+				callback(values)
 			})
 
 		})
