@@ -328,7 +328,7 @@ module.exports = {
 		var value_array = []
 			values.every(function(value) {
 				var single_val = []
-				Object.keys(DB_SCHEME[table]).forEach(function(attr) {
+				Object.keys(DB_SCHEME[table]).every(function(attr) {
 					if (value[attr] !== undefined && value[attr] !== null) {
 						if (typeof value[attr] !== DB_SCHEME[table][attr].type) {
 							baton.setError({
@@ -342,6 +342,7 @@ module.exports = {
 							return false
 						}
 						single_val.push(value[attr])
+						return true
 
 					} else if (DB_SCHEME[table][attr].optional !== true) {
 						baton.setError({
@@ -354,6 +355,7 @@ module.exports = {
 						return false
 					}else{
 						single_val.push(null)
+						return true;
 					}
 				})
 				value_array.push(single_val)
@@ -361,6 +363,9 @@ module.exports = {
 					//the values need to be in three arrays 
 					// [[[value],[value]]]
 					t._makequery("INSERT INTO `" + table + "` (" + attr_string + ") VALUES ?", [value_array], baton, callback)
+				}
+				else{
+					return true
 				}
 			})
 	},
