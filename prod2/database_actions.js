@@ -96,6 +96,14 @@ const MAIN_SCHEME = {
 		'start_time': {
 			'type': 'number',
 		},
+	},
+	'compilation':{
+		'compilation_id': {
+			'type': 'number',
+		},
+		'compilation_name': {
+			'type': 'name',
+		},
 	}
 }
 
