@@ -357,7 +357,7 @@ module.exports = {
 					}
 				})
 				value_array.push(single_val)
-				if(value_array.length === values.length){
+				if(value_array.length === values.length && baton.err.length === 0){
 					//the values need to be in three arrays 
 					// [[[value],[value]]]
 					t._makequery("INSERT INTO `" + table + "` (" + attr_string + ") VALUES ?", [value_array], baton, callback)
