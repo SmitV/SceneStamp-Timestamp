@@ -74,8 +74,27 @@ describe('db tests', () => {
 			})
 		})
 
+
+
 		afterEach(function() {
 			dbActions.resetScheme()
+		})
+
+		it('should make insert multi call', () => {
+			var values = [{
+				test_attr1: 101,
+				test_attr2: 101
+			},
+			{
+				test_attr1: 103
+			},
+			{
+				test_attr1: 102,
+				test_attr2: 102
+			}]
+			dbActions._insertMultipleQuery('test_table', values, fakeBaton, function() {
+				expect(sqlValues).to.deep.equal([[[101,101],[103,null],[102,102]]])
+			})
 		})
 
 		it('should throw error for non optional field', () => {
@@ -88,10 +107,14 @@ describe('db tests', () => {
 		})
 
 		it('should throw error for invalid type field', () => {
-			var values = {
+			var values = [{
+				test_attr2: 101,
+				test_attr1: 1
+			}, {
+				test_attr2: 101,
 				test_attr1: 'test'
-			}
-			dbActions._insertMultipleQuery('test_table', [values], fakeBaton, function() {
+			}]
+			dbActions._insertMultipleQuery('test_table', values, fakeBaton, function() {
 				expect(fakeBaton.err[0].details).to.equal('DB Actions: type of value not valid')
 			})
 		})
