@@ -102,7 +102,7 @@ const MAIN_SCHEME = {
 			'type': 'number',
 		},
 		'compilation_name': {
-			'type': 'name',
+			'type': 'string',
 		},
 	}
 }
