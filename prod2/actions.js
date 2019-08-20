@@ -20,8 +20,108 @@ var ID_LENGTH = {
   'category': 5
 }
 
+var MAIN_VALIDATION = {
+
+  post_newSeries: {
+    series_name: {
+      type: 'string'
+    }
+  },
+  get_allEpisodeData : {
+    series_ids: {
+      type:"number",
+      multiple:true,
+      optional : true
+    }
+  }
+}
+
+var ACTION_VALIDATION = MAIN_VALIDATION
+
 module.exports = {
 
+  ACTION_VALIDATION: ACTION_VALIDATION,
+  setActionValidation(actionValidation) {
+    ACTION_VALIDATION = actionValidation
+  },
+  resetActionValidation() {
+    ACTION_VALIDATION = MAIN_VALIDATION
+  },
+  //the above is for testing only
+
+
+  convertParams(baton, action, callback) {
+    var update_params = {}
+    var index = 0
+    var params = baton.params
+    Object.keys(ACTION_VALIDATION[action]).forEach(attr => {
+      if (params[attr] == null || params[attr] == undefined) update_params[attr] = null
+      else {
+        update_params[attr] = (baton.requestType == 'GET' ? params[attr].split(',') :params[attr]).map(arrayValue => {
+          if (baton.err.length === 0) {
+            switch (ACTION_VALIDATION[action][attr].type) {
+              case 'string':
+                return arrayValue
+                break
+              case 'number':
+                return parseInt(arrayValue)
+                break
+              case 'boolean':
+                if (arrayValue !== 'true' && arrayValue !== 'false') {
+                  return NaN
+                }
+                return arrayValue === 'true'
+                break
+            }
+          }
+        })
+      }
+      index++;
+      if (index === Object.keys(ACTION_VALIDATION[action]).length) {
+        baton.params = update_params
+        callback()
+      }
+    })
+  },
+
+  validateRequest(baton, action, callback) {
+    var t = this
+
+    function throwInvalidParam(attr, error_detail) {
+      baton.setError({
+        error_detail: error_detail,
+        action: action,
+        attr: attr,
+        public_message: 'Parameter validation error'
+      })
+      t._generateError(baton)
+    }
+
+    this.convertParams(baton, action, _ => {
+      var index = 0
+      var updated_params = baton.params
+      Object.keys(ACTION_VALIDATION[action]).every(attr => {
+        if (updated_params[attr] === null) {
+          if (ACTION_VALIDATION[action][attr].optional !== true) {
+            throwInvalidParam(attr, 'Attibute value missing')
+            return false
+          }
+        } else {
+          if (updated_params[attr].includes(NaN)) {
+            throwInvalidParam(attr, 'Invalid Attribute Type')
+            return false
+          } else if (ACTION_VALIDATION[action][attr].multiple !== true && updated_params[attr].length > 1) {
+            throwInvalidParam(attr, 'Single Value is Expected')
+            return false
+          }
+        }
+        if (ACTION_VALIDATION[action][attr].multiple !== true && updated_params[attr] !== null) updated_params[attr] = updated_params[attr][0]
+        index++;
+        if (index === Object.keys(ACTION_VALIDATION[action]).length) callback(baton.params)
+        else return true
+      })
+    })
+  },
   get_allSeriesData(params, res) {
     var baton = this._getBaton('get_allSeriesData', params, res);
     this.getAllSeriesData(baton, function(data) {
@@ -39,9 +139,8 @@ module.exports = {
     var t = this;
     var baton = this._getBaton('post_newSeries', params, res);
 
-    this._verifyParameter(baton, params.series_name, 'series', 'series_name', true /* singleValue */ , function(series_name) {
-      params.series_name = series_name;
-      getSeriesData();
+    this.validateRequest(baton, 'post_newSeries', _ => {
+      getSeriesData()
     })
 
     function getSeriesData() {
@@ -49,13 +148,14 @@ module.exports = {
     }
 
     function ensureUniqueSeriesName(series_data) {
+      var passedSeriesName = baton.params.series_name
       series_names = series_data.map(function(ser) {
         return ser.series_name.toLowerCase()
       })
-      if (series_names.includes(params.series_name.toLowerCase())) {
+      if (series_names.includes(passedSeriesName.toLowerCase())) {
         baton.setError({
           error: "existing series name",
-          series_name: params.series_name,
+          series_name: passedSeriesName,
           public_message: 'Series Name exists'
         })
         t._generateError(baton)
@@ -70,7 +170,7 @@ module.exports = {
       }));
       db.insertSeries(baton, {
         'series_id': id,
-        'series_name': params.series_name
+        'series_name': baton.params.series_name
       }, function(new_series) {
         t._handleDBCall(baton, new_series, false /*multiple*/ , function(data) {
           baton.json(data)
@@ -82,15 +182,10 @@ module.exports = {
     var t = this;
     var baton = this._getBaton('get_allEpisodeData', params, res);
 
-    if (params.series_ids && params.series_ids !== undefined) {
-      this._verifyParameter(baton, params.series_ids, 'episode', 'series_id', false, function(series_ids) {
-        params.series_ids = series_ids;
-        getEpisodeData()
-      })
-    } else {
-      params.series_ids == null;
+     this.validateRequest(baton, 'get_allEpisodeData', (updated_params) => {
+      params = updated_params
       getEpisodeData()
-    }
+    })
 
     function getEpisodeData() {
       t.getAllEpisodeData(baton, params.series_ids, function(data) {
@@ -115,13 +210,13 @@ module.exports = {
         compilation_ids: false,
         timestamp_ids: false
       } /*singleValues*/ , function(verified_params) {
-        callback(verified_params)  
+        callback(verified_params)
       })
     }
 
-    verifyParams(function(verified_params){
-       t.getAllCompilationData(baton, verified_params, function(data) {
-      baton.json(data)
+    verifyParams(function(verified_params) {
+      t.getAllCompilationData(baton, verified_params, function(data) {
+        baton.json(data)
       });
     })
   },
@@ -170,7 +265,7 @@ module.exports = {
           getCompilationTimestampData({
             compilation_ids: (compilation_data.length > 0 ? compilation_data.map((cp) => {
               return cp.compilation_id
-            }): null)
+            }) : null)
           }, function(filtered_compilation_timestamp) {
             callback(compilation_data, filtered_compilation_timestamp)
           })
@@ -241,20 +336,23 @@ module.exports = {
           t._generateError(baton)
           return
         }
-      }
-      else{
-         baton.setError({
-            timestamps: params.timestamps,
-            error: "Timestamps cannot be empty",
-            public_message: 'Required params not present'
-          })
-          t._generateError(baton)
-          return
+      } else {
+        baton.setError({
+          timestamps: params.timestamps,
+          error: "Timestamps cannot be empty",
+          public_message: 'Required params not present'
+        })
+        t._generateError(baton)
+        return
 
       }
-       t.ensure_TimestampIdExists(baton, {timestamp_id:[...new Set(params.timestamps.map(timestamp => {return timestamp.timestamp_id}))]}, function(){
-           createCompilationId(params, compilation_data, callback)
-        })
+      t.ensure_TimestampIdExists(baton, {
+        timestamp_id: [...new Set(params.timestamps.map(timestamp => {
+          return timestamp.timestamp_id
+        }))]
+      }, function() {
+        createCompilationId(params, compilation_data, callback)
+      })
     }
 
 
@@ -276,7 +374,12 @@ module.exports = {
 
     function insertCompilationTimestamps(compilation_id, timestamps, callback) {
       var values = timestamps.map(function(ts) {
-        return {compilation_id : compilation_id, timestamp_id:ts.timestamp_id, duration: ts.duration, start_time:ts.start_time}
+        return {
+          compilation_id: compilation_id,
+          timestamp_id: ts.timestamp_id,
+          duration: ts.duration,
+          start_time: ts.start_time
+        }
       })
       db.insertCompilationTimestamp(baton, values, function(data) {
         t._handleDBCall(baton, data, true /*multiple*/ , callback)
@@ -303,7 +406,7 @@ module.exports = {
             return
           } else {
             results.compilation.timestamps = params.timestamps
-           suc_callback(results.compilation)
+            suc_callback(results.compilation)
           }
         });
     }
@@ -731,7 +834,10 @@ module.exports = {
         tasks.categories = function(callback) {
           var category_values = [];
           params.category_ids.forEach(function(category) {
-            category_values.push({timestamp_id : params.timestamp_id[0], category_id : category});
+            category_values.push({
+              timestamp_id: params.timestamp_id[0],
+              category_id: category
+            });
           })
           db.insertTimestampCategory(baton, category_values, function(data) {
             t._handleDBCall(baton, data, true /*multiple*/ , callback)
@@ -742,7 +848,10 @@ module.exports = {
         tasks.characters = function(callback) {
           var character_values = [];
           params.character_ids.forEach(function(character) {
-            character_values.push({timestamp_id : params.timestamp_id[0],character_id: character});
+            character_values.push({
+              timestamp_id: params.timestamp_id[0],
+              character_id: character
+            });
           })
           db.insertTimestampCharacter(baton, character_values, function(data) {
             t._handleDBCall(baton, data, true /*multiple*/ , callback)
@@ -1122,15 +1231,16 @@ module.exports = {
       err: [],
       //the res for the request
       res: res,
-      requestType:"GET",
-      sendError:function(data){
+      requestType: "GET",
+      params: params,
+      sendError: function(data) {
         res.status(500).json(data)
       },
       json: function(data) {
         var end_time = new Date()
         this.duration = end_time.getTime() - this.start_time
         console.log(this.methods[0] + " | " + this.duration)
-        res.status((this.requestType == "GET"? 200 : 201)).json(data)
+        res.status((this.requestType == "GET" ? 200 : 201)).json(data)
       },
       //method sequence
       methods: [method],

@@ -9,7 +9,7 @@ var dbActions = require('../prod2/database_actions')
 function assertErrorMessage(res, msg) {
 	expect(res.endStatus).to.equal(500)
 	expect(res.data).to.have.property('error_message')
-	expect(res.data.error_message).to.contain(msg)
+	expect(res.data.error_message).to.equal(msg)
 }
 
 var TIMEOUT = 100;
@@ -37,6 +37,7 @@ describe('timestamp server tests', function() {
 
 		//surpress console.log
 		sandbox.stub(console, 'log').callsFake(function() {})
+
 
 		fakeRes = {
 			data: null,
@@ -113,6 +114,93 @@ describe('timestamp server tests', function() {
 
 	afterEach(function() {
 		sandbox.restore()
+	})
+
+	describe('request validation', function(){
+
+		var fakeBaton;
+
+		beforeEach(() => {
+			actions.setActionValidation({
+				testAction: {
+					attr_1: {
+						type: "number"
+					},
+					attr_2: {
+						type: "boolean",
+						optional: true
+					},
+					attr_3: {
+						type: "number",
+						multiple: true
+					}
+				}
+			})
+		})
+
+		afterEach(() => {
+			actions.resetActionValidation()
+		})
+
+		function createFakeBaton(params) {
+			return actions._getBaton('testAction', params, fakeRes)
+		}
+
+		it('should validate request params', function(done) {
+			var params = {
+				attr_1: "101",
+				attr_3: "101, 102"
+			}
+			actions.validateRequest(createFakeBaton(params), 'testAction', updated_params => {
+				expect(updated_params.attr_1).to.equal(101)
+				expect(updated_params.attr_3).to.deep.equal([101, 102])
+				done()
+			})
+		})
+
+		it('should throw non optional error', (done) => {
+			var params = {
+				attr_2:'true',
+				attr_3: "101, 102"
+			}
+			var fakeBaton = createFakeBaton(params)
+			actions.validateRequest(fakeBaton, 'testAction')
+			setTimeout(function() {
+				assertErrorMessage(fakeRes,'Parameter validation error')
+				expect(fakeBaton.err[0].error_detail).to.equal('Attibute value missing')
+				done()
+			}, TIMEOUT)
+		})
+
+		it('should throw non multiple error', (done) => {
+			var params = {
+				attr_1: "101, 102",
+				attr_3: "101,102"
+			}
+			var fakeBaton = createFakeBaton(params)
+			actions.validateRequest(fakeBaton, 'testAction')
+			setTimeout(function() {
+				assertErrorMessage(fakeRes,'Parameter validation error')
+				expect(fakeBaton.err[0].error_detail).to.equal('Single Value is Expected')
+				done()
+			}, TIMEOUT)
+		})
+
+		it('should throw invalid attribute type', (done) => {
+			var params = {
+				attr_1: "101",
+				attr_2: '101',
+				attr_3: "101,102"
+			}
+			var fakeBaton = createFakeBaton(params)
+			actions.validateRequest(fakeBaton, 'testAction')
+			setTimeout(function() {
+				assertErrorMessage(fakeRes,'Parameter validation error')
+				expect(fakeBaton.err[0].error_detail).to.equal('Invalid Attribute Type')
+				done()
+			}, TIMEOUT)
+		})
+
 	})
 
 	describe('series', function() {
@@ -201,7 +289,7 @@ describe('timestamp server tests', function() {
 			actions.get_allEpisodeData({
 				series_ids: "text"
 			}, fakeRes)
-			assertErrorMessage(fakeRes, 'Invalid value for series_id')
+			assertErrorMessage(fakeRes, 'Parameter validation error')
 		})
 
 		describe('inserting new episode', function() {
@@ -264,7 +352,7 @@ describe('timestamp server tests', function() {
 					episode_name: fakeEpisodeData[0].episode_name
 				}
 				actions.post_newEpisode(episode_data, fakeRes)
-				assertErrorMessage(fakeRes, 'Episode Name exists')
+				assertErrorMessage(fakeRes, 'Episode Name exists in series')
 			})
 
 			it('should create episode with same name, but in different series', function() {
@@ -762,8 +850,14 @@ describe('timestamp server tests', function() {
 					setTimeout(function() {
 						expect(fakeRes.data.character_ids).to.deep.equal([1, 2])
 						expect(fakeRes.data.category_ids).to.deep.equal([0, 1])
-						expect(fakeTimestampCharacterData[3]).to.deep.equal({timestamp_id:0, character_id:2});
-						expect(fakeTimestampCategoryData[2]).to.deep.equal({timestamp_id:0, category_id:0});
+						expect(fakeTimestampCharacterData[3]).to.deep.equal({
+							timestamp_id: 0,
+							character_id: 2
+						});
+						expect(fakeTimestampCategoryData[2]).to.deep.equal({
+							timestamp_id: 0,
+							category_id: 0
+						});
 						done()
 					}, TIMEOUT)
 				})
