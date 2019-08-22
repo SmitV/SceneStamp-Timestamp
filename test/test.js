@@ -328,13 +328,13 @@ describe('timestamp server tests', function() {
 					episode_name: "InTest Episode"
 				}
 				actions.post_newEpisode(episode_data, fakeRes)
-				assertErrorMessage(fakeRes, 'Required params not present')
+				assertErrorMessage(fakeRes, 'Parameter validation error')
 
 				episode_data = {
 					series_id: "0"
 				}
 				actions.post_newEpisode(episode_data, fakeRes)
-				assertErrorMessage(fakeRes, 'Required params not present')
+				assertErrorMessage(fakeRes, 'Parameter validation error')
 			})
 
 			it('should create throw error for invalid series', function() {
@@ -420,7 +420,7 @@ describe('timestamp server tests', function() {
 			actions.get_allCharacterData({
 				series_ids: "text"
 			}, fakeRes)
-			assertErrorMessage(fakeRes, 'Invalid value for series_id')
+			assertErrorMessage(fakeRes, 'Parameter validation error')
 		})
 
 		describe('inserting new character', function() {
@@ -457,13 +457,13 @@ describe('timestamp server tests', function() {
 					character_name: "Mark "
 				}
 				actions.post_newCharacter(values, fakeRes)
-				assertErrorMessage(fakeRes, 'Required params not present')
+				assertErrorMessage(fakeRes, 'Parameter validation error')
 
 				values = {
 					series_id: "0"
 				}
 				actions.post_newCharacter(values, fakeRes)
-				assertErrorMessage(fakeRes, 'Required params not present')
+				assertErrorMessage(fakeRes, 'Parameter validation error')
 			})
 
 			it('should create throw error for invalid series', function() {
@@ -526,10 +526,10 @@ describe('timestamp server tests', function() {
 				expect(fakeRes.data).to.deep.equal(category_values)
 			})
 
-			it('chould throw error for invalid params', function() {
+			it('should throw error for invalid params', function() {
 				var category_values = {}
 				actions.post_newCategory(category_values, fakeRes)
-				assertErrorMessage(fakeRes, 'Required params not present')
+				assertErrorMessage(fakeRes, 'Parameter validation error')
 			})
 
 
@@ -689,7 +689,7 @@ describe('timestamp server tests', function() {
 				episode_ids: 'text'
 			}, fakeRes)
 			setTimeout(function() {
-				assertErrorMessage(fakeRes, 'Invalid value for episode_ids')
+				assertErrorMessage(fakeRes, 'Parameter validation error')
 				done()
 			}, TIMEOUT)
 		})
@@ -700,7 +700,7 @@ describe('timestamp server tests', function() {
 				character_ids: 'text'
 			}, fakeRes)
 			setTimeout(function() {
-				assertErrorMessage(fakeRes, 'Invalid value for character_ids')
+				assertErrorMessage(fakeRes, 'Parameter validation error')
 				done()
 			}, TIMEOUT)
 		})
@@ -724,7 +724,7 @@ describe('timestamp server tests', function() {
 
 
 				sandbox.stub(dbActions, 'insertTimestamp').callsFake(function(baton, values, callback) {
-					fakeTimestampData.push(values)
+					fakeTimestampData = fakeTimestampData.concat(values)
 					callback(values)
 				})
 			})
@@ -752,7 +752,7 @@ describe('timestamp server tests', function() {
 				}
 				actions.post_newTimestamp(values, fakeRes)
 				setTimeout(function() {
-					assertErrorMessage(fakeRes, 'Invalid value for start_time')
+					assertErrorMessage(fakeRes, 'Parameter validation error')
 					done()
 				}, TIMEOUT)
 			})
@@ -764,7 +764,7 @@ describe('timestamp server tests', function() {
 				}
 				actions.post_newTimestamp(values, fakeRes)
 				setTimeout(function() {
-					assertErrorMessage(fakeRes, 'Invalid value for episode_id')
+					assertErrorMessage(fakeRes, 'Parameter validation error')
 					done()
 				}, TIMEOUT)
 			})
