@@ -82,19 +82,15 @@ describe('timestamp server tests', function() {
 		}];
 
 		fakeCharacterData = [{
-			"series_id": 0,
 			"character_name": "Character 1",
 			"character_id": 1
 		}, {
-			"series_id": 0,
 			"character_name": "Character 2",
 			"character_id": 2
 		}, {
-			"series_id": 1,
 			"character_name": "Character 3",
 			"character_id": 3
 		}, {
-			"series_id": 1,
 			"character_name": "Character 4",
 			"character_id": 4
 		}];
@@ -386,12 +382,7 @@ describe('timestamp server tests', function() {
 
 		beforeEach(function() {
 			//stub get all series dat for all tests
-			sandbox.stub(dbActions, 'getAllCharacterData').callsFake(function(baton, series_ids, callback) {
-				if (series_ids && series_ids.length > 0) {
-					return callback(fakeCharacterData.filter(function(ch) {
-						return series_ids.includes(ch.series_id)
-					}))
-				}
+			sandbox.stub(dbActions, 'getAllCharacterData').callsFake(function(baton, callback) {
 				return callback(fakeCharacterData)
 			})
 		})
@@ -402,26 +393,6 @@ describe('timestamp server tests', function() {
 			expect(fakeRes.data).equal(fakeCharacterData)
 		})
 
-		it('should filter by one series id', function() {
-			actions.get_allCharacterData({
-				series_ids: "0"
-			}, fakeRes)
-			expect(fakeRes.data.length).equal(2)
-		})
-
-		it('should filter by multiple series id', function() {
-			actions.get_allCharacterData({
-				series_ids: "0,1"
-			}, fakeRes)
-			expect(fakeRes.data.length).equal(fakeCharacterData.length)
-		})
-
-		it('should throw error for invalid series_ids param', function() {
-			actions.get_allCharacterData({
-				series_ids: "text"
-			}, fakeRes)
-			assertErrorMessage(fakeRes, 'Parameter validation error')
-		})
 
 		describe('inserting new character', function() {
 
@@ -444,44 +415,24 @@ describe('timestamp server tests', function() {
 			it('should create new character', function() {
 				var values = {
 					character_name: "Mark",
-					series_id: "0"
 				}
 				actions.post_newCharacter(values, fakeRes)
 				values.character_id = 10;
-				values.series_id = parseInt(values.series_id)
 				expect(fakeRes.data).to.deep.equal(values)
 			})
 
-			it('should throw error for requiring series_id & character_name', function() {
-				var values = {
-					character_name: "Mark "
-				}
-				actions.post_newCharacter(values, fakeRes)
+			it('should throw error for requiring character_name', function() {
+				actions.post_newCharacter({}, fakeRes)
 				assertErrorMessage(fakeRes, 'Parameter validation error')
 
-				values = {
-					series_id: "0"
-				}
-				actions.post_newCharacter(values, fakeRes)
-				assertErrorMessage(fakeRes, 'Parameter validation error')
 			})
 
-			it('should create throw error for invalid series', function() {
+			it('should create throw error for existing character name ', function() {
 				var values = {
-					character_name: "Mark",
-					series_id: "3"
+					character_name: fakeCharacterData[0].character_name
 				}
 				actions.post_newCharacter(values, fakeRes)
-				assertErrorMessage(fakeRes, 'Invalid Series Id')
-			})
-
-			it('should create throw error for existing character name in same series', function() {
-				var values = {
-					character_name: fakeCharacterData[0].character_name,
-					series_id: "0"
-				}
-				actions.post_newCharacter(values, fakeRes)
-				assertErrorMessage(fakeRes, 'Character Name exists in series')
+				assertErrorMessage(fakeRes, 'Character Name already exists')
 			})
 
 		})
@@ -786,12 +737,7 @@ describe('timestamp server tests', function() {
 				beforeEach(function() {
 
 					//ensure character data matches series data
-					sandbox.stub(dbActions, 'getAllCharacterData').callsFake(function(baton, series_ids, callback) {
-						if (series_ids && series_ids.length > 0) {
-							return callback(fakeCharacterData.filter(function(ch) {
-								return series_ids.includes(ch.series_id)
-							}))
-						}
+					sandbox.stub(dbActions, 'getAllCharacterData').callsFake(function(baton, callback) {
 						return callback(fakeCharacterData)
 					})
 
@@ -863,22 +809,9 @@ describe('timestamp server tests', function() {
 				})
 
 				it('should throw error for invalid character', function(done) {
-					var values = {
+				var values = {
 						timestamp_id: "0",
 						character_ids: "10",
-						category_ids: "0,1"
-					}
-					actions.post_updateTimestamp(values, fakeRes)
-					setTimeout(function() {
-						assertErrorMessage(fakeRes, 'Invalid characters')
-						done()
-					}, TIMEOUT)
-				})
-
-				it('should throw error for valid character in different series', function(done) {
-					var values = {
-						timestamp_id: "0",
-						character_ids: "4",
 						category_ids: "0,1"
 					}
 					actions.post_updateTimestamp(values, fakeRes)

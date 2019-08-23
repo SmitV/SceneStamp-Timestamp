@@ -62,9 +62,6 @@ var MAIN_VALIDATION = {
     }
   },
   post_newCharacter: {
-    series_id: {
-      type: "number"
-    },
     character_name: {
       type: "string"
     }
@@ -624,20 +621,20 @@ module.exports = {
     var baton = this._getBaton('get_allCharacterData', params, res);
 
     this.validateRequest(baton, params, 'get_allCharacterData', update_params => {
-      getCharacterData((update_params.series_ids == undefined ? null : update_params.series_ids))
+      getCharacterData()
     })
 
-    function getCharacterData(series_ids) {
-      t.getAllCharacterData(baton, series_ids, function(data) {
+    function getCharacterData() {
+      t.getAllCharacterData(baton, function(data) {
         baton.json(data)
       })
     }
   },
 
-  getAllCharacterData(baton, series_ids, callback) {
+  getAllCharacterData(baton, callback) {
     baton.addMethod('getAllCharacterData');
     var t = this;
-    db.getAllCharacterData(baton, series_ids, function(data) {
+    db.getAllCharacterData(baton, function(data) {
       t._handleDBCall(baton, data, false /*multiple*/ , callback)
     })
   },
@@ -646,38 +643,45 @@ module.exports = {
     var t = this;
     var baton = this._getBaton('post_newCharacter', params, res);
 
-    function ensureCharacterIsUnique(params, callback) {
-      t.getAllCharacterData(baton, [params.series_id], function(character_data) {
+     function ensureCharacterNameIsUnique(params, callback) {
+      t.getAllCharacterData(baton, function(character_data) {
         if (character_data.map(function(ch) {
             return ch.character_name.toLowerCase()
           }).includes(params.character_name.toLowerCase())) {
           baton.setError({
             character_name: params.character_name,
             series_id: params.series_id,
-            error: "Character Name exists in series",
-            public_message: 'Character Name exists in series'
+            error: "Character Name exists",
+            public_message: 'Character Name already exists'
           })
           t._generateError(baton)
           return
         }
-        //update params to include generated id
-        params.character_id = t._generateId(ID_LENGTH.character, character_data.map(function(ch) {
+        callback()
+      })
+    }
+
+
+    function addCharacterId(params, callback){
+       //update params to include generated id
+       t.getAllCharacterData(baton, function(character_data) {
+         params.character_id = t._generateId(ID_LENGTH.character, character_data.map(function(ch) {
           return ch.character_id
         }))
         callback(params)
-      })
+       })
     }
 
     function verifyParams(callback) {
       t.validateRequest(baton, params, 'post_newCharacter', updated_params => {
-        t.ensure_SeriesIdExists(baton, updated_params, function() {
-          ensureCharacterIsUnique(updated_params, callback)
+        ensureCharacterNameIsUnique(params, _ =>{
+          addCharacterId(updated_params, callback)
         })
       })
     }
 
     function insertNewCharacter(params, callback) {
-      db.insertCharacter(baton, params, function(data) {
+      db.insertCharacter(baton,params,function(data) {
         t._handleDBCall(baton, data, false /*multiple*/ , callback)
       })
     }
@@ -958,7 +962,7 @@ module.exports = {
         episode_id: timestamp.episode_id
       }, function(episode) {
         episode = episode[0]
-        t.getAllCharacterData(baton, [episode.series_id], function(series_characters) {
+        t.getAllCharacterData(baton, function(series_characters) {
           if (t._intersection(characters, series_characters.map(function(character) {
               return character.character_id
             })).length !== characters.length) {
@@ -989,7 +993,10 @@ module.exports = {
 
         if (params.character_ids) {
           tasks.push(function(callback) {
-            ensureCharactersFromSameSeries(params.character_ids, timestamp_data[0], callback)
+            t.ensure_CharacterIdsExist(baton, params.character_ids, function(err) {
+              if (err) baton.setError(err)
+              callback()
+            })
           })
         }
         after_task_created_callback(tasks)
@@ -1038,6 +1045,23 @@ module.exports = {
           category_ids: categories,
           error: "Invalid category ids",
           public_message: 'Invalid categories'
+        })
+        return
+      }
+      callback()
+    })
+  },
+
+  ensure_CharacterIdsExist(baton, characters, callback) {
+    var t = this;
+    t.getAllCharacterData(baton,function(character_data) {
+      if (t._intersection(character_data.map(function(cha) {
+          return cha.character_id;
+        }), characters).length != characters.length) {
+        callback({
+          character_ids: characters,
+          error: "Invalid character ids",
+          public_message: 'Invalid characters'
         })
         return
       }

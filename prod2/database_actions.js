@@ -51,9 +51,6 @@ const MAIN_SCHEME = {
 		},
 		'character_name': {
 			'type': 'string',
-		},
-		'series_id': {
-			'type': 'number'
 		}
 	},
 	'timestamp': {
@@ -117,7 +114,7 @@ GENERAL DESIGN
  */
 
 module.exports = {
-	
+
 	SCHEME: DB_SCHEME,
 	setScheme(scheme) {
 		DB_SCHEME = scheme;
@@ -150,11 +147,9 @@ module.exports = {
 			callback(values)
 		});
 	},
-	getAllCharacterData(baton, series_ids, callback) {
+	getAllCharacterData(baton, callback) {
 		baton.addMethod(this._formatMethod('getAllCharacterData'))
-		this._selectQuery('character', null, (series_ids ? {
-			'series_id': series_ids
-		} : null), baton, callback)
+		this._selectQuery('character', null, null, baton, callback)
 	},
 	insertCharacter(baton, values, callback) {
 		baton.addMethod(this._formatMethod('insertCharacter'))
