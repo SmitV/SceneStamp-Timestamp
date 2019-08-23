@@ -109,63 +109,6 @@ const MAIN_SCHEME = {
 
 var DB_SCHEME = MAIN_SCHEME
 
-var DB_TABLES = {
-	'episode': {
-		"episode_id": "number",
-		"episode_name": "string",
-		"season": "number",
-		"episode": "number",
-		"air_date": "number",
-		"series_id": "number"
-	},
-	'category': {
-		"category_id": "number",
-		"category_name": "string"
-	},
-	'character': {
-		"series_id": "number",
-		"character_name": "string",
-		"character_id": "number"
-	},
-	'series': {
-		"series_id": "number",
-		"series_name": "string"
-	},
-	'timestamp': {
-		"timestamp_id": "number",
-		"start_time": "number",
-		"episode_id": "number",
-		"character_ids": "number",
-		"category_ids": "number",
-		//for filtering 
-		"episode_ids": "number",
-		"clearCategories": "boolean",
-		"clearCharacters": "boolean"
-	},
-	'timestamp_category': {
-		"timestamp_id": "number",
-		"category_id": "number"
-	},
-	'timestamp_characters': {
-		"timestamp_id": "number",
-		"character_id": "number"
-	},
-	'compilation': {
-		'compilation_id': 'number',
-		'compilation_name': 'string',
-		'timestamps': 'object',
-		//filtering
-		'timestamp_ids': 'number',
-		'compilation_ids': 'number'
-	},
-	'compilation_timestamp': {
-		'compilation_id': 'number',
-		'timestamp_id': 'number',
-		'duration': 'number',
-		'start_time': 'number'
-	}
-};
-
 
 /**
 GENERAL DESIGN
@@ -174,8 +117,7 @@ GENERAL DESIGN
  */
 
 module.exports = {
-
-	TABLES: DB_TABLES,
+	
 	SCHEME: DB_SCHEME,
 	setScheme(scheme) {
 		DB_SCHEME = scheme;
