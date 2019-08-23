@@ -9,7 +9,7 @@ var dbActions = require('../prod2/database_actions')
 function assertErrorMessage(res, msg) {
 	expect(res.endStatus).to.equal(500)
 	expect(res.data).to.have.property('error_message')
-	expect(res.data.error_message).to.contain(msg)
+	expect(res.data.error_message).to.equal(msg)
 }
 
 var TIMEOUT = 100;
@@ -37,6 +37,7 @@ describe('timestamp server tests', function() {
 
 		//surpress console.log
 		sandbox.stub(console, 'log').callsFake(function() {})
+
 
 		fakeRes = {
 			data: null,
@@ -113,6 +114,93 @@ describe('timestamp server tests', function() {
 
 	afterEach(function() {
 		sandbox.restore()
+	})
+
+	describe('request validation', function(){
+
+		var fakeBaton;
+
+		beforeEach(() => {
+			actions.setActionValidation({
+				testAction: {
+					attr_1: {
+						type: "number"
+					},
+					attr_2: {
+						type: "boolean",
+						optional: true
+					},
+					attr_3: {
+						type: "number",
+						multiple: true
+					}
+				}
+			})
+		})
+
+		afterEach(() => {
+			actions.resetActionValidation()
+		})
+
+		function createFakeBaton(params) {
+			return actions._getBaton('testAction', params, fakeRes)
+		}
+
+		it('should validate request params', function(done) {
+			var params = {
+				attr_1: "101",
+				attr_3: "101, 102"
+			}
+			actions.validateRequest(createFakeBaton(params),params, 'testAction', updated_params => {
+				expect(updated_params.attr_1).to.equal(101)
+				expect(updated_params.attr_3).to.deep.equal([101, 102])
+				done()
+			})
+		})
+
+		it('should throw non optional error', (done) => {
+			var params = {
+				attr_2:'true',
+				attr_3: "101, 102"
+			}
+			var fakeBaton = createFakeBaton(params)
+			actions.validateRequest(fakeBaton, params,'testAction')
+			setTimeout(function() {
+				assertErrorMessage(fakeRes,'Parameter validation error')
+				expect(fakeBaton.err[0].error_detail).to.equal('Attibute value missing')
+				done()
+			}, TIMEOUT)
+		})
+
+		it('should throw non multiple error', (done) => {
+			var params = {
+				attr_1: "101, 102",
+				attr_3: "101,102"
+			}
+			var fakeBaton = createFakeBaton(params)
+			actions.validateRequest(fakeBaton, params,'testAction')
+			setTimeout(function() {
+				assertErrorMessage(fakeRes,'Parameter validation error')
+				expect(fakeBaton.err[0].error_detail).to.equal('Single Value is Expected')
+				done()
+			}, TIMEOUT)
+		})
+
+		it('should throw invalid attribute type', (done) => {
+			var params = {
+				attr_1: "101",
+				attr_2: '101',
+				attr_3: "101,102"
+			}
+			var fakeBaton = createFakeBaton(params)
+			actions.validateRequest(fakeBaton, params,'testAction')
+			setTimeout(function() {
+				assertErrorMessage(fakeRes,'Parameter validation error')
+				expect(fakeBaton.err[0].error_detail).to.equal('Invalid Attribute Type')
+				done()
+			}, TIMEOUT)
+		})
+
 	})
 
 	describe('series', function() {
@@ -201,7 +289,7 @@ describe('timestamp server tests', function() {
 			actions.get_allEpisodeData({
 				series_ids: "text"
 			}, fakeRes)
-			assertErrorMessage(fakeRes, 'Invalid value for series_id')
+			assertErrorMessage(fakeRes, 'Parameter validation error')
 		})
 
 		describe('inserting new episode', function() {
@@ -240,13 +328,13 @@ describe('timestamp server tests', function() {
 					episode_name: "InTest Episode"
 				}
 				actions.post_newEpisode(episode_data, fakeRes)
-				assertErrorMessage(fakeRes, 'Required params not present')
+				assertErrorMessage(fakeRes, 'Parameter validation error')
 
 				episode_data = {
 					series_id: "0"
 				}
 				actions.post_newEpisode(episode_data, fakeRes)
-				assertErrorMessage(fakeRes, 'Required params not present')
+				assertErrorMessage(fakeRes, 'Parameter validation error')
 			})
 
 			it('should create throw error for invalid series', function() {
@@ -264,7 +352,7 @@ describe('timestamp server tests', function() {
 					episode_name: fakeEpisodeData[0].episode_name
 				}
 				actions.post_newEpisode(episode_data, fakeRes)
-				assertErrorMessage(fakeRes, 'Episode Name exists')
+				assertErrorMessage(fakeRes, 'Episode Name exists in series')
 			})
 
 			it('should create episode with same name, but in different series', function() {
@@ -332,7 +420,7 @@ describe('timestamp server tests', function() {
 			actions.get_allCharacterData({
 				series_ids: "text"
 			}, fakeRes)
-			assertErrorMessage(fakeRes, 'Invalid value for series_id')
+			assertErrorMessage(fakeRes, 'Parameter validation error')
 		})
 
 		describe('inserting new character', function() {
@@ -369,13 +457,13 @@ describe('timestamp server tests', function() {
 					character_name: "Mark "
 				}
 				actions.post_newCharacter(values, fakeRes)
-				assertErrorMessage(fakeRes, 'Required params not present')
+				assertErrorMessage(fakeRes, 'Parameter validation error')
 
 				values = {
 					series_id: "0"
 				}
 				actions.post_newCharacter(values, fakeRes)
-				assertErrorMessage(fakeRes, 'Required params not present')
+				assertErrorMessage(fakeRes, 'Parameter validation error')
 			})
 
 			it('should create throw error for invalid series', function() {
@@ -438,10 +526,10 @@ describe('timestamp server tests', function() {
 				expect(fakeRes.data).to.deep.equal(category_values)
 			})
 
-			it('chould throw error for invalid params', function() {
+			it('should throw error for invalid params', function() {
 				var category_values = {}
 				actions.post_newCategory(category_values, fakeRes)
-				assertErrorMessage(fakeRes, 'Required params not present')
+				assertErrorMessage(fakeRes, 'Parameter validation error')
 			})
 
 
@@ -601,7 +689,7 @@ describe('timestamp server tests', function() {
 				episode_ids: 'text'
 			}, fakeRes)
 			setTimeout(function() {
-				assertErrorMessage(fakeRes, 'Invalid value for episode_ids')
+				assertErrorMessage(fakeRes, 'Parameter validation error')
 				done()
 			}, TIMEOUT)
 		})
@@ -612,7 +700,7 @@ describe('timestamp server tests', function() {
 				character_ids: 'text'
 			}, fakeRes)
 			setTimeout(function() {
-				assertErrorMessage(fakeRes, 'Invalid value for character_ids')
+				assertErrorMessage(fakeRes, 'Parameter validation error')
 				done()
 			}, TIMEOUT)
 		})
@@ -636,7 +724,7 @@ describe('timestamp server tests', function() {
 
 
 				sandbox.stub(dbActions, 'insertTimestamp').callsFake(function(baton, values, callback) {
-					fakeTimestampData.push(values)
+					fakeTimestampData = fakeTimestampData.concat(values)
 					callback(values)
 				})
 			})
@@ -664,7 +752,7 @@ describe('timestamp server tests', function() {
 				}
 				actions.post_newTimestamp(values, fakeRes)
 				setTimeout(function() {
-					assertErrorMessage(fakeRes, 'Invalid value for start_time')
+					assertErrorMessage(fakeRes, 'Parameter validation error')
 					done()
 				}, TIMEOUT)
 			})
@@ -676,7 +764,7 @@ describe('timestamp server tests', function() {
 				}
 				actions.post_newTimestamp(values, fakeRes)
 				setTimeout(function() {
-					assertErrorMessage(fakeRes, 'Invalid value for episode_id')
+					assertErrorMessage(fakeRes, 'Parameter validation error')
 					done()
 				}, TIMEOUT)
 			})
@@ -762,8 +850,14 @@ describe('timestamp server tests', function() {
 					setTimeout(function() {
 						expect(fakeRes.data.character_ids).to.deep.equal([1, 2])
 						expect(fakeRes.data.category_ids).to.deep.equal([0, 1])
-						expect(fakeTimestampCharacterData[3]).to.deep.equal({timestamp_id:0, character_id:2});
-						expect(fakeTimestampCategoryData[2]).to.deep.equal({timestamp_id:0, category_id:0});
+						expect(fakeTimestampCharacterData[3]).to.deep.equal({
+							timestamp_id: 0,
+							character_id: 2
+						});
+						expect(fakeTimestampCategoryData[2]).to.deep.equal({
+							timestamp_id: 0,
+							category_id: 0
+						});
 						done()
 					}, TIMEOUT)
 				})
@@ -859,7 +953,18 @@ describe('timestamp server tests', function() {
 				"start_time": 10
 			}, {
 				"compilation_id": 102,
-				"timestamp_id": 1,
+				"timestamp_id": 2,
+				"duration": 30,
+				"start_time": 10
+			},
+			{
+				"compilation_id": 103,
+				"timestamp_id": 0,
+				"duration": 30,
+				"start_time": 10
+			}, {
+				"compilation_id": 103,
+				"timestamp_id": 2,
 				"duration": 30,
 				"start_time": 10
 			}]
@@ -1069,7 +1174,7 @@ describe('timestamp server tests', function() {
 					}]
 				}
 				actions.post_newCompilation(values, fakeRes)
-				assertErrorMessage(fakeRes, 'Required params not present')
+				assertErrorMessage(fakeRes, 'Parameter validation error')
 			})
 
 			it('should throw for empty timestamp', function() {
@@ -1077,19 +1182,29 @@ describe('timestamp server tests', function() {
 					compilation_name: "InTest Compilation",
 				}
 				actions.post_newCompilation(values, fakeRes)
-				assertErrorMessage(fakeRes, 'Required params not present')
+				assertErrorMessage(fakeRes, 'Parameter validation error')
 			})
 
 			//should throw for invalid timesatmp id for filtering
 
 			it('should throw for required param compilation name', function() {
 				actions.post_newCompilation({}, fakeRes)
-				assertErrorMessage(fakeRes, 'Required params not present')
+				assertErrorMessage(fakeRes, 'Parameter validation error')
 			})
 
 			it('should throw for same compilation name', function() {
 				var values = {
-					compilation_name: fakeCompilationData[0].compilation_name
+					compilation_name: fakeCompilationData[0].compilation_name,
+					timestamps: [{
+						timestamp_id: 1,
+						duration: 10,
+						start_time: 100
+					}, {
+						timestamp_id:1,
+						duration: 10,
+						start_time: 100
+					}]
+
 				}
 				actions.post_newCompilation(values, fakeRes)
 				assertErrorMessage(fakeRes, 'Compilation name already used')
