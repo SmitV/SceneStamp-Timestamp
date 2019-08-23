@@ -151,7 +151,7 @@ describe('timestamp server tests', function() {
 				attr_1: "101",
 				attr_3: "101, 102"
 			}
-			actions.validateRequest(createFakeBaton(params), 'testAction', updated_params => {
+			actions.validateRequest(createFakeBaton(params),params, 'testAction', updated_params => {
 				expect(updated_params.attr_1).to.equal(101)
 				expect(updated_params.attr_3).to.deep.equal([101, 102])
 				done()
@@ -164,7 +164,7 @@ describe('timestamp server tests', function() {
 				attr_3: "101, 102"
 			}
 			var fakeBaton = createFakeBaton(params)
-			actions.validateRequest(fakeBaton, 'testAction')
+			actions.validateRequest(fakeBaton, params,'testAction')
 			setTimeout(function() {
 				assertErrorMessage(fakeRes,'Parameter validation error')
 				expect(fakeBaton.err[0].error_detail).to.equal('Attibute value missing')
@@ -178,7 +178,7 @@ describe('timestamp server tests', function() {
 				attr_3: "101,102"
 			}
 			var fakeBaton = createFakeBaton(params)
-			actions.validateRequest(fakeBaton, 'testAction')
+			actions.validateRequest(fakeBaton, params,'testAction')
 			setTimeout(function() {
 				assertErrorMessage(fakeRes,'Parameter validation error')
 				expect(fakeBaton.err[0].error_detail).to.equal('Single Value is Expected')
@@ -193,7 +193,7 @@ describe('timestamp server tests', function() {
 				attr_3: "101,102"
 			}
 			var fakeBaton = createFakeBaton(params)
-			actions.validateRequest(fakeBaton, 'testAction')
+			actions.validateRequest(fakeBaton, params,'testAction')
 			setTimeout(function() {
 				assertErrorMessage(fakeRes,'Parameter validation error')
 				expect(fakeBaton.err[0].error_detail).to.equal('Invalid Attribute Type')
@@ -953,7 +953,18 @@ describe('timestamp server tests', function() {
 				"start_time": 10
 			}, {
 				"compilation_id": 102,
-				"timestamp_id": 1,
+				"timestamp_id": 2,
+				"duration": 30,
+				"start_time": 10
+			},
+			{
+				"compilation_id": 103,
+				"timestamp_id": 0,
+				"duration": 30,
+				"start_time": 10
+			}, {
+				"compilation_id": 103,
+				"timestamp_id": 2,
 				"duration": 30,
 				"start_time": 10
 			}]
@@ -1163,7 +1174,7 @@ describe('timestamp server tests', function() {
 					}]
 				}
 				actions.post_newCompilation(values, fakeRes)
-				assertErrorMessage(fakeRes, 'Required params not present')
+				assertErrorMessage(fakeRes, 'Parameter validation error')
 			})
 
 			it('should throw for empty timestamp', function() {
@@ -1171,19 +1182,29 @@ describe('timestamp server tests', function() {
 					compilation_name: "InTest Compilation",
 				}
 				actions.post_newCompilation(values, fakeRes)
-				assertErrorMessage(fakeRes, 'Required params not present')
+				assertErrorMessage(fakeRes, 'Parameter validation error')
 			})
 
 			//should throw for invalid timesatmp id for filtering
 
 			it('should throw for required param compilation name', function() {
 				actions.post_newCompilation({}, fakeRes)
-				assertErrorMessage(fakeRes, 'Required params not present')
+				assertErrorMessage(fakeRes, 'Parameter validation error')
 			})
 
 			it('should throw for same compilation name', function() {
 				var values = {
-					compilation_name: fakeCompilationData[0].compilation_name
+					compilation_name: fakeCompilationData[0].compilation_name,
+					timestamps: [{
+						timestamp_id: 1,
+						duration: 10,
+						start_time: 100
+					}, {
+						timestamp_id:1,
+						duration: 10,
+						start_time: 100
+					}]
+
 				}
 				actions.post_newCompilation(values, fakeRes)
 				assertErrorMessage(fakeRes, 'Compilation name already used')
