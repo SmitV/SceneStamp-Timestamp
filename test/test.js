@@ -105,7 +105,7 @@ describe('timestamp server tests', function() {
 		sandbox.restore()
 	})
 
-	describe('request validation', function(){
+	describe('request validation', function() {
 
 		var fakeBaton;
 
@@ -264,14 +264,18 @@ describe('timestamp server tests', function() {
 			actions.get_allEpisodeData({
 				series_ids: "0"
 			}, fakeRes)
-			expect(fakeRes.data.length).equal(fakeEpisodeData.filter(ep => {return ep.series_id == 0}).length)
+			expect(fakeRes.data.length).equal(fakeEpisodeData.filter(ep => {
+				return ep.series_id == 0
+			}).length)
 		})
 
 		it('should filter by multiple series id', function() {
 			actions.get_allEpisodeData({
 				series_ids: "0,1"
 			}, fakeRes)
-			expect(fakeRes.data.length).equal(fakeEpisodeData.filter(ep => {return ep.series_id == 1 ||ep.series_id == 0}).length)
+			expect(fakeRes.data.length).equal(fakeEpisodeData.filter(ep => {
+				return ep.series_id == 1 || ep.series_id == 0
+			}).length)
 		})
 
 		it('should throw error for invalid series_ids param', function() {
@@ -313,7 +317,7 @@ describe('timestamp server tests', function() {
 			it('should create new episode with optional series_id', function() {
 				var episode_data = {
 					episode_name: "InTest Episode",
-					series_id:'0',
+					series_id: '0',
 				}
 				actions.post_newEpisode(episode_data, fakeRes)
 				expect(fakeRes.data).to.deep.equal({
@@ -323,9 +327,37 @@ describe('timestamp server tests', function() {
 				})
 			})
 
+			it('should create new episode with optional youtube link', function() {
+				var testYoutubeId = 'hvTKfVQWU40'
+				var episode_data = {
+					episode_name: "InTest Episode",
+					series_id: '0',
+					youtube_link: 'https://www.youtube.com/watch?v='+testYoutubeId
+				}
+				actions.post_newEpisode(episode_data, fakeRes)
+				expect(fakeRes.data).to.deep.equal({
+					episode_name: episode_data.episode_name,
+					episode_id: 10,
+					series_id: 0,
+					youtube_id:testYoutubeId,
+					youtube_link: 'https://www.youtube.com/watch?v='+testYoutubeId
+				})
+			})
+
+			it('should throw for invalid youtube link', function() {
+				var testYoutubeId = 'jkPkbEqS-Ps'
+				var episode_data = {
+					episode_name: "InTest Episode",
+					series_id: '0',
+					youtube_link: 'https://www.youtube.com/='+testYoutubeId //invalid youtube url
+				}
+				actions.post_newEpisode(episode_data, fakeRes)
+				assertErrorMessage(fakeRes, 'Invalid Youtube Link')
+			})
+
 
 			it('should throw error for requiring episode_name', function() {
-				
+
 				actions.post_newEpisode({}, fakeRes)
 				assertErrorMessage(fakeRes, 'Parameter validation error')
 			})

@@ -174,8 +174,27 @@ describe('db tests', () => {
 			}
 
 			dbActions.insertEpisode(fakeBaton, values, () => {
-				expect(sqlQuery).to.equal('INSERT INTO `episode` (episode_id,episode_name,series_id,air_date) VALUES ?');
+				expect(sqlQuery).to.equal('INSERT INTO `episode` (episode_id,episode_name,series_id,air_date,youtube_id) VALUES ?');
 				values.air_date = null
+				values.youtube_id = null
+				expect(sqlValues).to.deep.equal([jsonToArray([values])])
+			})
+		})
+
+		it('insert new episode with youtube id', () => {
+
+			var values = {
+				episode_id: 101,
+				episode_name: 'InTest Episode',
+				series_id: 1,
+				youtube_id: 'abc'
+			}
+
+			dbActions.insertEpisode(fakeBaton, values, () => {
+				expect(sqlQuery).to.equal('INSERT INTO `episode` (episode_id,episode_name,series_id,air_date,youtube_id) VALUES ?');
+				delete values.youtube_id
+				values.air_date = null
+				values.youtube_id = 'abc'
 				expect(sqlValues).to.deep.equal([jsonToArray([values])])
 			})
 		})

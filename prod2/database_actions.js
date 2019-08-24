@@ -28,6 +28,10 @@ const MAIN_SCHEME = {
 		'air_date': {
 			'type': 'number',
 			'optional': true
+		},
+		'youtube_id':{
+			'type':'string',
+			'optional': true
 		}
 	},
 	'category': {

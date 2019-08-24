@@ -35,15 +35,19 @@ var MAIN_VALIDATION = {
     }
   },
   post_newEpisode: {
+    episode_name: {
+      type: "string"
+    },
     series_id: {
       type: "number",
       optional: true
     },
-    episode_name: {
-      type: "string"
-    },
     air_date: {
       type: "number",
+      optional: true
+    },
+    youtube_link: {
+      type: 'string',
       optional: true
     }
   },
@@ -537,7 +541,7 @@ module.exports = {
     var t = this;
     var baton = this._getBaton('post_newEpisode', params, res);
 
-    function ensureEpisodeIsUnique(params, callback) {
+    function ensureEpisodeNameIsUnique(params, callback) {
       t.getAllEpisodeData(baton, null, function(episode_data) {
         if (episode_data.map(function(ep) {
             return ep.episode_name.toLowerCase()
@@ -558,13 +562,37 @@ module.exports = {
       })
     }
 
+    function youtubeLinkParser(url) {
+      var regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#\&\?]*).*/;
+      var match = url.match(regExp);
+      if (match && match[7].length == 11) {
+        return match[7];
+      } else {
+        return null
+      }
+    }
+
     function ensureRequiredParamsPresent(params, callback) {
+      if (params.youtube_link !== null && params.youtube_link !== undefined) {
+        var youtubeId = youtubeLinkParser(params.youtube_link)
+        if (youtubeId == null) {
+          baton.setError({
+            youtube_link: params.youtube_link,
+            youtube_id: youtubeId,
+            error: "Youtube Link is not valid, pattern wise",
+            public_message: 'Invalid Youtube Link'
+          })
+          t._generateError(baton)
+          return
+        }
+        params.youtube_id = youtubeId
+      }
       if (params.series_id !== null && params.series_id !== undefined) {
         t.ensure_SeriesIdExists(baton, params, function() {
-          ensureEpisodeIsUnique(params, callback)
+          ensureEpisodeNameIsUnique(params, callback)
         })
       } else {
-        ensureEpisodeIsUnique(params, callback)
+        ensureEpisodeNameIsUnique(params, callback)
       }
     }
 
