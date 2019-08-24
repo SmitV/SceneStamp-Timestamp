@@ -541,7 +541,7 @@ module.exports = {
     var t = this;
     var baton = this._getBaton('post_newEpisode', params, res);
 
-    function ensureEpisodeNameIsUnique(params, callback) {
+    function ensureEpisodeParamsIsUnique(params, callback) {
       t.getAllEpisodeData(baton, null, function(episode_data) {
         if (episode_data.map(function(ep) {
             return ep.episode_name.toLowerCase()
@@ -550,6 +550,18 @@ module.exports = {
             episode_name: params.episode_name,
             error: "Episode Name exists",
             public_message: 'Episode Name exists'
+          })
+          t._generateError(baton)
+          return
+        }
+        if (params.youtube_id !== undefined && episode_data.find(function(ep) {
+            return ep.youtube_id == params.youtube_id
+          }) !== undefined) {
+          baton.setError({
+            youtube_id: params.youtube_id,
+            youtube_link: params.youtube_link,
+            error: "Episode exists with youtube id",
+            public_message: 'Youtube Id already Registered'
           })
           t._generateError(baton)
           return
@@ -589,10 +601,10 @@ module.exports = {
       }
       if (params.series_id !== null && params.series_id !== undefined) {
         t.ensure_SeriesIdExists(baton, params, function() {
-          ensureEpisodeNameIsUnique(params, callback)
+          ensureEpisodeParamsIsUnique(params, callback)
         })
       } else {
-        ensureEpisodeNameIsUnique(params, callback)
+        ensureEpisodeParamsIsUnique(params, callback)
       }
     }
 

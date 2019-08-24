@@ -72,6 +72,11 @@ describe('timestamp server tests', function() {
 			"episode_id": 3,
 			"episode_name": "Test Episode 3",
 			"air_date": 1569038876
+		},
+		 {
+			"episode_id": 4,
+			"episode_name": "Test Episode 4",
+			"youtube_id": 'hvTKfVQWU40'
 		}];
 
 		fakeCharacterData = [{
@@ -328,19 +333,19 @@ describe('timestamp server tests', function() {
 			})
 
 			it('should create new episode with optional youtube link', function() {
-				var testYoutubeId = 'hvTKfVQWU40'
+				var testYoutubeId = 'hIahFRFd5po'
 				var episode_data = {
 					episode_name: "InTest Episode",
 					series_id: '0',
-					youtube_link: 'https://www.youtube.com/watch?v='+testYoutubeId
+					youtube_link: 'https://www.youtube.com/watch?v=' + testYoutubeId
 				}
 				actions.post_newEpisode(episode_data, fakeRes)
 				expect(fakeRes.data).to.deep.equal({
 					episode_name: episode_data.episode_name,
 					episode_id: 10,
 					series_id: 0,
-					youtube_id:testYoutubeId,
-					youtube_link: 'https://www.youtube.com/watch?v='+testYoutubeId
+					youtube_id: testYoutubeId,
+					youtube_link: 'https://www.youtube.com/watch?v=' + testYoutubeId
 				})
 			})
 
@@ -349,10 +354,21 @@ describe('timestamp server tests', function() {
 				var episode_data = {
 					episode_name: "InTest Episode",
 					series_id: '0',
-					youtube_link: 'https://www.youtube.com/='+testYoutubeId //invalid youtube url
+					youtube_link: 'https://www.youtube.com/=' + testYoutubeId //invalid youtube url
 				}
 				actions.post_newEpisode(episode_data, fakeRes)
 				assertErrorMessage(fakeRes, 'Invalid Youtube Link')
+			})
+
+			it('should throw for already registered youtube id', function() {
+				var testYoutubeId = fakeEpisodeData[3].youtube_id //existing youtube id
+				var episode_data = {
+					episode_name: "InTest Episode",
+					series_id: '0',
+					youtube_link: 'https://www.youtube.com/watch?v=' + testYoutubeId 
+				}
+				actions.post_newEpisode(episode_data, fakeRes)
+				assertErrorMessage(fakeRes, 'Youtube Id already Registered')
 			})
 
 
