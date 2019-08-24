@@ -562,7 +562,7 @@ module.exports = {
             return ep.season == params.season && ep.episode == params.episode && ep.series_id == params.series_id
           }).length !== 0) {
           baton.setError({
-            series_id: series_id,
+            series_id: params.series_id,
             season: params.season,
             episode: params.episode,
             error: "Episode with same season and episode in series",
