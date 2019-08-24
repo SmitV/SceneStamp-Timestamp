@@ -61,15 +61,11 @@ describe('timestamp server tests', function() {
 		fakeEpisodeData = [{
 			"episode_id": 1,
 			"episode_name": "Test Episode 1",
-			"season": 1,
-			"episode": 1,
 			"air_date": 1564034876,
 			"series_id": 0
 		}, {
 			"episode_id": 2,
 			"episode_name": "Test Episode 2",
-			"season": 1,
-			"episode": 2,
 			"air_date": 1564038876,
 			"series_id": 1
 		}, {
@@ -314,51 +310,19 @@ describe('timestamp server tests', function() {
 				})
 			})
 
-			it('should create new episode with optional data', function() {
+			it('should create new episode with optional series_id', function() {
 				var episode_data = {
 					episode_name: "InTest Episode",
 					series_id:'0',
-					season:'3',
-					episode:'1'
 				}
 				actions.post_newEpisode(episode_data, fakeRes)
 				expect(fakeRes.data).to.deep.equal({
 					episode_name: episode_data.episode_name,
 					episode_id: 10,
 					series_id: 0,
-					season:3,
-					episode:1
 				})
 			})
 
-			it('should throw for missing season/episode/series_id data', function() {
-				var episode_data = {
-					episode_name: "InTest Episode",
-					//series_id missing
-					season:'3',
-					episode:'1'
-				}
-				actions.post_newEpisode(episode_data, fakeRes)
-				assertErrorMessage(fakeRes, 'Invalid series id/season/episode')
-
-				episode_data = {
-					episode_name: "InTest Episode",
-					series_id:'0',
-					//season missing
-					episode:'1'
-				}
-				actions.post_newEpisode(episode_data, fakeRes)
-				assertErrorMessage(fakeRes, 'Invalid series id/season/episode')
-
-				episode_data = {
-					episode_name: "InTest Episode",
-					series_id:'0',
-					season:'3',
-					//episode missing
-				}
-				actions.post_newEpisode(episode_data, fakeRes)
-				assertErrorMessage(fakeRes, 'Invalid series id/season/episode')
-			})
 
 			it('should throw error for requiring episode_name', function() {
 				
@@ -368,9 +332,7 @@ describe('timestamp server tests', function() {
 
 			it('should create throw error for invalid series', function() {
 				var episode_data = {
-					series_id: "3",
-					season:'1',
-					episode:'2',
+					series_id: "3", //not valid series in fakeSeriesData
 					episode_name: "InTest Episode"
 				}
 				actions.post_newEpisode(episode_data, fakeRes)

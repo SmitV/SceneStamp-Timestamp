@@ -25,14 +25,6 @@ const MAIN_SCHEME = {
 			'type': 'number',
 			'optional': true
 		},
-		'season': {
-			'type': 'number',
-			'optional': true
-		},
-		'episode': {
-			'type': 'number',
-			'optional': true
-		},
 		'air_date': {
 			'type': 'number',
 			'optional': true

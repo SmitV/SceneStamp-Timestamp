@@ -84,16 +84,20 @@ describe('db tests', () => {
 			var values = [{
 				test_attr1: 101,
 				test_attr2: 101
-			},
-			{
+			}, {
 				test_attr1: 103
-			},
-			{
+			}, {
 				test_attr1: 102,
 				test_attr2: 102
 			}]
 			dbActions._insertMultipleQuery('test_table', values, fakeBaton, function() {
-				expect(sqlValues).to.deep.equal([[[101,101],[103,null],[102,102]]])
+				expect(sqlValues).to.deep.equal([
+					[
+						[101, 101],
+						[103, null],
+						[102, 102]
+					]
+				])
 			})
 		})
 
@@ -170,9 +174,7 @@ describe('db tests', () => {
 			}
 
 			dbActions.insertEpisode(fakeBaton, values, () => {
-				expect(sqlQuery).to.equal('INSERT INTO `episode` (episode_id,episode_name,series_id,season,episode,air_date) VALUES ?');
-				values.season = null
-				values.episode = null
+				expect(sqlQuery).to.equal('INSERT INTO `episode` (episode_id,episode_name,series_id,air_date) VALUES ?');
 				values.air_date = null
 				expect(sqlValues).to.deep.equal([jsonToArray([values])])
 			})
