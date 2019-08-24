@@ -71,14 +71,11 @@ describe('timestamp server tests', function() {
 			"season": 1,
 			"episode": 2,
 			"air_date": 1564038876,
-			"series_id": 0
+			"series_id": 1
 		}, {
 			"episode_id": 3,
 			"episode_name": "Test Episode 3",
-			"season": 1,
-			"episode": 1,
-			"air_date": 1569038876,
-			"series_id": 1
+			"air_date": 1569038876
 		}];
 
 		fakeCharacterData = [{
@@ -147,7 +144,7 @@ describe('timestamp server tests', function() {
 				attr_1: "101",
 				attr_3: "101, 102"
 			}
-			actions.validateRequest(createFakeBaton(params),params, 'testAction', updated_params => {
+			actions.validateRequest(createFakeBaton(params), params, 'testAction', updated_params => {
 				expect(updated_params.attr_1).to.equal(101)
 				expect(updated_params.attr_3).to.deep.equal([101, 102])
 				done()
@@ -156,13 +153,13 @@ describe('timestamp server tests', function() {
 
 		it('should throw non optional error', (done) => {
 			var params = {
-				attr_2:'true',
+				attr_2: 'true',
 				attr_3: "101, 102"
 			}
 			var fakeBaton = createFakeBaton(params)
-			actions.validateRequest(fakeBaton, params,'testAction')
+			actions.validateRequest(fakeBaton, params, 'testAction')
 			setTimeout(function() {
-				assertErrorMessage(fakeRes,'Parameter validation error')
+				assertErrorMessage(fakeRes, 'Parameter validation error')
 				expect(fakeBaton.err[0].error_detail).to.equal('Attibute value missing')
 				done()
 			}, TIMEOUT)
@@ -174,9 +171,9 @@ describe('timestamp server tests', function() {
 				attr_3: "101,102"
 			}
 			var fakeBaton = createFakeBaton(params)
-			actions.validateRequest(fakeBaton, params,'testAction')
+			actions.validateRequest(fakeBaton, params, 'testAction')
 			setTimeout(function() {
-				assertErrorMessage(fakeRes,'Parameter validation error')
+				assertErrorMessage(fakeRes, 'Parameter validation error')
 				expect(fakeBaton.err[0].error_detail).to.equal('Single Value is Expected')
 				done()
 			}, TIMEOUT)
@@ -189,9 +186,9 @@ describe('timestamp server tests', function() {
 				attr_3: "101,102"
 			}
 			var fakeBaton = createFakeBaton(params)
-			actions.validateRequest(fakeBaton, params,'testAction')
+			actions.validateRequest(fakeBaton, params, 'testAction')
 			setTimeout(function() {
-				assertErrorMessage(fakeRes,'Parameter validation error')
+				assertErrorMessage(fakeRes, 'Parameter validation error')
 				expect(fakeBaton.err[0].error_detail).to.equal('Invalid Attribute Type')
 				done()
 			}, TIMEOUT)
@@ -271,14 +268,14 @@ describe('timestamp server tests', function() {
 			actions.get_allEpisodeData({
 				series_ids: "0"
 			}, fakeRes)
-			expect(fakeRes.data.length).equal(2)
+			expect(fakeRes.data.length).equal(fakeEpisodeData.filter(ep => {return ep.series_id == 0}).length)
 		})
 
 		it('should filter by multiple series id', function() {
 			actions.get_allEpisodeData({
 				series_ids: "0,1"
 			}, fakeRes)
-			expect(fakeRes.data.length).equal(fakeEpisodeData.length)
+			expect(fakeRes.data.length).equal(fakeEpisodeData.filter(ep => {return ep.series_id == 1 ||ep.series_id == 0}).length)
 		})
 
 		it('should throw error for invalid series_ids param', function() {
@@ -308,73 +305,85 @@ describe('timestamp server tests', function() {
 
 			it('should create new episode', function() {
 				var episode_data = {
-					series_id: "1",
 					episode_name: "InTest Episode"
 				}
 				actions.post_newEpisode(episode_data, fakeRes)
 				expect(fakeRes.data).to.deep.equal({
-					series_id: 1,
 					episode_name: episode_data.episode_name,
 					episode_id: 10
 				})
 			})
 
-			it('should throw error for requiring series_id & episode_name', function() {
+			it('should create new episode with optional data', function() {
 				var episode_data = {
-					episode_name: "InTest Episode"
+					episode_name: "InTest Episode",
+					series_id:'0',
+					season:'3',
+					episode:'1'
 				}
 				actions.post_newEpisode(episode_data, fakeRes)
-				assertErrorMessage(fakeRes, 'Parameter validation error')
+				expect(fakeRes.data).to.deep.equal({
+					episode_name: episode_data.episode_name,
+					episode_id: 10,
+					series_id: 0,
+					season:3,
+					episode:1
+				})
+			})
+
+			it('should throw for missing season/episode/series_id data', function() {
+				var episode_data = {
+					episode_name: "InTest Episode",
+					//series_id missing
+					season:'3',
+					episode:'1'
+				}
+				actions.post_newEpisode(episode_data, fakeRes)
+				assertErrorMessage(fakeRes, 'Invalid series id/season/episode')
 
 				episode_data = {
-					series_id: "0"
+					episode_name: "InTest Episode",
+					series_id:'0',
+					//season missing
+					episode:'1'
 				}
 				actions.post_newEpisode(episode_data, fakeRes)
+				assertErrorMessage(fakeRes, 'Invalid series id/season/episode')
+
+				episode_data = {
+					episode_name: "InTest Episode",
+					series_id:'0',
+					season:'3',
+					//episode missing
+				}
+				actions.post_newEpisode(episode_data, fakeRes)
+				assertErrorMessage(fakeRes, 'Invalid series id/season/episode')
+			})
+
+			it('should throw error for requiring episode_name', function() {
+				
+				actions.post_newEpisode({}, fakeRes)
 				assertErrorMessage(fakeRes, 'Parameter validation error')
 			})
 
 			it('should create throw error for invalid series', function() {
 				var episode_data = {
 					series_id: "3",
+					season:'1',
+					episode:'2',
 					episode_name: "InTest Episode"
 				}
 				actions.post_newEpisode(episode_data, fakeRes)
 				assertErrorMessage(fakeRes, 'Invalid Series Id')
 			})
 
-			it('should create throw error for existing episode name in same series', function() {
+			it('should create throw error for existing episode name', function() {
 				var episode_data = {
-					series_id: "0",
 					episode_name: fakeEpisodeData[0].episode_name
 				}
 				actions.post_newEpisode(episode_data, fakeRes)
-				assertErrorMessage(fakeRes, 'Episode Name exists in series')
+				assertErrorMessage(fakeRes, 'Episode Name exists')
 			})
-
-			it('should create episode with same name, but in different series', function() {
-				var episode_data = {
-					series_id: fakeEpisodeData[2].series_id.toString(),
-					episode_name: fakeEpisodeData[0].episode_name
-				}
-				actions.post_newEpisode(episode_data, fakeRes)
-				expect(fakeRes.data).to.deep.equal({
-					series_id: parseInt(episode_data.series_id),
-					episode_name: episode_data.episode_name,
-					episode_id: 10
-				})
-			})
-
-			it('should throw error for episode with same season and episode', function() {
-				var episode_data = {
-					series_id: fakeEpisodeData[0].series_id.toString(),
-					episode_name: "InTest Episode",
-					season: fakeEpisodeData[0].season.toString(),
-					episode: fakeEpisodeData[0].episode.toString()
-				}
-				actions.post_newEpisode(episode_data, fakeRes)
-				assertErrorMessage(fakeRes, 'Episode with same season and episode in series')
-			})
-
 		});
 	});
 
@@ -809,7 +818,7 @@ describe('timestamp server tests', function() {
 				})
 
 				it('should throw error for invalid character', function(done) {
-				var values = {
+					var values = {
 						timestamp_id: "0",
 						character_ids: "10",
 						category_ids: "0,1"
@@ -889,8 +898,7 @@ describe('timestamp server tests', function() {
 				"timestamp_id": 2,
 				"duration": 30,
 				"start_time": 10
-			},
-			{
+			}, {
 				"compilation_id": 103,
 				"timestamp_id": 0,
 				"duration": 30,
@@ -1133,7 +1141,7 @@ describe('timestamp server tests', function() {
 						duration: 10,
 						start_time: 100
 					}, {
-						timestamp_id:1,
+						timestamp_id: 1,
 						duration: 10,
 						start_time: 100
 					}]

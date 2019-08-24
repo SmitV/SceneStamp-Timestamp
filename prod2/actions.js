@@ -36,7 +36,8 @@ var MAIN_VALIDATION = {
   },
   post_newEpisode: {
     series_id: {
-      type: "number"
+      type: "number",
+      optional: true
     },
     episode_name: {
       type: "string"
@@ -544,24 +545,24 @@ module.exports = {
     var t = this;
     var baton = this._getBaton('post_newEpisode', params, res);
 
-    function ensureEpisodeIsUnique(params, callback) {
-      t.getAllEpisodeData(baton, [params.series_id], function(episode_data) {
+    function ensureEpisodeIsUnique(params, checkSeasonAndEpisode,callback) {
+      t.getAllEpisodeData(baton, null, function(episode_data) {
         if (episode_data.map(function(ep) {
             return ep.episode_name.toLowerCase()
           }).includes(params.episode_name.toLowerCase())) {
           baton.setError({
-            series_id: params.series_id,
             episode_name: params.episode_name,
-            error: "Episode Name exists in series",
-            public_message: 'Episode Name exists in series'
+            error: "Episode Name exists",
+            public_message: 'Episode Name exists'
           })
           t._generateError(baton)
           return
         }
-        if (episode_data.filter(function(ep) {
-            return ep.season == params.season && ep.episode == params.episode
+        if (checkSeasonAndEpisode && episode_data.filter(function(ep) {
+            return ep.season == params.season && ep.episode == params.episode && ep.series_id == params.series_id
           }).length !== 0) {
           baton.setError({
+            series_id: series_id,
             season: params.season,
             episode: params.episode,
             error: "Episode with same season and episode in series",
@@ -579,19 +580,25 @@ module.exports = {
     }
 
     function ensureRequiredParamsPresent(params, callback) {
-      if ((params.season || params.episode) && (params.season == undefined || params.episode == undefined)) {
-        baton.setError({
-          season: params.season,
-          episode: params.episode,
-          error: "If present, season and episode both must be present",
-          public_message: 'Invalid season /episode'
-        })
-        t._generateError(baton)
-        return
+      if ((params.season || params.episode || params.series_id)) {
+        if (params.season == null || params.episode == null || params.series_id == null) {
+          baton.setError({
+            series_id: params.series_id,
+            season: params.season,
+            episode: params.episode,
+            error: "If present, series id, season ,and episode both must be present",
+            public_message: 'Invalid series id/season/episode'
+          })
+          t._generateError(baton)
+        } else {
+          t.ensure_SeriesIdExists(baton, params, function() {
+            ensureEpisodeIsUnique(params, /*checkSeasonAndEpisode=*/ true, callback)
+          })
+        }
       }
-      t.ensure_SeriesIdExists(baton, params, function() {
-        ensureEpisodeIsUnique(params, callback)
-      })
+      else{
+        ensureEpisodeIsUnique(params, /*checkSeasonAndEpisode=*/ false, callback)
+      }
     }
 
     function insertNewEpisode(params, callback) {
@@ -643,7 +650,7 @@ module.exports = {
     var t = this;
     var baton = this._getBaton('post_newCharacter', params, res);
 
-     function ensureCharacterNameIsUnique(params, callback) {
+    function ensureCharacterNameIsUnique(params, callback) {
       t.getAllCharacterData(baton, function(character_data) {
         if (character_data.map(function(ch) {
             return ch.character_name.toLowerCase()
@@ -662,26 +669,26 @@ module.exports = {
     }
 
 
-    function addCharacterId(params, callback){
-       //update params to include generated id
-       t.getAllCharacterData(baton, function(character_data) {
-         params.character_id = t._generateId(ID_LENGTH.character, character_data.map(function(ch) {
+    function addCharacterId(params, callback) {
+      //update params to include generated id
+      t.getAllCharacterData(baton, function(character_data) {
+        params.character_id = t._generateId(ID_LENGTH.character, character_data.map(function(ch) {
           return ch.character_id
         }))
         callback(params)
-       })
+      })
     }
 
     function verifyParams(callback) {
       t.validateRequest(baton, params, 'post_newCharacter', updated_params => {
-        ensureCharacterNameIsUnique(params, _ =>{
+        ensureCharacterNameIsUnique(params, _ => {
           addCharacterId(updated_params, callback)
         })
       })
     }
 
     function insertNewCharacter(params, callback) {
-      db.insertCharacter(baton,params,function(data) {
+      db.insertCharacter(baton, params, function(data) {
         t._handleDBCall(baton, data, false /*multiple*/ , callback)
       })
     }
@@ -1054,7 +1061,7 @@ module.exports = {
 
   ensure_CharacterIdsExist(baton, characters, callback) {
     var t = this;
-    t.getAllCharacterData(baton,function(character_data) {
+    t.getAllCharacterData(baton, function(character_data) {
       if (t._intersection(character_data.map(function(cha) {
           return cha.character_id;
         }), characters).length != characters.length) {

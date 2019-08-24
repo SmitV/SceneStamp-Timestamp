@@ -23,6 +23,7 @@ const MAIN_SCHEME = {
 		},
 		'series_id': {
 			'type': 'number',
+			'optional': true
 		},
 		'season': {
 			'type': 'number',
