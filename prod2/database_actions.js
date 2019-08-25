@@ -29,8 +29,8 @@ const MAIN_SCHEME = {
 			'type': 'number',
 			'optional': true
 		},
-		'youtube_id':{
-			'type':'string',
+		'youtube_id': {
+			'type': 'string',
 			'optional': true
 		}
 	},
@@ -91,7 +91,7 @@ const MAIN_SCHEME = {
 			'type': 'number',
 		},
 	},
-	'compilation':{
+	'compilation': {
 		'compilation_id': {
 			'type': 'number',
 		},
@@ -260,48 +260,47 @@ module.exports = {
 			return key
 		}).join(',')
 		var value_array = []
-			values.every(function(value) {
-				var single_val = []
-				Object.keys(DB_SCHEME[table]).every(function(attr) {
-					if (value[attr] !== undefined && value[attr] !== null) {
-						if (typeof value[attr] !== DB_SCHEME[table][attr].type) {
-							baton.setError({
-								details: 'DB Actions: type of value not valid',
-								table: table,
-								attr: attr,
-								expected_type: DB_SCHEME[table][attr].type,
-								object: value
-							})
-							callback()
-							return false
-						}
-						single_val.push(value[attr])
-						return true
-
-					} else if (DB_SCHEME[table][attr].optional !== true) {
+		values.every(function(value) {
+			var single_val = []
+			Object.keys(DB_SCHEME[table]).every(function(attr) {
+				if (value[attr] !== undefined && value[attr] !== null) {
+					if (typeof value[attr] !== DB_SCHEME[table][attr].type) {
 						baton.setError({
-							details: 'DB Actions: non-optional value not present',
+							details: 'DB Actions: type of value not valid',
 							table: table,
 							attr: attr,
+							expected_type: DB_SCHEME[table][attr].type,
 							object: value
 						})
 						callback()
 						return false
-					}else{
-						single_val.push(null)
-						return true;
 					}
-				})
-				value_array.push(single_val)
-				if(value_array.length === values.length && baton.err.length === 0){
-					//the values need to be in three arrays 
-					// [[[value],[value]]]
-					t._makequery("INSERT INTO `" + table + "` (" + attr_string + ") VALUES ?", [value_array], baton, callback)
-				}
-				else{
+					single_val.push(value[attr])
 					return true
+
+				} else if (DB_SCHEME[table][attr].optional !== true) {
+					baton.setError({
+						details: 'DB Actions: non-optional value not present',
+						table: table,
+						attr: attr,
+						object: value
+					})
+					callback()
+					return false
+				} else {
+					single_val.push(null)
+					return true;
 				}
 			})
+			value_array.push(single_val)
+			if (value_array.length === values.length && baton.err.length === 0) {
+				//the values need to be in three arrays 
+				// [[[value],[value]]]
+				t._makequery("INSERT INTO `" + table + "` (" + attr_string + ") VALUES ?", [value_array], baton, callback)
+			} else {
+				return true
+			}
+		})
 	},
 
 	_deleteQuery(table, conditions, baton, callback) {
