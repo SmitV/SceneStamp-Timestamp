@@ -98,7 +98,6 @@ module.exports = {
 
   validateRequest(baton, params, action, callback) {
     var t = this
-
     function throwInvalidParam(attr, error_detail, sub_attr) {
 
       baton.setError({
@@ -111,38 +110,43 @@ module.exports = {
       t._generateError(baton)
     }
 
-    this.convertParams(baton, params, action, updated_params => {
-      var index = 0
-      Object.keys(ACTION_VALIDATION[action]).every(attr => {
-        if (updated_params[attr] === null) {
-          if (ACTION_VALIDATION[action][attr].optional !== true) {
-            throwInvalidParam(attr, 'Attibute value missing')
-            return false
-          }
-          delete updated_params[attr]
-        } else {
-          if (updated_params[attr].includes(NaN)) {
-            var existing = {};
-            if (baton.err[0]) {
-              existing = baton.err[0]
-              baton.err = []
+    if (ACTION_VALIDATION[action] !== undefined) {
+      this.convertParams(baton, params, action, updated_params => {
+        var index = 0
+        Object.keys(ACTION_VALIDATION[action]).every(attr => {
+          if (updated_params[attr] === null) {
+            if (ACTION_VALIDATION[action][attr].optional !== true) {
+              throwInvalidParam(attr, 'Attibute value missing')
+              return false
             }
-            throwInvalidParam(attr, 'Invalid Attribute Type', existing.sub_attr)
-            return false
-          } else if (ACTION_VALIDATION[action][attr].multiple !== true && updated_params[attr].length > 1) {
-            throwInvalidParam(attr, 'Single Value is Expected')
-            return false
+            delete updated_params[attr]
+          } else {
+            if (updated_params[attr].includes(NaN)) {
+              var existing = {};
+              if (baton.err[0]) {
+                existing = baton.err[0]
+                baton.err = []
+              }
+              throwInvalidParam(attr, 'Invalid Attribute Type', existing.sub_attr)
+              return false
+            } else if (ACTION_VALIDATION[action][attr].multiple !== true && updated_params[attr].length > 1) {
+              throwInvalidParam(attr, 'Single Value is Expected')
+              return false
+            }
           }
-        }
-        if (ACTION_VALIDATION[action][attr].multiple !== true && updated_params[attr] !== undefined) updated_params[attr] = updated_params[attr][0]
-        index++;
-        if (index === Object.keys(ACTION_VALIDATION[action]).length) callback(updated_params)
-        else return true
+          if (ACTION_VALIDATION[action][attr].multiple !== true && updated_params[attr] !== undefined) updated_params[attr] = updated_params[attr][0]
+          index++;
+          if (index === Object.keys(ACTION_VALIDATION[action]).length){
+            callback(updated_params)
+          }
+          else return true
+        })
       })
-    })
+    } else {
+      callback({})
+    }
   },
-  get_allSeriesData(params, res) {
-    var baton = this._getBaton('get_allSeriesData', params, res);
+  get_allSeriesData(baton, params, res) {
     this.getAllSeriesData(baton, function(data) {
       baton.json(data)
     });
@@ -154,13 +158,10 @@ module.exports = {
       t._handleDBCall(baton, data, false /*multiple*/ , callback)
     })
   },
-  post_newSeries(params, res) {
+  post_newSeries(baton, params, res) {
     var t = this;
-    var baton = this._getBaton('post_newSeries', params, res);
 
-    this.validateRequest(baton, params, 'post_newSeries', _ => {
-      getSeriesData()
-    })
+    getSeriesData()
 
     function getSeriesData() {
       t.getAllSeriesData(baton, ensureUniqueSeriesName);
@@ -197,14 +198,10 @@ module.exports = {
       })
     }
   },
-  get_allEpisodeData(params, res) {
+  get_allEpisodeData(baton, params, res) {
     var t = this;
-    var baton = this._getBaton('get_allEpisodeData', params, res);
 
-    this.validateRequest(baton, params, 'get_allEpisodeData', (updated_params) => {
-      params = updated_params
-      getEpisodeData()
-    })
+    getEpisodeData()
 
     function getEpisodeData() {
       t.getAllEpisodeData(baton, params.series_ids, function(data) {
@@ -220,21 +217,12 @@ module.exports = {
     })
   },
 
-  get_allCompilationData(params, res) {
+  get_allCompilationData(baton, params, res) {
     var t = this;
-    var baton = this._getBaton('get_allCompilationData', params, res);
 
-    function verifyParams(callback) {
-      t.validateRequest(baton, params, 'get_allCompilationData', updated_params => {
-        callback(updated_params)
-      })
-    }
-
-    verifyParams(function(verified_params) {
-      t.getAllCompilationData(baton, verified_params, function(data) {
-        baton.json(data)
-      });
-    })
+    t.getAllCompilationData(baton, params, function(data) {
+      baton.json(data)
+    });
   },
 
   getAllCompilationData(baton, params, callback) {
@@ -296,10 +284,8 @@ module.exports = {
     })
   },
 
-  post_newCompilation(params, res) {
+  post_newCompilation(baton, params, res) {
     var t = this;
-    var baton = this._getBaton('post_newCompilation', params, res);
-    baton.requestType = "POST"
 
     function createCompilationId(params, compilation_data, callback) {
       t.getAllCompilationData(baton, params, function(compilation_data) {
@@ -343,11 +329,9 @@ module.exports = {
 
 
     function verifyParams(compilation_data, callback) {
-      t.validateRequest(baton, params, 'post_newCompilation', (updated_params) => {
-        ensureRequiredParamsPresent(updated_params, compilation_data, function() {
-          callback(updated_params)
+        ensureRequiredParamsPresent(params, compilation_data, function() {
+          callback(params)
         })
-      })
     }
 
     function insertNewCompilation(params, callback) {
@@ -411,9 +395,8 @@ module.exports = {
     })
   },
 
-  post_newEpisode(params, res) {
+  post_newEpisode(baton, params, res) {
     var t = this;
-    var baton = this._getBaton('post_newEpisode', params, res);
 
     function ensureEpisodeParamsIsUnique(params, callback) {
       t.getAllEpisodeData(baton, null, function(episode_data) {
@@ -474,6 +457,7 @@ module.exports = {
         params.youtube_id = youtubeId
       }
       if (params.series_id !== null && params.series_id !== undefined) {
+
         t.ensure_SeriesIdExists(baton, params, function() {
           ensureEpisodeParamsIsUnique(params, callback)
         })
@@ -489,11 +473,9 @@ module.exports = {
     }
 
     function verifyParams(callback) {
-      t.validateRequest(baton, params, 'post_newEpisode', update_params => {
-        ensureRequiredParamsPresent(update_params, function() {
-          callback(update_params)
+        ensureRequiredParamsPresent(params, function() {
+          callback(params)
         })
-      })
     }
 
     //execute
@@ -504,13 +486,10 @@ module.exports = {
     });
   },
 
-  get_allCharacterData(params, res) {
+  get_allCharacterData(baton, params, res) {
     var t = this;
-    var baton = this._getBaton('get_allCharacterData', params, res);
 
-    this.validateRequest(baton, params, 'get_allCharacterData', update_params => {
       getCharacterData()
-    })
 
     function getCharacterData() {
       t.getAllCharacterData(baton, function(data) {
@@ -527,9 +506,8 @@ module.exports = {
     })
   },
 
-  post_newCharacter(params, res) {
+  post_newCharacter(baton, params, res) {
     var t = this;
-    var baton = this._getBaton('post_newCharacter', params, res);
 
     function ensureCharacterNameIsUnique(params, callback) {
       t.getAllCharacterData(baton, function(character_data) {
@@ -561,11 +539,9 @@ module.exports = {
     }
 
     function verifyParams(callback) {
-      t.validateRequest(baton, params, 'post_newCharacter', updated_params => {
         ensureCharacterNameIsUnique(params, _ => {
-          addCharacterId(updated_params, callback)
+          addCharacterId(params, callback)
         })
-      })
     }
 
     function insertNewCharacter(params, callback) {
@@ -583,9 +559,8 @@ module.exports = {
 
   },
 
-  get_allCategoryData(params, res) {
+  get_allCategoryData(baton, params, res) {
     var t = this;
-    var baton = this._getBaton('get_allCategoryData', params, res);
 
     t.getAllCategoryData(baton, function(data) {
       baton.json(data)
@@ -600,9 +575,8 @@ module.exports = {
     })
   },
 
-  post_newCategory(params, res) {
+  post_newCategory(baton, params, res) {
     var t = this;
-    var baton = this._getBaton('post_newCategory', params, res);
 
     function ensureCategoryIsUnique(params, callback) {
       t.getAllCategoryData(baton, function(category_data) {
@@ -626,9 +600,8 @@ module.exports = {
     }
 
     function verifyParams(callback) {
-      t.validateRequest(baton, params, 'post_newCategory', updated_params => {
-        ensureCategoryIsUnique(updated_params, callback)
-      })
+        ensureCategoryIsUnique(params, callback)
+
     }
 
     function insertNewCategory(params, callback) {
@@ -645,13 +618,10 @@ module.exports = {
     });
   },
 
-  get_allTimestampData(params, res) {
+  get_allTimestampData(baton, params, res) {
     var t = this;
-    var baton = this._getBaton('get_allTimestampData', params, res);
 
-    this.validateRequest(baton, params, 'get_allTimestampData', updated_params => {
-      getTimestampData(updated_params)
-    })
+      getTimestampData(params)
 
     function getTimestampData(params) {
       t.getAllTimestampData(baton, params, function(data) {
@@ -729,9 +699,8 @@ module.exports = {
 
   },
 
-  post_newTimestamp(params, res) {
+  post_newTimestamp(baton, params, res) {
     var t = this;
-    var baton = this._getBaton('post_newTimestamp', params, res);
 
     function createTimestampId(params, callback) {
       t.getAllTimestampData(baton, {}, function(timestamp_data) {
@@ -743,13 +712,11 @@ module.exports = {
     }
 
     function verifyParams(callback) {
-      t.validateRequest(baton, params, 'post_newTimestamp', updated_params => {
-        createTimestampId(updated_params, updated_params_v2 => {
-          t.ensure_EpisodeIdExists(baton, updated_params_v2, function() {
-            callback(updated_params_v2)
+        createTimestampId(params, updated_params => {
+          t.ensure_EpisodeIdExists(baton, updated_params, function() {
+            callback(updated_params)
           })
         })
-      })
     }
 
     function insertNewTimestamp(params, callback) {
@@ -766,9 +733,8 @@ module.exports = {
     });
   },
 
-  post_updateTimestamp(params, res) {
+  post_updateTimestamp(baton, params, res) {
     var t = this;
-    var baton = this._getBaton('post_updateTimestamp', params, res);
 
     function addCharactersAndCategories(params, suc_callback) {
       var tasks = {}
@@ -903,12 +869,10 @@ module.exports = {
     }
 
     function verifyParams(callback) {
-      t.validateRequest(baton, params, 'post_updateTimestamp', updated_params => {
-        updated_params.timestamp_id = [updated_params.timestamp_id]
-        t.ensure_TimestampIdExists(baton, updated_params, function(timestamp_data) {
-          validateCategoryCharacterValues(updated_params, timestamp_data, callback)
+        params.timestamp_id = [params.timestamp_id]
+        t.ensure_TimestampIdExists(baton, params, function(timestamp_data) {
+          validateCategoryCharacterValues(params, timestamp_data, callback)
         })
-      })
     }
 
     verifyParams(function(params) {

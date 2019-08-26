@@ -9,117 +9,86 @@ app.use(bodyParser.urlencoded({
 }));
 
 
-var endpoints = [
-	{
-		url : 'getSeriesData',
-		action : function(req, res){
-					production_action.get_allSeriesData(req.query,res);
-				}
-	},
-	{
-		url : 'newSeries',
-		action : function(req, res){
-					production_action.post_newSeries(req.query,res);
-				}
+var endpoints = [{
+	url: 'getSeriesData',
+	action: 'get_allSeriesData'
+}, {
+	url: 'newSeries',
+	action: 'post_newSeries'
 
-	},
-	{
-		url : 'getEpisodeData',
-		action : function(req, res){
-					production_action.get_allEpisodeData(req.query,res);
-				}
-	},
-	{
-		url : 'newEpisode',
-		action : function(req, res){
-					production_action.post_newEpisode(req.query,res);
-				}
+}, {
+	url: 'getEpisodeData',
+	action: 'get_allEpisodeData'
+}, {
+	url: 'newEpisode',
+	action: 'post_newEpisode'
 
-	},
-	{
-		url : 'getCharacterData',
-		action : function(req, res){
-					production_action.get_allCharacterData(req.query,res);
-				}
-	},
-	{
-		url : 'newCharacter',
-		action : function(req, res){
-					production_action.post_newCharacter(req.query,res);
-				}
+}, {
+	url: 'getCharacterData',
+	action: 'get_allCharacterData'
+}, {
+	url: 'newCharacter',
+	action: 'post_newCharacter'
 
-	},
-	{
-		url : 'getCategoryData',
-		action : function(req, res){
-					production_action.get_allCategoryData(req.query,res);
-				}
-	},
-	{
-		url : 'newCategory',
-		action : function(req, res){
-					production_action.post_newCategory(req.query,res);
-				}
+}, {
+	url: 'getCategoryData',
+	action: 'get_allCategoryData'
+}, {
+	url: 'newCategory',
+	action: 'post_newCategory'
 
-	},
-	{
-		url : 'getTimestampData',
-		action : function(req, res){
-					production_action.get_allTimestampData(req.query,res);
-				}
-	},
-	{
-		url : 'newTimestamp',
-		action : function(req, res){
-					production_action.post_newTimestamp(req.query,res);
-				}
+}, {
+	url: 'getTimestampData',
+	action: 'get_allTimestampData'
+}, {
+	url: 'newTimestamp',
+	action: 'post_newTimestamp'
 
-	},
-	{
-		url : 'updateTimestamp',
-		action : function(req, res){
-					production_action.post_updateTimestamp(req.query,res);
-				}
+}, {
+	url: 'updateTimestamp',
+	action: 'post_updateTimestamp'
 
-	},
-	{
-		url : 'getCompilationData',
-		action : function(req, res){
-					production_action.get_allCompilationData(req.query,res);
-				}
-	},
-	{
-		url : 'newCompilation',
-		action : function(req, res){
-			production_action.post_newCompilation(req.body,res);
-		},
-		post: true
-	},
-];
+}, {
+	url: 'getCompilationData',
+	action: 'get_allCompilationData'
+}, {
+	url: 'newCompilation',
+	action: 'post_newCompilation',
+	post: true
+}, ];
 
 app.all('*', function(req, res, next) {
-     var origin = req.get('origin');
-     res.header('Access-Control-Allow-Origin', origin);
-     res.header("Access-Control-Allow-Headers", "X-Requested-With");
-     res.header('Access-Control-Allow-Headers', 'Content-Type');
-     next();
+	var origin = req.get('origin');
+	res.header('Access-Control-Allow-Origin', origin);
+	res.header("Access-Control-Allow-Headers", "X-Requested-With");
+	res.header('Access-Control-Allow-Headers', 'Content-Type');
+	next();
 });
 
 
 
-endpoints.forEach(function(endpoint){
+endpoints.forEach(function(endpoint) {
+
+	var endpointFunction = function(req, res) {
+		var params = (endpoint.post ? req.body : req.query)
+		var baton = production_action._getBaton(endpoint.url, params, res)
+		if (endpoint.post) baton.requestType = 'POST'
+		production_action.validateRequest(baton, params, endpoint.url, function(updated_params) {
+			production_action[endpoint.action](baton, updated_params, res);
+		})
+	}
 	if (endpoint.post) {
-		app.post('/' + endpoint.url, function(req, res) {
-			endpoint.action(req, res);
-		});
+		app.post('/' + endpoint.url, endpointFunction);
 		return
 	}
-	app.get('/' + endpoint.url, function(req, res) {
-		endpoint.action(req, res);
-	});
+	app.get('/' + endpoint.url, endpointFunction);
 })
 
 
-var server = app.listen(process.env.PORT || 8081, function () {
-   console.log("Scene Stamp Server Running @ port ",this.address().port )
+var server = app.listen(process.env.PORT || 8081, process.env.PORT, function() {
+	console.log("Scene Stamp Server Running @ port ", this.address().port)
 })
+
+module.exports = {
+	server: server
+}

@@ -1,18 +1,18 @@
 var MAIN_VALIDATION = {
 
-  post_newSeries: {
+  newSeries: {
     series_name: {
       type: 'string'
     }
   },
-  get_allEpisodeData: {
+  getEpisodeData: {
     series_ids: {
       type: "number",
       multiple: true,
       optional: true
     }
   },
-  post_newEpisode: {
+  newEpisode: {
     episode_name: {
       type: "string"
     },
@@ -29,24 +29,24 @@ var MAIN_VALIDATION = {
       optional: true
     }
   },
-  get_allCharacterData: {
+  getCharacterData: {
     series_ids: {
       type: "number",
       optional: true,
       multiple: true
     }
   },
-  post_newCharacter: {
+  newCharacter: {
     character_name: {
       type: "string"
     }
   },
-  post_newCategory: {
+  newCategory: {
     category_name: {
       type: 'string'
     }
   },
-  get_allTimestampData: {
+  getTimestampData: {
     episode_ids: {
       type: "number",
       optional: true,
@@ -63,7 +63,7 @@ var MAIN_VALIDATION = {
       multiple: true
     }
   },
-  post_newTimestamp: {
+  newTimestamp: {
     start_time: {
       type: 'number'
     },
@@ -71,7 +71,7 @@ var MAIN_VALIDATION = {
       type: 'number'
     },
   },
-  post_updateTimestamp: {
+  updateTimestamp: {
     timestamp_id: {
       type: 'number'
     },
@@ -94,7 +94,7 @@ var MAIN_VALIDATION = {
       optional: true
     }
   },
-  get_allCompilationData: {
+  getCompilationData: {
     timestamp_ids: {
       type: 'number',
       optional: true,
@@ -106,7 +106,7 @@ var MAIN_VALIDATION = {
       multiple: true
     }
   },
-  post_newCompilation: {
+  newCompilation: {
     compilation_name: {
       type: 'string'
     },
