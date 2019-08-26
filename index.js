@@ -85,7 +85,7 @@ endpoints.forEach(function(endpoint) {
 })
 
 
-var server = app.listen(process.env.PORT || 8081, process.env.PORT, function() {
+var server = app.listen(process.env.PORT || 8081, function() {
 	console.log("Scene Stamp Server Running @ port ", this.address().port)
 })
 
