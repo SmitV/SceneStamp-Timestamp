@@ -10,12 +10,13 @@ chai.use(chaiHttp);
 
 var actions = require('../prod2/actions')
 var dbActions = require('../prod2/database_actions')
+var auth = require('../prod2/auth')
 
 
 function assertErrorMessage(res, msg, custom) {
-	expect((custom == true? res.endStatus : res.status)).to.equal(500)
-	expect((custom == true? res.data : res.body)).to.have.property('error_message')
-	expect((custom == true? res.data : res.body).error_message).to.equal(msg)
+	expect((custom == true ? res.endStatus : res.status)).to.equal(500)
+	expect((custom == true ? res.data : res.body)).to.have.property('error_message')
+	expect((custom == true ? res.data : res.body).error_message).to.equal(msg)
 }
 
 function assertSuccess(res, post) {
@@ -47,6 +48,8 @@ describe('timestamp server tests', function() {
 	*/
 	var sandbox;
 
+	var fakeReq;
+
 	var fakeRes;
 	var fakeSeriesData;
 	var fakeEpisodeData;
@@ -73,6 +76,17 @@ describe('timestamp server tests', function() {
 				this.data = data;
 			}
 		}
+
+		//req body to test the auth 
+		//can't use the chai http , since we are not makking a endpoint call and simple calling a function 
+		fakeReq = {
+			headers: {},
+			body: {},
+			get(attr) {
+				return this.headers[attr]
+			}
+		}
+
 		fakeSeriesData = [{
 			"series_id": 0,
 			"series_name": "Test Series 1"
@@ -126,10 +140,99 @@ describe('timestamp server tests', function() {
 			"category_name": "Category 2"
 		}];
 
+		fakeUserData = [{
+			user_id: 101,
+			username: 'user_1',
+			password:'pass_1',
+			auth_token:'auth_token_1'
+		},
+		{
+			user_id: 102,
+			username: 'user_2',
+			password:'pass_2',
+			auth_token:'auth_token_2'
+		}];
+
+		sandbox.stub(auth, 'authValidate').callsFake(function(baton, req, callback){
+			callback()
+		})
+
 	});
 
 	afterEach(function() {
 		sandbox.restore()
+	})
+
+	describe('authentication', function() {
+
+		var fakeBaton;
+
+
+		beforeEach(function() {
+
+			auth.authValidate.restore()
+
+			//stub get all series dat for all tests
+			sandbox.stub(dbActions, 'getUserData').callsFake(function(baton, params, callback) {
+				return callback(fakeUserData.filter(user => {return user.username == params.username }))
+			})
+		})
+
+		it('should validate auth token', function(done) {
+			fakeReq.headers = {
+				username: fakeUserData[0].username,
+				auth_token: fakeUserData[0].auth_token,
+				testMode: 'true'
+			}
+			fakeBaton = actions._getBaton('authActionTest', fakeReq.body, fakeRes)
+			auth.authValidate(fakeBaton, fakeReq, function() {
+				done()
+			})
+		})
+
+		it('should throw for missing params', (done) =>{
+
+			fakeReq.headers = {
+				username: fakeUserData[0].username,
+				//missing auth token ,
+				testMode: 'true'
+			}
+			fakeBaton = actions._getBaton('authActionTest', fakeReq.body, fakeRes)
+			auth.authValidate(fakeBaton, fakeReq, () =>{})
+			setTimeout(() =>{
+				expect(fakeBaton.err[0].public_message).to.equal('Auth Parameters needed')
+				done()
+			},TIMEOUT)
+		})
+
+		it('should throw for invalid username', (done) =>{
+			fakeReq.headers = {
+				username: 'invalid username',
+				auth_token: fakeUserData[0].auth_token,
+				testMode: 'true'
+			}
+			fakeBaton = actions._getBaton('authActionTest', fakeReq.body, fakeRes)
+			auth.authValidate(fakeBaton, fakeReq, () =>{})
+			setTimeout(() =>{
+				expect(fakeBaton.err[0].public_message).to.equal('Invalid username')
+				done()
+			},TIMEOUT)
+		})
+
+		it('should throw for invalid auth_token', (done) =>{
+			fakeReq.headers = {
+				username: fakeUserData[0].username,
+				auth_token: 'invalidAuthToken',
+				testMode: 'true'
+			}
+			fakeBaton = actions._getBaton('authActionTest', fakeReq.body, fakeRes)
+			auth.authValidate(fakeBaton, fakeReq, () =>{})
+			setTimeout(() =>{
+			expect(fakeBaton.err[0].public_message).to.equal('Invalid auth token')
+				done()
+			}, TIMEOUT)
+		})
+
 	})
 
 	describe('request validation', function() {
@@ -211,7 +314,7 @@ describe('timestamp server tests', function() {
 			var fakeBaton = createFakeBaton(params)
 			actions.validateRequest(fakeBaton, params, 'testAction')
 			setTimeout(function() {
-				assertErrorMessage(fakeRes, 'Parameter validation error',/*custom=*/ true)
+				assertErrorMessage(fakeRes, 'Parameter validation error', /*custom=*/ true)
 				expect(fakeBaton.err[0].error_detail).to.equal('Invalid Attribute Type')
 				done()
 			}, TIMEOUT)
@@ -1216,7 +1319,7 @@ describe('timestamp server tests', function() {
 					assertErrorMessage(res, 'Invalid Timestamp Id')
 					done()
 				})
-				
+
 			})
 
 

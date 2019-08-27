@@ -1,6 +1,8 @@
 var express = require('express');
-var production_action = require('./prod2/actions.js');
 const bodyParser = require('body-parser');
+
+var production_action = require('./prod2/actions.js');
+var auth = require('./prod2/auth.js')
 
 var app = express();
 app.use(bodyParser.json());
@@ -65,6 +67,11 @@ app.all('*', function(req, res, next) {
 	next();
 });
 
+app.get('/test', function(req, res) {
+	var baton = production_action._getBaton('test', req.body, res)
+	auth.authValidate(baton, req)
+})
+
 
 
 endpoints.forEach(function(endpoint) {
@@ -73,8 +80,10 @@ endpoints.forEach(function(endpoint) {
 		var params = (endpoint.post ? req.body : req.query)
 		var baton = production_action._getBaton(endpoint.url, params, res)
 		if (endpoint.post) baton.requestType = 'POST'
-		production_action.validateRequest(baton, params, endpoint.url, function(updated_params) {
-			production_action[endpoint.action](baton, updated_params, res);
+		auth.authValidate(baton, req, function() {
+			production_action.validateRequest(baton, params, endpoint.url, function(updated_params) {
+				production_action[endpoint.action](baton, updated_params, res);
+			})
 		})
 	}
 	if (endpoint.post) {

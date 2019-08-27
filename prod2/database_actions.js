@@ -98,6 +98,24 @@ const MAIN_SCHEME = {
 		'compilation_name': {
 			'type': 'string',
 		},
+	},
+	'user':{
+		'user_id':{
+			'type': 'number'
+		},
+		'username':{
+			'type':'string'
+		},
+		'password':{
+			'type':'string'
+		},
+		'email':{
+			'type':'string'
+		},
+		'auth_token':{
+			'type':'string',
+			'optional':true
+		}
 	}
 }
 
@@ -247,6 +265,22 @@ module.exports = {
 		}).length == 0 ? null : data)
 		this._selectQuery('compilation_timestamp', null, data, baton, callback)
 	},
+
+	insertUser(baton, values, callback){
+		baton.addMethod(this._formatMethod('insertUser'))
+		this._insertMultipleQuery('user', [values], baton, function() {
+			callback(values)
+		});
+	},
+
+	getUserData(baton, params, callback){
+		baton.addMethod(this._formatMethod('getUserData'))
+		var data = {}
+		data.username = (params.username ? [params.username] : null)
+		data.auth_token = (params.auth_token ? [params.auth_token] : null)
+		this._selectQuery('user', null, data, baton, callback)
+	},
+
 	insertCompilationTimestamp(baton, values, callback) {
 		baton.addMethod(this._formatMethod('insertCompilationTimestamp'))
 		this._insertMultipleQuery('compilation_timestamp', values, baton, function() {
@@ -309,7 +343,7 @@ module.exports = {
 		if (conditions != null) {
 			conditions_string = " WHERE "
 			Object.keys(conditions).forEach(function(attr) {
-				if (conditions[attr]) conditions_string += t._multipleConditions(attr, conditions[attr]) + " OR "
+				if (conditions[attr]) conditions_string += t._multipleConditions(table, attr, conditions[attr]) + " OR "
 			})
 		}
 		this._makequery("DELETE FROM `" + table + "`" + conditions_string.slice(0, -3), null, baton, callback)
@@ -329,7 +363,7 @@ module.exports = {
 		if (conditions != null) {
 			conditions_string = " WHERE "
 			Object.keys(conditions).forEach(function(attr) {
-				if (conditions[attr]) conditions_string += t._multipleConditions(attr, conditions[attr]) + " OR "
+				if (conditions[attr]) conditions_string += t._multipleConditions(table, attr, conditions[attr]) + " OR "
 			})
 		}
 		this._makequery("SELECT " + attributes.join(',') + " FROM `" + table + "`" + conditions_string.slice(0, -3), null, baton, callback)
@@ -359,10 +393,10 @@ module.exports = {
 	 * Assumption that all conditions will need the 'OR' conditional
 	 *
 	 */
-	_multipleConditions(atr, values) {
+	_multipleConditions(table, atr, values) {
 		var conditions = ""
 		values.forEach(function(value) {
-			conditions += atr + " = " + value + " OR "
+			conditions += atr + " = " + (DB_SCHEME[table][atr].type == 'string' ? "'"+value+"'" : value) + " OR "
 		})
 		return conditions.slice(0, -3)
 	},
