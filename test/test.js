@@ -143,17 +143,16 @@ describe('timestamp server tests', function() {
 		fakeUserData = [{
 			user_id: 101,
 			username: 'user_1',
-			password:'pass_1',
-			auth_token:'auth_token_1'
-		},
-		{
+			password: 'pass_1',
+			auth_token: 'auth_token_1'
+		}, {
 			user_id: 102,
 			username: 'user_2',
-			password:'pass_2',
-			auth_token:'auth_token_2'
+			password: 'pass_2',
+			auth_token: 'auth_token_2'
 		}];
 
-		sandbox.stub(auth, 'authValidate').callsFake(function(baton, req, callback){
+		sandbox.stub(auth, 'authValidate').callsFake(function(baton, req, callback) {
 			callback()
 		})
 
@@ -174,7 +173,9 @@ describe('timestamp server tests', function() {
 
 			//stub get all series dat for all tests
 			sandbox.stub(dbActions, 'getUserData').callsFake(function(baton, params, callback) {
-				return callback(fakeUserData.filter(user => {return user.username == params.username }))
+				return callback(fakeUserData.filter(user => {
+					return user.username == params.username
+				}))
 			})
 		})
 
@@ -190,7 +191,7 @@ describe('timestamp server tests', function() {
 			})
 		})
 
-		it('should throw for missing params', (done) =>{
+		it('should throw for missing params', (done) => {
 
 			fakeReq.headers = {
 				username: fakeUserData[0].username,
@@ -198,37 +199,37 @@ describe('timestamp server tests', function() {
 				testMode: 'true'
 			}
 			fakeBaton = actions._getBaton('authActionTest', fakeReq.body, fakeRes)
-			auth.authValidate(fakeBaton, fakeReq, () =>{})
-			setTimeout(() =>{
+			auth.authValidate(fakeBaton, fakeReq, () => {})
+			setTimeout(() => {
 				expect(fakeBaton.err[0].public_message).to.equal('Auth Parameters needed')
 				done()
-			},TIMEOUT)
+			}, TIMEOUT)
 		})
 
-		it('should throw for invalid username', (done) =>{
+		it('should throw for invalid username', (done) => {
 			fakeReq.headers = {
 				username: 'invalid username',
 				auth_token: fakeUserData[0].auth_token,
 				testMode: 'true'
 			}
 			fakeBaton = actions._getBaton('authActionTest', fakeReq.body, fakeRes)
-			auth.authValidate(fakeBaton, fakeReq, () =>{})
-			setTimeout(() =>{
+			auth.authValidate(fakeBaton, fakeReq, () => {})
+			setTimeout(() => {
 				expect(fakeBaton.err[0].public_message).to.equal('Invalid username')
 				done()
-			},TIMEOUT)
+			}, TIMEOUT)
 		})
 
-		it('should throw for invalid auth_token', (done) =>{
+		it('should throw for invalid auth_token', (done) => {
 			fakeReq.headers = {
 				username: fakeUserData[0].username,
 				auth_token: 'invalidAuthToken',
 				testMode: 'true'
 			}
 			fakeBaton = actions._getBaton('authActionTest', fakeReq.body, fakeRes)
-			auth.authValidate(fakeBaton, fakeReq, () =>{})
-			setTimeout(() =>{
-			expect(fakeBaton.err[0].public_message).to.equal('Invalid auth token')
+			auth.authValidate(fakeBaton, fakeReq, () => {})
+			setTimeout(() => {
+				expect(fakeBaton.err[0].public_message).to.equal('Invalid auth token')
 				done()
 			}, TIMEOUT)
 		})
@@ -387,13 +388,19 @@ describe('timestamp server tests', function() {
 		beforeEach(function() {
 
 			//stub get all series dat for all tests
-			sandbox.stub(dbActions, 'getAllEpisodeData').callsFake(function(baton, series_ids, callback) {
+			sandbox.stub(dbActions, 'getAllEpisodeData').callsFake(function(baton, series_ids,youtube_id, callback) {
+				var result = [...fakeEpisodeData]
 				if (series_ids && series_ids.length > 0) {
-					return callback(fakeEpisodeData.filter(function(ep) {
+					result = result.filter(function(ep) {
 						return series_ids.includes(ep.series_id)
-					}))
+					})
 				}
-				return callback(fakeEpisodeData)
+				if (youtube_id) {
+					result = result.filter(function(ep) {
+						return youtube_id == ep.youtube_id
+					})
+				}
+				return callback(result)
 			})
 		})
 
@@ -431,6 +438,29 @@ describe('timestamp server tests', function() {
 					return ep.series_id == 0 || ep.series_id == 1
 				}).length)
 				done()
+			})
+		})
+
+		it('should filter by youtube id', function(done){
+			var params = {
+				youtube_link:'https://www.youtube.com/watch?v='+fakeEpisodeData[3].youtube_id
+			}
+
+			sendRequest('getEpisodeData', params).end((err, res, body) => {
+				assertSuccess(res)
+				expect(res.body[0]).to.deep.equal(fakeEpisodeData[3])
+				done()
+			})
+		})
+
+		it('should throw error for invalid youtube ', function(done){
+			var params = {
+				youtube_link:'https://www.youtube.com/wat?v='+fakeEpisodeData[3].youtube_id
+			}
+
+			sendRequest('getEpisodeData', params).end((err, res, body) => {
+				assertErrorMessage(res, 'Invalid Youtube Link')
+					done()
 			})
 		})
 
@@ -898,13 +928,19 @@ describe('timestamp server tests', function() {
 				})
 
 				//for ensureEpisodeIdExists
-				sandbox.stub(dbActions, 'getAllEpisodeData').callsFake(function(baton, series_ids, callback) {
+				sandbox.stub(dbActions, 'getAllEpisodeData').callsFake(function(baton, series_ids,youtube_id, callback) {
+					var result = [...fakeEpisodeData]
 					if (series_ids && series_ids.length > 0) {
-						return callback(fakeEpisodeData.filter(function(ep) {
+						result = result.filter(function(ep) {
 							return series_ids.includes(ep.series_id)
-						}))
+						})
 					}
-					return callback(fakeEpisodeData)
+					if (youtube_id) {
+						result = result.filter(function(ep) {
+							return youtube_id == ep.youtube_id
+						})
+					}
+					return callback(result)
 				})
 
 

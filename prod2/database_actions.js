@@ -150,11 +150,15 @@ module.exports = {
 		});
 	},
 
-	getAllEpisodeData(baton, series_ids, callback) {
+	getAllEpisodeData(baton, series_ids, youtube_id, callback) {
 		baton.addMethod(this._formatMethod('getAllEpisodeData'))
-		this._selectQuery('episode', null, (series_ids ? {
-			'series_id': series_ids
-		} : null), baton, callback)
+		var data = {}
+		data.series_id = (series_ids ? series_ids : null)
+		data.youtube_id = (youtube_id ? [youtube_id] : null)
+		data = (Object.keys(data).filter(key => {
+			return data[key] != null
+		}).length == 0 ? null : data)
+		this._selectQuery('episode', null, data, baton, callback)
 	},
 	insertEpisode(baton, values, callback) {
 		baton.addMethod(this._formatMethod('insertEpisode'))

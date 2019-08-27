@@ -10,6 +10,10 @@ var MAIN_VALIDATION = {
       type: "number",
       multiple: true,
       optional: true
+    },
+    youtube_link: {
+      type: 'string',
+      optional: true
     }
   },
   newEpisode: {
@@ -126,6 +130,6 @@ var CUSTOM_OBJECTS = {
 }
 
 module.exports = {
-  MAIN_VALIDATION : MAIN_VALIDATION,
-  CUSTOM_OBJECTS : CUSTOM_OBJECTS
+  MAIN_VALIDATION: MAIN_VALIDATION,
+  CUSTOM_OBJECTS: CUSTOM_OBJECTS
 }

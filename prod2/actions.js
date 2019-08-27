@@ -98,6 +98,7 @@ module.exports = {
 
   validateRequest(baton, params, action, callback) {
     var t = this
+
     function throwInvalidParam(attr, error_detail, sub_attr) {
 
       baton.setError({
@@ -136,10 +137,9 @@ module.exports = {
           }
           if (ACTION_VALIDATION[action][attr].multiple !== true && updated_params[attr] !== undefined) updated_params[attr] = updated_params[attr][0]
           index++;
-          if (index === Object.keys(ACTION_VALIDATION[action]).length){
+          if (index === Object.keys(ACTION_VALIDATION[action]).length) {
             callback(updated_params)
-          }
-          else return true
+          } else return true
         })
       })
     } else {
@@ -204,17 +204,35 @@ module.exports = {
     getEpisodeData()
 
     function getEpisodeData() {
-      t.getAllEpisodeData(baton, params.series_ids, function(data) {
+      t.getAllEpisodeData(baton, params.series_ids, params.youtube_link, function(data) {
         baton.json(data)
       })
     }
   },
-  getAllEpisodeData(baton, series_ids, callback) {
+  getAllEpisodeData(baton, series_ids, youtube_link, callback) {
     baton.addMethod('getAllEpisodeData');
     var t = this;
-    db.getAllEpisodeData(baton, series_ids, function(data) {
+
+    if (youtube_link !== undefined && youtube_link !== null ) {
+      var youtubeId = t.youtubeLinkParser(youtube_link)
+      if (youtubeId == null) {
+        baton.setError({
+          youtube_link: youtube_link,
+          youtube_id: youtubeId,
+          error: "Youtube Link is not valid, pattern wise",
+          public_message: 'Invalid Youtube Link'
+        })
+        t._generateError(baton)
+        return
+      }
+       db.getAllEpisodeData(baton, series_ids,youtubeId, function(data) {
+        t._handleDBCall(baton, data, false /*multiple*/ , callback)
+      })
+    }else{
+       db.getAllEpisodeData(baton, series_ids,null, function(data) {
       t._handleDBCall(baton, data, false /*multiple*/ , callback)
     })
+    }
   },
 
   get_allCompilationData(baton, params, res) {
@@ -329,9 +347,9 @@ module.exports = {
 
 
     function verifyParams(compilation_data, callback) {
-        ensureRequiredParamsPresent(params, compilation_data, function() {
-          callback(params)
-        })
+      ensureRequiredParamsPresent(params, compilation_data, function() {
+        callback(params)
+      })
     }
 
     function insertNewCompilation(params, callback) {
@@ -395,11 +413,21 @@ module.exports = {
     })
   },
 
+  youtubeLinkParser(url) {
+    var regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#\&\?]*).*/;
+    var match = url.match(regExp);
+    if (match && match[7].length == 11) {
+      return match[7];
+    } else {
+      return null
+    }
+  },
+
   post_newEpisode(baton, params, res) {
     var t = this;
 
     function ensureEpisodeParamsIsUnique(params, callback) {
-      t.getAllEpisodeData(baton, null, function(episode_data) {
+      t.getAllEpisodeData(baton, null/*series_ids*/,null/*youtube_id*/, function(episode_data) {
         if (episode_data.map(function(ep) {
             return ep.episode_name.toLowerCase()
           }).includes(params.episode_name.toLowerCase())) {
@@ -431,19 +459,9 @@ module.exports = {
       })
     }
 
-    function youtubeLinkParser(url) {
-      var regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#\&\?]*).*/;
-      var match = url.match(regExp);
-      if (match && match[7].length == 11) {
-        return match[7];
-      } else {
-        return null
-      }
-    }
-
     function ensureRequiredParamsPresent(params, callback) {
       if (params.youtube_link !== null && params.youtube_link !== undefined) {
-        var youtubeId = youtubeLinkParser(params.youtube_link)
+        var youtubeId = t.youtubeLinkParser(params.youtube_link)
         if (youtubeId == null) {
           baton.setError({
             youtube_link: params.youtube_link,
@@ -473,9 +491,9 @@ module.exports = {
     }
 
     function verifyParams(callback) {
-        ensureRequiredParamsPresent(params, function() {
-          callback(params)
-        })
+      ensureRequiredParamsPresent(params, function() {
+        callback(params)
+      })
     }
 
     //execute
@@ -489,7 +507,7 @@ module.exports = {
   get_allCharacterData(baton, params, res) {
     var t = this;
 
-      getCharacterData()
+    getCharacterData()
 
     function getCharacterData() {
       t.getAllCharacterData(baton, function(data) {
@@ -539,9 +557,9 @@ module.exports = {
     }
 
     function verifyParams(callback) {
-        ensureCharacterNameIsUnique(params, _ => {
-          addCharacterId(params, callback)
-        })
+      ensureCharacterNameIsUnique(params, _ => {
+        addCharacterId(params, callback)
+      })
     }
 
     function insertNewCharacter(params, callback) {
@@ -600,7 +618,7 @@ module.exports = {
     }
 
     function verifyParams(callback) {
-        ensureCategoryIsUnique(params, callback)
+      ensureCategoryIsUnique(params, callback)
 
     }
 
@@ -621,7 +639,7 @@ module.exports = {
   get_allTimestampData(baton, params, res) {
     var t = this;
 
-      getTimestampData(params)
+    getTimestampData(params)
 
     function getTimestampData(params) {
       t.getAllTimestampData(baton, params, function(data) {
@@ -712,11 +730,11 @@ module.exports = {
     }
 
     function verifyParams(callback) {
-        createTimestampId(params, updated_params => {
-          t.ensure_EpisodeIdExists(baton, updated_params, function() {
-            callback(updated_params)
-          })
+      createTimestampId(params, updated_params => {
+        t.ensure_EpisodeIdExists(baton, updated_params, function() {
+          callback(updated_params)
         })
+      })
     }
 
     function insertNewTimestamp(params, callback) {
@@ -869,10 +887,10 @@ module.exports = {
     }
 
     function verifyParams(callback) {
-        params.timestamp_id = [params.timestamp_id]
-        t.ensure_TimestampIdExists(baton, params, function(timestamp_data) {
-          validateCategoryCharacterValues(params, timestamp_data, callback)
-        })
+      params.timestamp_id = [params.timestamp_id]
+      t.ensure_TimestampIdExists(baton, params, function(timestamp_data) {
+        validateCategoryCharacterValues(params, timestamp_data, callback)
+      })
     }
 
     verifyParams(function(params) {
@@ -943,7 +961,7 @@ module.exports = {
   ensure_EpisodeIdExists(baton, params, callback) {
     var t = this;
     baton.addMethod('ensure_EpisodeIdExists');
-    this.getAllEpisodeData(baton, null /*series_id*/ , function(episode_data) {
+    this.getAllEpisodeData(baton, null /*series_id*/ ,null/*youtube_id*/ ,function(episode_data) {
       if (!episode_data.map(function(ep) {
           return ep.episode_id
         }).includes(params.episode_id)) {
