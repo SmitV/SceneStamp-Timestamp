@@ -3,6 +3,7 @@ const expect = require('chai').expect;
 var sinon = require('sinon')
 var chai = require('chai')
 var chaiHttp = require('chai-http');
+var nock = require('nock')
 
 var server = require('../index').server
 
@@ -11,6 +12,7 @@ chai.use(chaiHttp);
 var actions = require('../prod2/actions')
 var dbActions = require('../prod2/database_actions')
 var auth = require('../prod2/auth')
+var cred = require('../prod2/credentials')
 
 
 function assertErrorMessage(res, msg, custom) {
@@ -160,6 +162,7 @@ describe('timestamp server tests', function() {
 
 	afterEach(function() {
 		sandbox.restore()
+		nock.cleanAll()
 	})
 
 	describe('authentication', function() {
@@ -478,6 +481,22 @@ describe('timestamp server tests', function() {
 
 		describe('inserting new episode', function() {
 
+			 function createUrl() {
+		      return cred.VIDEO_SERVER_URL+':'+cred.VIDEO_SERVER_PORT
+		    }
+
+		    function createPath(params){
+		    	return '/downloadYoutubeVideo?youtube_link='+params.youtube_link+'&episode_id='+10
+		    }
+
+			function setupSucsessYoutubeDownload(params){
+				nock(createUrl()).get(createPath(params)).reply(200,{})
+			}
+
+			function setupErrorYoutubeDownlod(error, params){
+				nock(createUrl()).get(createPath(params)).reply(500,error )
+			}
+
 			beforeEach(function() {
 
 				sandbox.stub(actions, '_generateId').callsFake(function() {
@@ -492,6 +511,7 @@ describe('timestamp server tests', function() {
 					fakeEpisodeData.push(episode)
 					return callback(episode)
 				})
+
 			})
 
 			it('should create new episode', function(done) {
@@ -535,6 +555,7 @@ describe('timestamp server tests', function() {
 					youtube_link: 'https://www.youtube.com/watch?v=' + testYoutubeId
 				}
 
+				setupSucsessYoutubeDownload(episode_data)
 
 				sendRequest('newEpisode', episode_data).end((err, res, body) => {
 					assertSuccess(res)
@@ -543,7 +564,33 @@ describe('timestamp server tests', function() {
 						episode_id: 10,
 						series_id: 0,
 						youtube_id: testYoutubeId,
-						youtube_link: 'https://www.youtube.com/watch?v=' + testYoutubeId
+						youtube_link: 'https://www.youtube.com/watch?v=' + testYoutubeId,
+						downloadResponse:'Youtube video download in queue'
+					})
+					done()
+				})
+			})
+
+			it('should create new episode with optional youtube link, show error in download response', function(done) {
+				var testYoutubeId = 'hIahFRFd5po'
+				var episode_data = {
+					episode_name: "InTest Episode",
+					series_id: '0',
+					youtube_link: 'https://www.youtube.com/watch?v=' + testYoutubeId
+				}
+
+				var error = {error:'InTest error'}
+				setupErrorYoutubeDownlod(error,episode_data)
+
+				sendRequest('newEpisode', episode_data).end((err, res, body) => {
+					assertSuccess(res)
+					expect(res.body).to.deep.equal({
+						episode_name: episode_data.episode_name,
+						episode_id: 10,
+						series_id: 0,
+						youtube_id: testYoutubeId,
+						youtube_link: 'https://www.youtube.com/watch?v=' + testYoutubeId,
+						downloadResponse:error
 					})
 					done()
 				})

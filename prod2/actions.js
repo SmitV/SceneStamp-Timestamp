@@ -1,7 +1,9 @@
 var db = require('./database_actions');
 var stub_db = require('./stub_database');
+var cred = require('./credentials')
 var endpointRequestParams = require('./endpointRequestParams')
 var async = require('async');
+var http = require('http')
 
 /**
 
@@ -213,7 +215,7 @@ module.exports = {
     baton.addMethod('getAllEpisodeData');
     var t = this;
 
-    if (youtube_link !== undefined && youtube_link !== null ) {
+    if (youtube_link !== undefined && youtube_link !== null) {
       var youtubeId = t.youtubeLinkParser(youtube_link)
       if (youtubeId == null) {
         baton.setError({
@@ -225,13 +227,13 @@ module.exports = {
         t._generateError(baton)
         return
       }
-       db.getAllEpisodeData(baton, series_ids,youtubeId, function(data) {
+      db.getAllEpisodeData(baton, series_ids, youtubeId, function(data) {
         t._handleDBCall(baton, data, false /*multiple*/ , callback)
       })
-    }else{
-       db.getAllEpisodeData(baton, series_ids,null, function(data) {
-      t._handleDBCall(baton, data, false /*multiple*/ , callback)
-    })
+    } else {
+      db.getAllEpisodeData(baton, series_ids, null, function(data) {
+        t._handleDBCall(baton, data, false /*multiple*/ , callback)
+      })
     }
   },
 
@@ -427,7 +429,7 @@ module.exports = {
     var t = this;
 
     function ensureEpisodeParamsIsUnique(params, callback) {
-      t.getAllEpisodeData(baton, null/*series_ids*/,null/*youtube_id*/, function(episode_data) {
+      t.getAllEpisodeData(baton, null /*series_ids*/ , null /*youtube_id*/ , function(episode_data) {
         if (episode_data.map(function(ep) {
             return ep.episode_name.toLowerCase()
           }).includes(params.episode_name.toLowerCase())) {
@@ -499,9 +501,45 @@ module.exports = {
     //execute
     verifyParams(function(params) {
       insertNewEpisode(params, function(episode_added) {
-        baton.json(episode_added)
+        if(episode_added.youtube_id !== undefined && episode_added.youtube_id !== null){
+          t._makeDownloadYoutubeCall(baton, params, function(response) {
+          episode_added.downloadResponse = response
+          baton.json(episode_added)
+        })
+        }
+        else{
+          baton.json(episode_added)
+        }
       })
     });
+  },
+
+  _makeDownloadYoutubeCall(baton, params, callback) {
+    var t = this;
+    baton.addMethod('_makeDownloadYoutubeCall')
+
+    function constructUrl() {
+      return cred.VIDEO_SERVER_URL+':'+cred.VIDEO_SERVER_PORT+'/downloadYoutubeVideo?youtube_link='+params.youtube_link+'&episode_id='+params.episode_id
+    }
+
+    var req = http.get(constructUrl(), function(res) {
+      res.on('data', function(data) {
+        var parsedData = JSON.parse(Buffer.from(data).toString());
+        if (res.statusCode == 200) {
+          callback("Youtube video download in queue")
+        } else {
+          callback(parsedData)
+          return
+        }
+      });
+    }).on('error', function(err) {
+      callback({
+        error: 'Error while making download youtube call to video server',
+        details: err
+      })
+      return
+    })
+    req.end()
   },
 
   get_allCharacterData(baton, params, res) {
@@ -961,7 +999,7 @@ module.exports = {
   ensure_EpisodeIdExists(baton, params, callback) {
     var t = this;
     baton.addMethod('ensure_EpisodeIdExists');
-    this.getAllEpisodeData(baton, null /*series_id*/ ,null/*youtube_id*/ ,function(episode_data) {
+    this.getAllEpisodeData(baton, null /*series_id*/ , null /*youtube_id*/ , function(episode_data) {
       if (!episode_data.map(function(ep) {
           return ep.episode_id
         }).includes(params.episode_id)) {

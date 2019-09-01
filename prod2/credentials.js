@@ -8,3 +8,6 @@ exports.pool = mysql.createPool({
  	password: "6704fa0a",
  	database: "heroku_2648a9aa380b8d4"
 });
+
+exports.VIDEO_SERVER_URL = 'http://ec2-18-224-0-88.us-east-2.compute.amazonaws.com'
+exports.VIDEO_SERVER_PORT = 8081
