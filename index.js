@@ -11,7 +11,7 @@ app.use(bodyParser.urlencoded({
 }));
 
 
-var endpoints = [{
+var timestamp_endpoints = [{
 	url: 'getSeriesData',
 	action: 'get_allSeriesData'
 }, {
@@ -67,14 +67,9 @@ app.all('*', function(req, res, next) {
 	next();
 });
 
-app.get('/test', function(req, res) {
-	var baton = production_action._getBaton('test', req.body, res)
-	auth.authValidate(baton, req)
-})
 
 
-
-endpoints.forEach(function(endpoint) {
+timestamp_endpoints.forEach(function(endpoint) {
 
 	var endpointFunction = function(req, res) {
 		var params = (endpoint.post ? req.body : req.query)
@@ -92,6 +87,21 @@ endpoints.forEach(function(endpoint) {
 	}
 	app.get('/' + endpoint.url, endpointFunction);
 })
+
+var user_endpoints = [{
+	url: 'createUser',
+	action: 'createUser'
+},]
+
+user_endpoints.forEach(function(endpoint) {
+
+	var endpointFunction = function(req, res) {
+		var baton = production_action._getBaton(endpoint.url, null, res)
+		auth[endpoint.action](baton, req)
+	}
+	app.get('/' + endpoint.url, endpointFunction);
+})
+
 
 
 var server = app.listen(process.env.PORT || 8081, function() {
