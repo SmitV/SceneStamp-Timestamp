@@ -4,6 +4,7 @@ var sinon = require('sinon')
 var chai = require('chai')
 var chaiHttp = require('chai-http');
 var nock = require('nock')
+var bcrypt = require('bcrypt')
 
 var server = require('../index').server
 
@@ -30,16 +31,23 @@ var EXTENDED_TIMEOUT = 500;
 
 describe('timestamp server tests', function() {
 
-	function sendRequest(path, params, post) {
-		if (post) {
-			return chai.request(server).post('/' + path)
-				.set('content-type', 'application/json')
-				.send(params)
-		} else {
-			return chai.request(server).get('/' + path + '?' + Object.keys(params).map(attr => {
-				return attr + '=' + params[attr]
-			}).join('&')).send()
+	function sendRequest(path, params, post, headers) {
+
+		var addHeaders = req => {
+			if (headers !== undefined) {
+				Object.keys(headers).forEach(head => {
+					req.set(head, headers[head])
+				})
+			}
+			return req
 		}
+
+		return (post ?
+			addHeaders(chai.request(server).post('/' + path).set('content-type', 'application/json')).send(params) :
+			addHeaders(chai.request(server).get('/' + path + '?' + Object.keys(params).map(attr => {
+				return attr + '=' + params[attr]
+			}).join('&'))).send())
+
 	}
 
 	/*  getting data calls
@@ -146,16 +154,23 @@ describe('timestamp server tests', function() {
 			user_id: 101,
 			username: 'user_1',
 			password: 'pass_1',
+			email: 'email1@email.com',
 			auth_token: 'auth_token_1'
 		}, {
 			user_id: 102,
 			username: 'user_2',
 			password: 'pass_2',
+			email: 'email2@email.com',
 			auth_token: 'auth_token_2'
 		}];
 
 		sandbox.stub(auth, 'authValidate').callsFake(function(baton, req, callback) {
 			callback()
+		})
+
+
+		sandbox.stub(actions, '_generateId').callsFake(function() {
+			return 10
 		})
 
 	});
@@ -164,6 +179,7 @@ describe('timestamp server tests', function() {
 		sandbox.restore()
 		nock.cleanAll()
 	})
+
 
 	describe('authentication', function() {
 
@@ -177,9 +193,90 @@ describe('timestamp server tests', function() {
 			//stub get all series dat for all tests
 			sandbox.stub(dbActions, 'getUserData').callsFake(function(baton, params, callback) {
 				return callback(fakeUserData.filter(user => {
-					return user.username == params.username
+					return user.username == params.username || user.email == params.email
 				}))
 			})
+		})
+
+		describe('user', function() {
+			var hashedPassword = 'hashedPassword'
+
+			beforeEach(function() {
+
+				sandbox.stub(bcrypt, 'hash').callsFake(function(pass, salt, callback) {
+					callback(null, hashedPassword)
+				})
+
+				sandbox.stub(dbActions, 'insertUser').callsFake(function(baton, newUser, callback) {
+					fakeUserData.push(newUser)
+					callback(fakeUserData)
+				})
+
+			})
+
+			it('should create user', function(done) {
+				var headers = {
+					username: 'testUserName',
+					email: 'testemail@email.com',
+					password: 'testPassword1'
+				}
+				sendRequest('createUser', {}, /*post=*/ false, headers).end((err, res, body) => {
+					assertSuccess(res)
+					headers.password = hashedPassword
+					headers.user_id = 10
+					expect(fakeUserData[fakeUserData.length - 1]).to.deep.equal(headers)
+					done()
+				})
+			})
+
+			it('should throw parameter validation for missing params', function(done) {
+				var headers = {
+					//missing username
+					email: 'testemail@email.com',
+					password: 'testPassword1'
+				}
+				sendRequest('createUser', {}, /*post=*/ false, headers).end((err, res, body) => {
+					assertErrorMessage(res, 'Parameter validation error')
+					done()
+				})
+			})
+
+			it('should throw for invalid email format', function(done) {
+				var headers = {
+					username: 'testUserName',
+					email: 'testemail', //invalid email format
+					password: 'testPassword1'
+				}
+				sendRequest('createUser', {}, /*post=*/ false, headers).end((err, res, body) => {
+					assertErrorMessage(res, 'Invalid Email Format')
+					done()
+				})
+			})
+
+			it('should throw for invalid password validation', function(done) {
+				var headers = {
+					username: 'testUserName',
+					email: 'testemail@email.com',
+					password: 'pass' //invalid password 
+				}
+				sendRequest('createUser', {}, /*post=*/ false, headers).end((err, res, body) => {
+					assertErrorMessage(res, 'Invalid Password,Please fuitfil requirements')
+					done()
+				})
+			})
+
+			it('should throw for existing account with email', function(done) {
+				var headers = {
+					username: 'testUserName',
+					email: fakeUserData[0].email, //existing email
+					password: 'testPassword1'
+				}
+				sendRequest('createUser', {}, /*post=*/ false, headers).end((err, res, body) => {
+					assertErrorMessage(res, 'Email Already Registered')
+					done()
+				})
+			})
+
 		})
 
 		it('should validate auth token', function(done) {
@@ -346,9 +443,6 @@ describe('timestamp server tests', function() {
 
 		it('should create new series', function(done) {
 
-			sandbox.stub(actions, '_generateId').callsFake(function() {
-				return 10
-			})
 
 			sandbox.stub(dbActions, 'insertSeries').callsFake(function(baton, newSeries, callback) {
 				fakeSeriesData.push(newSeries)
@@ -499,9 +593,6 @@ describe('timestamp server tests', function() {
 
 			beforeEach(function() {
 
-				sandbox.stub(actions, '_generateId').callsFake(function() {
-					return 10
-				})
 
 				sandbox.stub(dbActions, 'getAllSeriesData').callsFake(function(baton, callback) {
 					return callback(fakeSeriesData)
@@ -679,9 +770,6 @@ describe('timestamp server tests', function() {
 
 			beforeEach(function() {
 
-				sandbox.stub(actions, '_generateId').callsFake(function() {
-					return 10
-				})
 
 				sandbox.stub(dbActions, 'getAllSeriesData').callsFake(function(baton, callback) {
 					return callback(fakeSeriesData)
@@ -749,9 +837,6 @@ describe('timestamp server tests', function() {
 		describe('inserting new category', function() {
 
 			beforeEach(function() {
-				sandbox.stub(actions, '_generateId').callsFake(function() {
-					return 10
-				})
 
 				sandbox.stub(dbActions, 'insertCategory').callsFake(function(baton, values, callback) {
 					fakeCategoryData.push(values)
@@ -970,9 +1055,6 @@ describe('timestamp server tests', function() {
 		describe('creating a new timestamp', function() {
 
 			beforeEach(function() {
-				sandbox.stub(actions, '_generateId').callsFake(function() {
-					return 10
-				})
 
 				//for ensureEpisodeIdExists
 				sandbox.stub(dbActions, 'getAllEpisodeData').callsFake(function(baton, series_ids,youtube_id, callback) {
@@ -1213,11 +1295,6 @@ describe('timestamp server tests', function() {
 				"duration": 30,
 				"start_time": 10
 			}]
-
-
-			sandbox.stub(actions, '_generateId').callsFake(function() {
-				return 10
-			})
 
 			//stub get all timestamp data for all tests
 			sandbox.stub(dbActions, 'getAllTimestampData').callsFake(function(baton, episode_ids, timestamp_ids, callback) {

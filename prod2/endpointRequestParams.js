@@ -119,6 +119,17 @@ var MAIN_VALIDATION = {
       multiple: true
     }
   },
+  createUser:{
+    username:{
+      type:'string'
+    },
+    email:{
+      type:'string'
+    },
+    password:{
+      type:'string'
+    }
+  }
 }
 
 var CUSTOM_OBJECTS = {

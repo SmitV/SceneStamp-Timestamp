@@ -20,7 +20,8 @@ var ID_LENGTH = {
   'episode': 6,
   'character': 7,
   'timestamp': 9,
-  'category': 5
+  'category': 5,
+  'user':9
 }
 
 var ACTION_VALIDATION = endpointRequestParams.MAIN_VALIDATION
@@ -36,7 +37,7 @@ module.exports = {
   },
   //the above is for testing only
 
-
+  ID_LENGTH : ID_LENGTH,
 
   convertParams(baton, params, action, callback) {
 

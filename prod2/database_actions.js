@@ -281,8 +281,16 @@ module.exports = {
 		baton.addMethod(this._formatMethod('getUserData'))
 		var data = {}
 		data.username = (params.username ? [params.username] : null)
+		data.email = (params.email ? [params.email] : null)
 		data.auth_token = (params.auth_token ? [params.auth_token] : null)
 		this._selectQuery('user', null, data, baton, callback)
+	},
+
+	insertUser(baton, values, callback) {
+		baton.addMethod(this._formatMethod('insertUser'))
+		this._insertMultipleQuery('user', [values], baton, function() {
+			callback(values)
+		});
 	},
 
 	insertCompilationTimestamp(baton, values, callback) {
