@@ -283,11 +283,13 @@ module.exports = {
 
 		var createParams = (callback) => {
 			callback({
-				auth_token: req.get('auth_token')
+				auth_token: req.get('auth_token'),
+				test_mode: req.get('test_mode')
 			})
 		}
 
 		var validateAuthtoken = (params, callback) => {
+
 
 			var token = jwt.verify(params.auth_token, publicKEY, function(err, decoded) {
 				if (err|| decoded === undefined) {
@@ -305,7 +307,8 @@ module.exports = {
 		}
 
 		createParams((params) => {
-			validateAuthtoken(params, suc_callback)
+			if(params.test_mode) validateAuthtoken(params, suc_callback)
+			else suc_callback()
 		})
 
 	},

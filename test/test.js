@@ -401,11 +401,25 @@ describe('timestamp server tests', function() {
 			it('should validate auth token', function(done) {
 				fakeReq.headers = {
 					auth_token: {user_id: 101},
+					test_mode:true
 				}
 				authVerify();
 				fakeBaton = actions._getBaton('authActionTest', fakeReq.body, fakeRes)
 				auth.authValidate(fakeBaton, fakeReq, function() {
-					fakeBaton.user_id = 101
+					expect(fakeBaton.user_id).to.equal(101)
+					done()
+				})
+			})
+
+			it('should not validate with no test mode', function(done) {
+				fakeReq.headers = {
+					auth_token: {user_id: 101},
+					//test_mode:true
+				}
+				authVerify();
+				fakeBaton = actions._getBaton('authActionTest', fakeReq.body, fakeRes)
+				auth.authValidate(fakeBaton, fakeReq, function() {
+					expect(fakeBaton.user_id).to.equal(null)
 					done()
 				})
 			})
@@ -414,6 +428,7 @@ describe('timestamp server tests', function() {
 
 				fakeReq.headers = {
 					auth_token: 'test',
+					test_mode:true
 				}
 				authVerifyFail();
 				fakeBaton = actions._getBaton('authActionTest', fakeReq.body, fakeRes)
