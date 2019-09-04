@@ -3,6 +3,12 @@ var actions = require('./actions.js')
 
 var passwordValidator = require('password-validator');
 var bcrypt = require('bcrypt')
+var jwt = require('jsonwebtoken')
+var fs = require('fs')
+
+// PRIVATE and PUBLIC key
+var privateKEY = fs.readFileSync(__dirname + '/jwt_private.key', 'utf8');
+var publicKEY = fs.readFileSync(__dirname + '/jwt_public.key', 'utf8');
 
 //Schema for password validation
 var schema = new passwordValidator();
@@ -127,8 +133,6 @@ module.exports = {
 			})
 		}
 
-
-
 		createParams(params => {
 			validateRequest(params, (update_params) => {
 				validateParams(update_params, () => {
@@ -143,6 +147,130 @@ module.exports = {
 
 	},
 
+	login(baton, req) {
+
+		var createParams = (callback) => {
+			callback({
+				username: req.get('username'),
+				email: req.get('email'),
+				password: req.get('password')
+			})
+		}
+
+		var validateRequest = (params, callback) => {
+			actions.validateRequest(baton, params, 'login', (update_params) => {
+				if (params.username == undefined && params.email == undefined) {
+					baton.setError({
+						params: update_params,
+						public_message: 'Username/Email Required'
+					})
+					actions._generateError(baton)
+					return
+				}
+				callback(update_params)
+			})
+		}
+
+		var validateParams = (params, callback) => {
+
+			var validateUsernameEmail = (callback) => {
+				this._getUserData(baton, params, (userData) => {
+					if (params.username !== undefined) {
+						var user = userData.find(user => {
+							return user.username == params.username
+						})
+						if (user === undefined) {
+							baton.setError({
+								params: params,
+								username: params.username,
+								public_message: 'Invalid Username'
+							})
+							actions._generateError(baton)
+							return
+						} else {
+							callback(user)
+						}
+					} else {
+						if (!this._validateEmail(params.email)) {
+							baton.setError({
+								email: params.email,
+								public_message: 'Invalid Email Format'
+							})
+							actions._generateError(baton)
+							return
+						}
+						var user = userData.find(user => {
+							return user.email == params.email
+						})
+						if (user === undefined) {
+							baton.setError({
+								params: params,
+								username: params.username,
+								public_message: 'Invalid Email'
+							})
+							actions._generateError(baton)
+							return
+						} else {
+							callback(user)
+						}
+					}
+				})
+			}
+
+			var validatePassword = (user, callback) => {
+				bcrypt.compare(params.password, user.password, function(err, res) {
+					if (res === false) {
+						baton.setError({
+							params: params,
+							username: params.username,
+							public_message: 'Invalid Password'
+						})
+						actions._generateError(baton)
+						return
+					}
+					callback()
+				});
+			}
+
+			validateUsernameEmail((user) => {
+				validatePassword(user, _ => {
+					callback(user)
+				})
+			})
+		}
+
+		createParams(params => {
+			validateRequest(params, (update_params) => {
+				validateParams(update_params, (user) => {
+					this._createJwt(user, token => {
+						baton.json({
+							auth_token: token
+						})
+					})
+				})
+			})
+		})
+
+	},
+
+	_createJwt(user, callback) {
+
+		console.log('aud')
+		console.log(user.username)
+		// SIGNING OPTIONS
+		var signOptions = {
+			issuer: 'SceneStamp',
+			subject: 'us@scenestamp.com',
+			audience: user.username,
+			expiresIn: "12h",
+			algorithm: "RS256"
+		};
+
+		callback(jwt.sign({
+			user_id: user.user_id
+		}, privateKEY, signOptions))
+	},
+
 
 
 	_validateEmail(email) {
@@ -150,67 +278,36 @@ module.exports = {
 		return re.test(String(email).toLowerCase());
 	},
 
-	login(baton, req, callback) {
-
-	},
-
 	authValidate(baton, req, suc_callback) {
 		baton.addMethod('authValidate')
 
-		validateHeaders = (callback) => {
-			var params = {
-				username: req.get('username'),
-				auth_token: req.get('auth_token'),
-			}
-			if (req.get('testMode') !== 'true') suc_callback()
-			else if (params.username == undefined || params.auth_token == undefined) {
-				baton.setError({
-					username: params.username,
-					auth_token: params.auth_token,
-					public_message: 'Auth Parameters needed'
-				})
-				actions._generateError(baton)
-			} else {
-				callback(params)
-			}
+		var createParams = (callback) => {
+			callback({
+				auth_token: req.get('auth_token')
+			})
 		}
 
-		validateHeaders((params) => {
-			this._validateWithAuthToken(baton, params, suc_callback)
-		})
+		var validateAuthtoken = (params, callback) => {
 
-
-	},
-	_validateWithCredentials(baton, params, callback) {
-		baton.addMethod('_validateWithCredentials')
-	},
-	_validateWithAuthToken(baton, params, callback) {
-		baton.addMethod('_validateWithAuthToken')
-
-		function checkUser(params, userData, callback) {
-			if (userData.length !== 1) {
-				baton.setError({
-					username: params.username,
-					auth_token: params.auth_token,
-					public_message: 'Invalid username'
-				})
-				actions._generateError(baton)
-			} else if (userData[0].auth_token !== params.auth_token) {
-				baton.setError({
-					username: params.username,
-					auth_token: params.auth_token,
-					userData: JSON.stringify(userData[0]),
-					public_message: 'Invalid auth token'
-				})
-				actions._generateError(baton)
-			} else {
-				callback()
-			}
+			var token = jwt.verify(params.auth_token, publicKEY, function(err, decoded) {
+				if (err|| decoded === undefined) {
+					baton.setError({
+						auth_token: params.auth_token,
+						public_message: 'Auth token invalid'
+					})
+					actions._generateError(baton)
+					return
+				} else {
+					baton.user_id = decoded.user_id
+					callback()
+				}
+			})
 		}
 
-		this._getUserData(baton, params, (userData) => {
-			checkUser(params, userData, callback)
+		createParams((params) => {
+			validateAuthtoken(params, suc_callback)
 		})
+
 	},
 	_getUserData(baton, params, callback) {
 		db.getUserData(baton, params, (userData) => {

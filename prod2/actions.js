@@ -1082,6 +1082,7 @@ module.exports = {
       res: res,
       requestType: "GET",
       params: params,
+      user_id:null,
       sendError: function(data) {
         res.status(500).json(data)
       },

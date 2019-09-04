@@ -91,7 +91,13 @@ timestamp_endpoints.forEach(function(endpoint) {
 var user_endpoints = [{
 	url: 'createUser',
 	action: 'createUser'
-},]
+}, {
+	url: 'login',
+	action: 'login'
+}, {
+	url: 'decode',
+	action: 'decode'
+}]
 
 user_endpoints.forEach(function(endpoint) {
 

@@ -129,6 +129,19 @@ var MAIN_VALIDATION = {
     password:{
       type:'string'
     }
+  },
+  login:{
+    username:{
+      type:'string',
+      optional:true
+    },
+    email:{
+      type:'string',
+      optional:true
+    },
+    password:{
+      type:'string'
+    }
   }
 }
 

@@ -5,6 +5,7 @@ var chai = require('chai')
 var chaiHttp = require('chai-http');
 var nock = require('nock')
 var bcrypt = require('bcrypt')
+var jwt = require('jsonwebtoken')
 
 var server = require('../index').server
 
@@ -181,9 +182,36 @@ describe('timestamp server tests', function() {
 	})
 
 
-	describe('authentication', function() {
+	describe('user', function() {
 
 		var fakeBaton;
+
+		var hashedPassword = 'hashedPassword'
+
+
+		function sucsPassCompare() {
+			sandbox.stub(bcrypt, 'compare').callsFake(function(pass, saved, callback) {
+				callback(null, true)
+			})
+		}
+
+		function failPassCompare() {
+			sandbox.stub(bcrypt, 'compare').callsFake(function(pass, saved, callback) {
+				callback(null, false)
+			})
+		}
+
+		function authVerify() {
+			sandbox.stub(jwt, 'verify').callsFake(function(token, key, callback) {
+				callback(null, token)
+			})
+		}
+
+		function authVerifyFail() {
+			sandbox.stub(jwt, 'verify').callsFake(function(token, key, callback) {
+				callback(null, undefined)
+			})
+		}
 
 
 		beforeEach(function() {
@@ -196,23 +224,27 @@ describe('timestamp server tests', function() {
 					return user.username == params.username || user.email == params.email
 				}))
 			})
+
+			sandbox.stub(bcrypt, 'hash').callsFake(function(pass, salt, callback) {
+				callback(null, hashedPassword)
+			})
+
+			sandbox.stub(dbActions, 'insertUser').callsFake(function(baton, newUser, callback) {
+				fakeUserData.push(newUser)
+				callback(fakeUserData)
+			})
+
+			sandbox.stub(jwt, 'sign').callsFake(function(payload, privateKey, signingOptions) {
+				return {
+					payload: payload,
+					privateKey: privateKey,
+					signingOptions: signingOptions
+				}
+			})
+
 		})
 
-		describe('user', function() {
-			var hashedPassword = 'hashedPassword'
-
-			beforeEach(function() {
-
-				sandbox.stub(bcrypt, 'hash').callsFake(function(pass, salt, callback) {
-					callback(null, hashedPassword)
-				})
-
-				sandbox.stub(dbActions, 'insertUser').callsFake(function(baton, newUser, callback) {
-					fakeUserData.push(newUser)
-					callback(fakeUserData)
-				})
-
-			})
+		describe('create user', function() {
 
 			it('should create user', function(done) {
 				var headers = {
@@ -279,59 +311,118 @@ describe('timestamp server tests', function() {
 
 		})
 
-		it('should validate auth token', function(done) {
-			fakeReq.headers = {
-				username: fakeUserData[0].username,
-				auth_token: fakeUserData[0].auth_token,
-				testMode: 'true'
-			}
-			fakeBaton = actions._getBaton('authActionTest', fakeReq.body, fakeRes)
-			auth.authValidate(fakeBaton, fakeReq, function() {
-				done()
+		describe('login', function() {
+
+			it('should login user with username', function(done) {
+				var user = fakeUserData[0]
+				var headers = {
+					username: user.username,
+					password: user.password
+				}
+				sucsPassCompare();
+				sendRequest('login', {}, /*post=*/ false, headers).end((err, res, body) => {
+					assertSuccess(res)
+					expect(res.body.auth_token.payload).to.deep.equal({
+						user_id: user.user_id
+					})
+					done()
+				})
+			})
+
+
+			it('should login user with email', function(done) {
+				var user = fakeUserData[0]
+				var headers = {
+					email: user.email,
+					password: user.password
+				}
+				sucsPassCompare();
+				sendRequest('login', {}, /*post=*/ false, headers).end((err, res, body) => {
+					assertSuccess(res)
+					expect(res.body.auth_token.payload).to.deep.equal({
+						user_id: user.user_id
+					})
+					done()
+				})
+			})
+
+			it('should throw for invalid username', function(done) {
+				var user = fakeUserData[0]
+				var headers = {
+					username: 'invalidUsername',
+					password: user.password
+				}
+				sendRequest('login', {}, /*post=*/ false, headers).end((err, res, body) => {
+					assertErrorMessage(res, 'Invalid Username')
+					done()
+				})
+			})
+
+			it('should throw for invalid email format', function(done) {
+				var user = fakeUserData[0]
+				var headers = {
+					email: 'invalidEmail',
+					password: user.password
+				}
+				sendRequest('login', {}, /*post=*/ false, headers).end((err, res, body) => {
+					assertErrorMessage(res, 'Invalid Email Format')
+					done()
+				})
+			})
+
+			it('should throw for invalid email format', function(done) {
+				var user = fakeUserData[0]
+				var headers = {
+					email: 'invalidEmail@test.com',
+					password: user.password
+				}
+				sendRequest('login', {}, /*post=*/ false, headers).end((err, res, body) => {
+					assertErrorMessage(res, 'Invalid Email')
+					done()
+				})
+			})
+
+			it('should throw for invalid password', function(done) {
+				var user = fakeUserData[0]
+				var headers = {
+					username: user.username,
+					password: user.password
+				}
+				failPassCompare();
+				sendRequest('login', {}, /*post=*/ false, headers).end((err, res, body) => {
+					assertErrorMessage(res, 'Invalid Password')
+					done()
+				})
 			})
 		})
 
-		it('should throw for missing params', (done) => {
+		describe('authenticate', function() {
 
-			fakeReq.headers = {
-				username: fakeUserData[0].username,
-				//missing auth token ,
-				testMode: 'true'
-			}
-			fakeBaton = actions._getBaton('authActionTest', fakeReq.body, fakeRes)
-			auth.authValidate(fakeBaton, fakeReq, () => {})
-			setTimeout(() => {
-				expect(fakeBaton.err[0].public_message).to.equal('Auth Parameters needed')
-				done()
-			}, TIMEOUT)
-		})
+			it('should validate auth token', function(done) {
+				fakeReq.headers = {
+					auth_token: {user_id: 101},
+				}
+				authVerify();
+				fakeBaton = actions._getBaton('authActionTest', fakeReq.body, fakeRes)
+				auth.authValidate(fakeBaton, fakeReq, function() {
+					fakeBaton.user_id = 101
+					done()
+				})
+			})
 
-		it('should throw for invalid username', (done) => {
-			fakeReq.headers = {
-				username: 'invalid username',
-				auth_token: fakeUserData[0].auth_token,
-				testMode: 'true'
-			}
-			fakeBaton = actions._getBaton('authActionTest', fakeReq.body, fakeRes)
-			auth.authValidate(fakeBaton, fakeReq, () => {})
-			setTimeout(() => {
-				expect(fakeBaton.err[0].public_message).to.equal('Invalid username')
-				done()
-			}, TIMEOUT)
-		})
+			it('should throw for invalid auth token', (done) => {
 
-		it('should throw for invalid auth_token', (done) => {
-			fakeReq.headers = {
-				username: fakeUserData[0].username,
-				auth_token: 'invalidAuthToken',
-				testMode: 'true'
-			}
-			fakeBaton = actions._getBaton('authActionTest', fakeReq.body, fakeRes)
-			auth.authValidate(fakeBaton, fakeReq, () => {})
-			setTimeout(() => {
-				expect(fakeBaton.err[0].public_message).to.equal('Invalid auth token')
-				done()
-			}, TIMEOUT)
+				fakeReq.headers = {
+					auth_token: 'test',
+				}
+				authVerifyFail();
+				fakeBaton = actions._getBaton('authActionTest', fakeReq.body, fakeRes)
+				auth.authValidate(fakeBaton, fakeReq, () => {})
+				setTimeout(() => {
+					expect(fakeBaton.err[0].public_message).to.equal('Auth token invalid')
+					done()
+				}, TIMEOUT)
+			})
 		})
 
 	})
@@ -485,7 +576,7 @@ describe('timestamp server tests', function() {
 		beforeEach(function() {
 
 			//stub get all series dat for all tests
-			sandbox.stub(dbActions, 'getAllEpisodeData').callsFake(function(baton, series_ids,youtube_id, callback) {
+			sandbox.stub(dbActions, 'getAllEpisodeData').callsFake(function(baton, series_ids, youtube_id, callback) {
 				var result = [...fakeEpisodeData]
 				if (series_ids && series_ids.length > 0) {
 					result = result.filter(function(ep) {
@@ -538,9 +629,9 @@ describe('timestamp server tests', function() {
 			})
 		})
 
-		it('should filter by youtube id', function(done){
+		it('should filter by youtube id', function(done) {
 			var params = {
-				youtube_link:'https://www.youtube.com/watch?v='+fakeEpisodeData[3].youtube_id
+				youtube_link: 'https://www.youtube.com/watch?v=' + fakeEpisodeData[3].youtube_id
 			}
 
 			sendRequest('getEpisodeData', params).end((err, res, body) => {
@@ -550,14 +641,14 @@ describe('timestamp server tests', function() {
 			})
 		})
 
-		it('should throw error for invalid youtube ', function(done){
+		it('should throw error for invalid youtube ', function(done) {
 			var params = {
-				youtube_link:'https://www.youtube.com/wat?v='+fakeEpisodeData[3].youtube_id
+				youtube_link: 'https://www.youtube.com/wat?v=' + fakeEpisodeData[3].youtube_id
 			}
 
 			sendRequest('getEpisodeData', params).end((err, res, body) => {
 				assertErrorMessage(res, 'Invalid Youtube Link')
-					done()
+				done()
 			})
 		})
 
@@ -575,20 +666,20 @@ describe('timestamp server tests', function() {
 
 		describe('inserting new episode', function() {
 
-			 function createUrl() {
-		      return cred.VIDEO_SERVER_URL+':'+cred.VIDEO_SERVER_PORT
-		    }
-
-		    function createPath(params){
-		    	return '/downloadYoutubeVideo?youtube_link='+params.youtube_link+'&episode_id='+10
-		    }
-
-			function setupSucsessYoutubeDownload(params){
-				nock(createUrl()).get(createPath(params)).reply(200,{})
+			function createUrl() {
+				return cred.VIDEO_SERVER_URL + ':' + cred.VIDEO_SERVER_PORT
 			}
 
-			function setupErrorYoutubeDownlod(error, params){
-				nock(createUrl()).get(createPath(params)).reply(500,error )
+			function createPath(params) {
+				return '/downloadYoutubeVideo?youtube_link=' + params.youtube_link + '&episode_id=' + 10
+			}
+
+			function setupSucsessYoutubeDownload(params) {
+				nock(createUrl()).get(createPath(params)).reply(200, {})
+			}
+
+			function setupErrorYoutubeDownlod(error, params) {
+				nock(createUrl()).get(createPath(params)).reply(500, error)
 			}
 
 			beforeEach(function() {
@@ -656,7 +747,7 @@ describe('timestamp server tests', function() {
 						series_id: 0,
 						youtube_id: testYoutubeId,
 						youtube_link: 'https://www.youtube.com/watch?v=' + testYoutubeId,
-						downloadResponse:'Youtube video download in queue'
+						downloadResponse: 'Youtube video download in queue'
 					})
 					done()
 				})
@@ -670,8 +761,10 @@ describe('timestamp server tests', function() {
 					youtube_link: 'https://www.youtube.com/watch?v=' + testYoutubeId
 				}
 
-				var error = {error:'InTest error'}
-				setupErrorYoutubeDownlod(error,episode_data)
+				var error = {
+					error: 'InTest error'
+				}
+				setupErrorYoutubeDownlod(error, episode_data)
 
 				sendRequest('newEpisode', episode_data).end((err, res, body) => {
 					assertSuccess(res)
@@ -681,7 +774,7 @@ describe('timestamp server tests', function() {
 						series_id: 0,
 						youtube_id: testYoutubeId,
 						youtube_link: 'https://www.youtube.com/watch?v=' + testYoutubeId,
-						downloadResponse:error
+						downloadResponse: error
 					})
 					done()
 				})
@@ -1057,7 +1150,7 @@ describe('timestamp server tests', function() {
 			beforeEach(function() {
 
 				//for ensureEpisodeIdExists
-				sandbox.stub(dbActions, 'getAllEpisodeData').callsFake(function(baton, series_ids,youtube_id, callback) {
+				sandbox.stub(dbActions, 'getAllEpisodeData').callsFake(function(baton, series_ids, youtube_id, callback) {
 					var result = [...fakeEpisodeData]
 					if (series_ids && series_ids.length > 0) {
 						result = result.filter(function(ep) {
