@@ -21,7 +21,7 @@ var ID_LENGTH = {
   'character': 7,
   'timestamp': 9,
   'category': 5,
-  'user':9
+  'user': 9
 }
 
 var ACTION_VALIDATION = endpointRequestParams.MAIN_VALIDATION
@@ -37,7 +37,7 @@ module.exports = {
   },
   //the above is for testing only
 
-  ID_LENGTH : ID_LENGTH,
+  ID_LENGTH: ID_LENGTH,
 
   convertParams(baton, params, action, callback) {
 
@@ -502,13 +502,12 @@ module.exports = {
     //execute
     verifyParams(function(params) {
       insertNewEpisode(params, function(episode_added) {
-        if(episode_added.youtube_id !== undefined && episode_added.youtube_id !== null){
+        if (episode_added.youtube_id !== undefined && episode_added.youtube_id !== null) {
           t._makeDownloadYoutubeCall(baton, params, function(response) {
-          episode_added.downloadResponse = response
-          baton.json(episode_added)
-        })
-        }
-        else{
+            episode_added.downloadResponse = response
+            baton.json(episode_added)
+          })
+        } else {
           baton.json(episode_added)
         }
       })
@@ -519,24 +518,36 @@ module.exports = {
     var t = this;
     baton.addMethod('_makeDownloadYoutubeCall')
 
+    var timeoutOccured = false;
+
     function constructUrl() {
-      return cred.VIDEO_SERVER_URL+':'+cred.VIDEO_SERVER_PORT+'/downloadYoutubeVideo?youtube_link='+params.youtube_link+'&episode_id='+params.episode_id
+      return cred.VIDEO_SERVER_URL + ':' + cred.VIDEO_SERVER_PORT + '/downloadYoutubeVideo?youtube_link=' + params.youtube_link + '&episode_id=' + params.episode_id
     }
 
     var req = http.get(constructUrl(), function(res) {
       res.on('data', function(data) {
-        var parsedData = JSON.parse(Buffer.from(data).toString());
-        if (res.statusCode == 200) {
-          callback("Youtube video download in queue")
-        } else {
-          callback(parsedData)
-          return
+        if (!timeoutOccured) {
+          var parsedData = JSON.parse(Buffer.from(data).toString());
+          if (res.statusCode == 200) {
+            callback("Youtube video download in queue")
+          } else {
+            callback(parsedData)
+            return
+          }
         }
       });
     }).on('error', function(err) {
       callback({
         error: 'Error while making download youtube call to video server',
         details: err
+      })
+      return
+    })
+    req.setTimeout(500, () => {
+      timeoutOccured = true;
+      req.end()
+      callback({
+        error: 'Timeout while making download youtube call to video server',
       })
       return
     })
@@ -1082,7 +1093,7 @@ module.exports = {
       res: res,
       requestType: "GET",
       params: params,
-      user_id:null,
+      user_id: null,
       sendError: function(data) {
         res.status(500).json(data)
       },

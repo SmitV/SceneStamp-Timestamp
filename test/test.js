@@ -697,6 +697,10 @@ describe('timestamp server tests', function() {
 				nock(createUrl()).get(createPath(params)).reply(500, error)
 			}
 
+			function setupTimeoutYoutubeDownload(params){
+				nock(createUrl()).get(createPath(params)).socketDelay(1000).reply(200, {})
+			}
+
 			beforeEach(function() {
 
 
@@ -805,6 +809,30 @@ describe('timestamp server tests', function() {
 
 				sendRequest('newEpisode', episode_data).end((err, res, body) => {
 					assertErrorMessage(res, 'Invalid Youtube Link')
+					done()
+				})
+			})
+
+			it('should create new episode with optional youtube link, show timeout in download response', function(done) {
+				var testYoutubeId = 'jkPkbEqS-Ps'
+				var episode_data = {
+					episode_name: "InTest Episode",
+					series_id: '0',
+					youtube_link: 'https://www.youtube.com/watch?v=' + testYoutubeId
+				}
+
+				setupTimeoutYoutubeDownload(episode_data)
+
+				sendRequest('newEpisode', episode_data).end((err, res, body) => {
+					assertSuccess(res)
+					expect(res.body).to.deep.equal({
+						episode_name: episode_data.episode_name,
+						episode_id: 10,
+						series_id: 0,
+						youtube_id: testYoutubeId,
+						youtube_link: 'https://www.youtube.com/watch?v=' + testYoutubeId,
+						downloadResponse: {error: 'Timeout while making download youtube call to video server'}
+					})
 					done()
 				})
 			})

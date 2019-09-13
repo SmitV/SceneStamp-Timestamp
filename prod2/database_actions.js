@@ -144,8 +144,6 @@ module.exports = {
 		DB_SCHEME = MAIN_SCHEME
 	},
 	getPool(table){
-		console.log('getpool')
-		console.log(pools)
 		pools = {
 			timestamp: db_credentials.pool,
 			user: db_credentials.user_pool
@@ -432,7 +430,7 @@ module.exports = {
 	 */
 	_makequery(sql, values, table, baton, callback) {
 		var t = this;
-		var pool = getPool(table)
+		var pool = t.getPool(table)
 		pool.query(sql, values, function(err, results) {
 			if (err) {
 				baton.setError(err)
