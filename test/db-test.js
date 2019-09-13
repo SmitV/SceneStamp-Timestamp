@@ -3,6 +3,7 @@ const expect = require('chai').expect;
 var sinon = require('sinon')
 
 var dbActions = require('../prod2/database_actions')
+var cred = require('../prod2/credentials')
 
 /*
 	Testing the sql queries that are created
@@ -54,6 +55,21 @@ describe('db tests', () => {
 
 	afterEach(function() {
 		sandbox.restore()
+	})
+
+	describe('get correct pool', function(){
+
+		it('should get the general pool',done => {
+			var pool = dbActions.getPool('timestamps')
+			expect(pool).to.equal(cred.pools.pool )
+			done()
+		})
+
+		it('should get the user pool',done => {
+			var pool = dbActions.getPool('user')
+			expect(pool).to.equal(cred.pools.user_pool)
+			done()
+		})
 	})
 
 	describe('insert query', function() {

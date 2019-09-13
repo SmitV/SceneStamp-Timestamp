@@ -143,6 +143,15 @@ module.exports = {
 	resetScheme() {
 		DB_SCHEME = MAIN_SCHEME
 	},
+	getPool(table){
+		console.log('getpool')
+		console.log(pools)
+		pools = {
+			timestamp: db_credentials.pool,
+			user: db_credentials.user_pool
+		} 
+		return (tableToPool[table] !== undefined ? tableToPool[table] : pools.timestamp)
+	},
 	//the above is for testing only
 
 	getAllSeriesData(baton, callback) {
@@ -423,7 +432,7 @@ module.exports = {
 	 */
 	_makequery(sql, values, table, baton, callback) {
 		var t = this;
-		var pool = (tableToPool[table] !== undefined ? tableToPool[table] : pools.timestamp)
+		var pool = getPool(table)
 		pool.query(sql, values, function(err, results) {
 			if (err) {
 				baton.setError(err)
