@@ -45,7 +45,7 @@ describe('db tests', () => {
 			}
 		}
 
-		sandbox.stub(dbActions, "_makequery").callsFake((sql, values, baton, callback) => {
+		sandbox.stub(dbActions, "_makequery").callsFake((sql, values, table, baton, callback) => {
 			sqlQuery = sql
 			sqlValues = values
 			callback(values)

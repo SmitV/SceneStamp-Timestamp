@@ -1,9 +1,6 @@
 var mysql = require('mysql');
 var db_credentials = require('./credentials');
 
-var pool = db_credentials.pool;
-
-
 //internal use only, used when inserting new data or selecting data
 const MAIN_SCHEME = {
 	'series': {
@@ -99,27 +96,36 @@ const MAIN_SCHEME = {
 			'type': 'string',
 		},
 	},
-	'user':{
-		'user_id':{
+	'user': {
+		'user_id': {
 			'type': 'number'
 		},
-		'username':{
-			'type':'string'
+		'username': {
+			'type': 'string'
 		},
-		'password':{
-			'type':'string'
+		'password': {
+			'type': 'string'
 		},
-		'email':{
-			'type':'string'
+		'email': {
+			'type': 'string'
 		},
-		'auth_token':{
-			'type':'string',
-			'optional':true
+		'auth_token': {
+			'type': 'string',
+			'optional': true
 		}
 	}
 }
 
 var DB_SCHEME = MAIN_SCHEME
+
+var pools = {
+	timestamp: db_credentials.pool,
+	user: db_credentials.user_pool
+}
+
+var tableToPool = {
+	user: pools.user
+}
 
 
 /**
@@ -270,14 +276,14 @@ module.exports = {
 		this._selectQuery('compilation_timestamp', null, data, baton, callback)
 	},
 
-	insertUser(baton, values, callback){
+	insertUser(baton, values, callback) {
 		baton.addMethod(this._formatMethod('insertUser'))
 		this._insertMultipleQuery('user', [values], baton, function() {
 			callback(values)
 		});
 	},
 
-	getUserData(baton, params, callback){
+	getUserData(baton, params, callback) {
 		baton.addMethod(this._formatMethod('getUserData'))
 		var data = {}
 		data.username = (params.username ? [params.username] : null)
@@ -342,7 +348,7 @@ module.exports = {
 			if (value_array.length === values.length && baton.err.length === 0) {
 				//the values need to be in three arrays 
 				// [[[value],[value]]]
-				t._makequery("INSERT INTO `" + table + "` (" + attr_string + ") VALUES ?", [value_array], baton, callback)
+				t._makequery("INSERT INTO `" + table + "` (" + attr_string + ") VALUES ?", [value_array], table, baton, callback)
 			} else {
 				return true
 			}
@@ -358,7 +364,7 @@ module.exports = {
 				if (conditions[attr]) conditions_string += t._multipleConditions(table, attr, conditions[attr]) + " OR "
 			})
 		}
-		this._makequery("DELETE FROM `" + table + "`" + conditions_string.slice(0, -3), null, baton, callback)
+		this._makequery("DELETE FROM `" + table + "`" + conditions_string.slice(0, -3), null, table, baton, callback)
 	},
 
 	/**
@@ -378,7 +384,7 @@ module.exports = {
 				if (conditions[attr]) conditions_string += t._multipleConditions(table, attr, conditions[attr]) + " OR "
 			})
 		}
-		this._makequery("SELECT " + attributes.join(',') + " FROM `" + table + "`" + conditions_string.slice(0, -3), null, baton, callback)
+		this._makequery("SELECT " + attributes.join(',') + " FROM `" + table + "`" + conditions_string.slice(0, -3), null, table, baton, callback)
 	},
 
 	/**
@@ -408,15 +414,16 @@ module.exports = {
 	_multipleConditions(table, atr, values) {
 		var conditions = ""
 		values.forEach(function(value) {
-			conditions += atr + " = " + (DB_SCHEME[table][atr].type == 'string' ? "'"+value+"'" : value) + " OR "
+			conditions += atr + " = " + (DB_SCHEME[table][atr].type == 'string' ? "'" + value + "'" : value) + " OR "
 		})
 		return conditions.slice(0, -3)
 	},
 	/** makes the query
 	 * @param {function} callback function that will return with the data, or a sql error
 	 */
-	_makequery(sql, values, baton, callback) {
+	_makequery(sql, values, table, baton, callback) {
 		var t = this;
+		var pool = (tableToPool[table] !== undefined ? tableToPool[table] : pools.timestamp)
 		pool.query(sql, values, function(err, results) {
 			if (err) {
 				baton.setError(err)
