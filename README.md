@@ -1,7 +1,7 @@
 # SceneStamp_Server
 
-1) Get Everything running for 'testing'
+1) Timestamp videos 
 
-2) Create DB and copy everything over for 'production'
+2) Search timestamps, create compilation video
 
-3) Get them vieeewwws 
+3) Post to YouTube, Get them vieeewwws 
