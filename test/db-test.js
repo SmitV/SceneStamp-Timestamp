@@ -249,6 +249,36 @@ describe('db tests', () => {
 
 		})
 
+		it('insert timestamp self', () => {
+			var values = {
+				episode_id: 101,
+				start_time: 100,
+				timestamp_id: 100
+			}
+
+			dbActions.insertTimestamp(fakeBaton, values, () => {
+				expect(sqlQuery).to.equal('INSERT INTO `timestamp` (episode_id,start_time,timestamp_id,user_id) VALUES ?');
+				values.user_id = null
+				expect(sqlValues).to.deep.equal([jsonToArray([values])])
+			})
+		})
+
+		it('insert timestamp self with user id', () => {
+			var values = {
+				episode_id: 101,
+				start_time: 100,
+				timestamp_id: 100
+			}
+
+			fakeBaton.user_id = 1001
+
+			dbActions.insertTimestamp(fakeBaton, values, () => {
+				expect(sqlQuery).to.equal('INSERT INTO `timestamp` (episode_id,start_time,timestamp_id,user_id) VALUES ?');
+				values.user_id = fakeBaton.user_id
+				expect(sqlValues).to.deep.equal([jsonToArray([values])])
+			})
+		})
+
 		it('insert timestamp category', () => {
 
 			var values = [{
