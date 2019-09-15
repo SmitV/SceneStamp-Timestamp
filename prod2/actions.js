@@ -216,6 +216,10 @@ module.exports = {
     baton.addMethod('getAllEpisodeData');
     var t = this;
 
+    var queryData = {
+      series_id: series_ids
+    }
+
     if (youtube_link !== undefined && youtube_link !== null) {
       var youtubeId = t.youtubeLinkParser(youtube_link)
       if (youtubeId == null) {
@@ -228,14 +232,11 @@ module.exports = {
         t._generateError(baton)
         return
       }
-      db.getAllEpisodeData(baton, series_ids, youtubeId, function(data) {
-        t._handleDBCall(baton, data, false /*multiple*/ , callback)
-      })
-    } else {
-      db.getAllEpisodeData(baton, series_ids, null, function(data) {
-        t._handleDBCall(baton, data, false /*multiple*/ , callback)
-      })
+      queryData.youtube_id = [youtubeId]
     }
+    db.getAllEpisodeData(baton, queryData, function(data) {
+      t._handleDBCall(baton, data, false /*multiple*/ , callback)
+    })
   },
 
   get_allCompilationData(baton, params, res) {

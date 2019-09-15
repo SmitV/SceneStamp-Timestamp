@@ -147,7 +147,7 @@ module.exports = {
 	resetScheme() {
 		DB_SCHEME = MAIN_SCHEME
 	},
-	getPool(table){
+	getPool(table) {
 		pools = {
 			timestamp: db_credentials.pool,
 			user: db_credentials.user_pool
@@ -180,15 +180,9 @@ module.exports = {
 		});
 	},
 
-	getAllEpisodeData(baton, series_ids, youtube_id, callback) {
+	getAllEpisodeData(baton, data, callback) {
 		baton.addMethod(this._formatMethod('getAllEpisodeData'))
-		var data = {}
-		data.series_id = (series_ids ? series_ids : null)
-		data.youtube_id = (youtube_id ? [youtube_id] : null)
-		data = (Object.keys(data).filter(key => {
-			return data[key] != null
-		}).length == 0 ? null : data)
-		this._selectQuery('episode', null, data, baton, callback)
+		this._updatedSelectQuery(baton, 'episode', data, callback)
 	},
 	insertEpisode(baton, values, callback) {
 		baton.addMethod(this._formatMethod('insertEpisode'))
@@ -413,6 +407,25 @@ module.exports = {
 			})
 		}
 		this._makequery("SELECT " + attributes.join(',') + " FROM `" + table + "`" + conditions_string.slice(0, -3), null, table, baton, callback)
+
+	},
+	_updatedSelectQuery(baton, table, conditions, callback) {
+		var t = this;
+		var condition_delimiter = ' OR '
+		var condition_string = ""
+		if (conditions !== null) {
+			Object.keys(DB_SCHEME[table]).every(function(table_attr) {
+				if (conditions[table_attr] !== undefined && Array.isArray(conditions[table_attr])) {
+					if (conditions[table_attr].length > 0) {
+						condition_string += t._multipleConditions(table, table_attr, conditions[table_attr]) + condition_delimiter
+						return true
+					}
+					return true
+				}
+				return true
+			})
+		}
+		this._makequery("SELECT * FROM `" + table + "`" + (condition_string == "" ? "" : " WHERE " + condition_string.slice(0, -3)), null, table, baton, callback)
 	},
 
 	/**

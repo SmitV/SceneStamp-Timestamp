@@ -400,8 +400,10 @@ describe('timestamp server tests', function() {
 
 			it('should validate auth token', function(done) {
 				fakeReq.headers = {
-					auth_token: {user_id: 101},
-					test_mode:true
+					auth_token: {
+						user_id: 101
+					},
+					test_mode: true
 				}
 				authVerify();
 				fakeBaton = actions._getBaton('authActionTest', fakeReq.body, fakeRes)
@@ -413,7 +415,9 @@ describe('timestamp server tests', function() {
 
 			it('should not validate with no test mode', function(done) {
 				fakeReq.headers = {
-					auth_token: {user_id: 101},
+					auth_token: {
+						user_id: 101
+					},
 					//test_mode:true
 				}
 				authVerify();
@@ -428,7 +432,7 @@ describe('timestamp server tests', function() {
 
 				fakeReq.headers = {
 					auth_token: 'test',
-					test_mode:true
+					test_mode: true
 				}
 				authVerifyFail();
 				fakeBaton = actions._getBaton('authActionTest', fakeReq.body, fakeRes)
@@ -591,18 +595,12 @@ describe('timestamp server tests', function() {
 		beforeEach(function() {
 
 			//stub get all series dat for all tests
-			sandbox.stub(dbActions, 'getAllEpisodeData').callsFake(function(baton, series_ids, youtube_id, callback) {
-				var result = [...fakeEpisodeData]
-				if (series_ids && series_ids.length > 0) {
-					result = result.filter(function(ep) {
-						return series_ids.includes(ep.series_id)
-					})
-				}
-				if (youtube_id) {
-					result = result.filter(function(ep) {
-						return youtube_id == ep.youtube_id
-					})
-				}
+			sandbox.stub(dbActions, 'getAllEpisodeData').callsFake(function(baton, queryData, callback) {
+				var result = [...fakeEpisodeData].filter(ep => {
+					return (queryData.series_id && queryData.series_id.length > 0 ? queryData.series_id.includes(ep.series_id) : true)
+				}).filter(ep => {
+					return (queryData.youtube_id && queryData.youtube_id.length > 0 ? queryData.youtube_id.includes(ep.youtube_id) : true)
+				})
 				return callback(result)
 			})
 		})
@@ -697,7 +695,7 @@ describe('timestamp server tests', function() {
 				nock(createUrl()).get(createPath(params)).reply(500, error)
 			}
 
-			function setupTimeoutYoutubeDownload(params){
+			function setupTimeoutYoutubeDownload(params) {
 				nock(createUrl()).get(createPath(params)).socketDelay(1000).reply(200, {})
 			}
 
@@ -831,7 +829,9 @@ describe('timestamp server tests', function() {
 						series_id: 0,
 						youtube_id: testYoutubeId,
 						youtube_link: 'https://www.youtube.com/watch?v=' + testYoutubeId,
-						downloadResponse: {error: 'Timeout while making download youtube call to video server'}
+						downloadResponse: {
+							error: 'Timeout while making download youtube call to video server'
+						}
 					})
 					done()
 				})
@@ -1193,18 +1193,12 @@ describe('timestamp server tests', function() {
 			beforeEach(function() {
 
 				//for ensureEpisodeIdExists
-				sandbox.stub(dbActions, 'getAllEpisodeData').callsFake(function(baton, series_ids, youtube_id, callback) {
-					var result = [...fakeEpisodeData]
-					if (series_ids && series_ids.length > 0) {
-						result = result.filter(function(ep) {
-							return series_ids.includes(ep.series_id)
-						})
-					}
-					if (youtube_id) {
-						result = result.filter(function(ep) {
-							return youtube_id == ep.youtube_id
-						})
-					}
+				sandbox.stub(dbActions, 'getAllEpisodeData').callsFake(function(baton, queryData, callback) {
+					var result = [...fakeEpisodeData].filter(ep => {
+						return (queryData.series_id && queryData.series_id.length > 0 ? queryData.series_id.includes(ep.series_id) : true)
+					}).filter(ep => {
+						return (queryData.youtube_id && queryData.youtube_id.length > 0 ? queryData.youtube_id.includes(ep.youtube_id) : true)
+					})
 					return callback(result)
 				})
 

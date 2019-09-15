@@ -165,7 +165,7 @@ describe('db tests', () => {
 	describe('episode', function() {
 		it('should get all episode data no series ids', () => {
 
-			dbActions.getAllEpisodeData(fakeBaton, null, null,() => {
+			dbActions.getAllEpisodeData(fakeBaton, null,() => {
 				expect(sqlQuery).to.equal('SELECT * FROM `episode`');
 			})
 
@@ -173,9 +173,8 @@ describe('db tests', () => {
 
 		it('should get all episode data with series ids', () => {
 
-			var series_ids = [1, 2]
-
-			dbActions.getAllEpisodeData(fakeBaton, series_ids, null,() => {
+			var data = {series_id: [1,2]}
+			dbActions.getAllEpisodeData(fakeBaton, data,() => {
 				expect(sqlQuery.trim()).to.equal("SELECT * FROM `episode` WHERE series_id = 1 OR series_id = 2");
 			})
 
@@ -183,10 +182,10 @@ describe('db tests', () => {
 
 		it('should get all episode data with youtube id', () => {
 
-			var youtube_id = 'testYoutubeid'
+			var data = {youtube_id: ['testYoutubeid']}
 
-			dbActions.getAllEpisodeData(fakeBaton, null, youtube_id,() => {
-				expect(sqlQuery.trim()).to.equal("SELECT * FROM `episode` WHERE youtube_id = '"+youtube_id+"'");
+			dbActions.getAllEpisodeData(fakeBaton, data,() => {
+				expect(sqlQuery.trim()).to.equal("SELECT * FROM `episode` WHERE youtube_id = '"+data.youtube_id+"'");
 			})
 
 		})
