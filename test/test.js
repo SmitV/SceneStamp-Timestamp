@@ -219,9 +219,9 @@ describe('timestamp server tests', function() {
 			auth.authValidate.restore()
 
 			//stub get all series dat for all tests
-			sandbox.stub(dbActions, 'getUserData').callsFake(function(baton, params, callback) {
+			sandbox.stub(dbActions, 'getUserData').callsFake(function(baton, data, callback) {
 				return callback(fakeUserData.filter(user => {
-					return user.username == params.username || user.email == params.email
+					return user.username == data.username || user.email == data.email
 				}))
 			})
 
@@ -1055,19 +1055,19 @@ describe('timestamp server tests', function() {
 			}]
 
 			//stub get all timestamp data for all tests
-			sandbox.stub(dbActions, 'getAllTimestampData').callsFake(function(baton, episode_ids, timestamp_ids, callback) {
+			sandbox.stub(dbActions, 'getAllTimestampData').callsFake(function(baton, data, callback) {
 				var result = [...fakeTimestampData]
-				if (episode_ids && episode_ids.length > 0) {
+				if (data.episode_id && data.episode_id.length > 0) {
 					result = result.filter(function(tm) {
-						return episode_ids.includes(tm.episode_id)
+						return data.episode_id.includes(tm.episode_id)
 					})
 				}
-				if (timestamp_ids && timestamp_ids.length > 0) {
+				if (data.timestamp_id && data.timestamp_id.length > 0) {
 					result = result.filter(function(tm) {
-						return timestamp_ids.includes(tm.timestamp_id)
+						return data.timestamp_id.includes(tm.timestamp_id)
 					})
 				}
-				return callback(result)
+				callback(result)
 			})
 
 			//stub for the category/character for timestamp
@@ -1427,16 +1427,17 @@ describe('timestamp server tests', function() {
 			}]
 
 			//stub get all timestamp data for all tests
-			sandbox.stub(dbActions, 'getAllTimestampData').callsFake(function(baton, episode_ids, timestamp_ids, callback) {
+			//stub get all timestamp data for all tests
+			sandbox.stub(dbActions, 'getAllTimestampData').callsFake(function(baton, data, callback) {
 				var result = [...fakeTimestampData]
-				if (episode_ids && episode_ids.length > 0) {
+				if (data.episode_id && data.episode_id.length > 0) {
 					result = result.filter(function(tm) {
-						return episode_ids.includes(tm.episode_id)
+						return data.episode_id.includes(tm.episode_id)
 					})
 				}
-				if (timestamp_ids && timestamp_ids.length > 0) {
+				if (data.timestamp_id && data.timestamp_id.length > 0) {
 					result = result.filter(function(tm) {
-						return timestamp_ids.includes(tm.timestamp_id)
+						return data.timestamp_id.includes(tm.timestamp_id)
 					})
 				}
 				callback(result)
@@ -1453,16 +1454,16 @@ describe('timestamp server tests', function() {
 			})
 
 			//stub get all compilation data for all tests
-			sandbox.stub(dbActions, 'getAllCompilationData').callsFake(function(baton, params, callback) {
+			sandbox.stub(dbActions, 'getAllCompilationData').callsFake(function(baton, data, callback) {
 				var result = [...fakeCompilationData]
-				if (params.compilation_ids) {
+				if (data.compilation_id) {
 					result = result.filter(function(ct) {
-						return params.compilation_ids.includes(ct.compilation_id)
+						return data.compilation_id.includes(ct.compilation_id)
 					})
 				}
-				if (params.timestamp_ids) {
+				if (data.timestamp_id) {
 					result = result.filter(function(ct) {
-						return params.timestamp_ids.includes(ct.timestamp_id)
+						return data.timestamp_id.includes(ct.timestamp_id)
 					})
 				}
 				callback(result)
@@ -1474,16 +1475,16 @@ describe('timestamp server tests', function() {
 			})
 
 			//stub get all compilation timestamp data for all tests
-			sandbox.stub(dbActions, 'getAllCompilationTimestamp').callsFake(function(baton, params, callback) {
+			sandbox.stub(dbActions, 'getAllCompilationTimestamp').callsFake(function(baton, data, callback) {
 				var result = [...fakeCompilationTimestampData]
-				if (params.compilation_ids) {
+				if (data.compilation_id) {
 					result = result.filter(function(ct) {
-						return params.compilation_ids.includes(ct.compilation_id)
+						return data.compilation_id.includes(ct.compilation_id)
 					})
 				}
-				if (params.timestamp_ids) {
+				if (data.timestamp_id) {
 					result = result.filter(function(ct) {
-						return params.timestamp_ids.includes(ct.timestamp_id)
+						return data.timestamp_id.includes(ct.timestamp_id)
 					})
 				}
 				callback(result)

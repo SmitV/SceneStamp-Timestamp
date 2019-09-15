@@ -235,7 +235,7 @@ describe('db tests', () => {
 
 		it('get all timestamp category data filtered category ', function() {
 			dbActions.getAllTimestampCategory(fakeBaton, {
-				category_ids: [1, 2]
+				category_id: [1, 2]
 			}, function() {
 				expect(sqlQuery.trim()).to.equal("SELECT * FROM `timestamp_category` WHERE category_id = 1 OR category_id = 2");
 			})
@@ -304,8 +304,8 @@ describe('db tests', () => {
 
 		it('get all timestamp category data filted chracter and timestamp ', function() {
 			dbActions.getAllTimestampCharacter(fakeBaton, {
-				character_ids: [1, 2],
-				timestamp_ids: [1]
+				character_id: [1, 2],
+				timestamp_id: [1]
 			}, function() {
 				expect(sqlQuery.trim()).to.equal("SELECT * FROM `timestamp_characters` WHERE timestamp_id = 1  OR character_id = 1 OR character_id = 2");
 			})
@@ -356,8 +356,8 @@ describe('db tests', () => {
 
 		it('get all compilation timestamp data filtered ', function() {
 			dbActions.getAllCompilationTimestamp(fakeBaton, {
-				compilation_ids: [1, 2],
-				timestamp_ids: [5]
+				compilation_id: [1, 2],
+				timestamp_id: [5]
 			}, function() {
 				expect(sqlQuery.trim()).to.equal("SELECT * FROM `compilation_timestamp` WHERE compilation_id = 1 OR compilation_id = 2  OR timestamp_id = 5");
 			})

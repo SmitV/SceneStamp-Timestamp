@@ -262,7 +262,7 @@ module.exports = {
 
     function getCompilationData(compilation_ids, callback) {
       db.getAllCompilationData(baton, {
-        compilation_ids: (params.timestamp_ids || params.compilation_ids ? compilation_ids : null)
+        compilation_id: (params.timestamp_ids || params.compilation_ids ? compilation_ids : null)
       }, function(data) {
         t._handleDBCall(baton, data, false /*multiple*/ , callback)
       })
@@ -271,8 +271,8 @@ module.exports = {
 
     function getCompilationTimestampData(data, callback) {
       db.getAllCompilationTimestamp(baton, {
-        timestamp_ids: data.timestamp_ids,
-        compilation_ids: data.compilation_ids,
+        timestamp_id: data.timestamp_ids,
+        compilation_id: data.compilation_ids,
       }, function(data) {
         t._handleDBCall(baton, data, false /*multiple*/ , callback)
       })
@@ -704,7 +704,7 @@ module.exports = {
     baton.addMethod('getAllTimestampData');
     var t = this;
 
-    db.getAllTimestampData(baton, params.episode_ids, params.timestamp_ids, function(data) {
+    db.getAllTimestampData(baton, {episode_id: params.episode_ids, timestamp_id: params.timestamp_ids}, function(data) {
       t._handleDBCall(baton, data, false /*multiple*/ , function(timestamp_data) {
         dataLoader(timestamp_data, function(results) {
           if (params.character_ids) {
@@ -730,14 +730,14 @@ module.exports = {
       var tasks = {}
       tasks.allCategory = function(callback) {
         db.getAllTimestampCategory(baton, (timestamp_ids.length == 0 ? {} : {
-          timestamp_ids: timestamp_ids
+          timestamp_id: timestamp_ids
         }), function(data) {
           t._handleDBCall(baton, data, true /*multiple*/ , callback)
         })
       }
       tasks.allCharacter = function(callback) {
         db.getAllTimestampCharacter(baton, (timestamp_ids.length == 0 ? {} : {
-          timestamp_ids: timestamp_ids
+          timestamp_id: timestamp_ids
         }), function(data) {
           t._handleDBCall(baton, data, true /*multiple*/ , callback)
         })

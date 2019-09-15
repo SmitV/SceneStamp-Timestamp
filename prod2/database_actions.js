@@ -172,7 +172,7 @@ module.exports = {
 	getAllSeriesData(baton, callback) {
 
 		baton.addMethod(this._formatMethod('getAllSeriesData'))
-		this._selectQuery('series', null, null, baton, callback)
+		this._selectQuery(baton, 'series',null, callback)
 	},
 	insertSeries(baton, values, callback) {
 		this._insertMultipleQuery('series', [values], baton, function() {
@@ -182,7 +182,7 @@ module.exports = {
 
 	getAllEpisodeData(baton, data, callback) {
 		baton.addMethod(this._formatMethod('getAllEpisodeData'))
-		this._updatedSelectQuery(baton, 'episode', data, callback)
+		this._selectQuery(baton, 'episode', data, callback)
 	},
 	insertEpisode(baton, values, callback) {
 		baton.addMethod(this._formatMethod('insertEpisode'))
@@ -192,7 +192,7 @@ module.exports = {
 	},
 	getAllCharacterData(baton, callback) {
 		baton.addMethod(this._formatMethod('getAllCharacterData'))
-		this._selectQuery('character', null, null, baton, callback)
+		this._selectQuery(baton, 'character', null, callback)
 	},
 	insertCharacter(baton, values, callback) {
 		baton.addMethod(this._formatMethod('insertCharacter'))
@@ -202,7 +202,7 @@ module.exports = {
 	},
 	getAllCategoryData(baton, callback) {
 		baton.addMethod(this._formatMethod('getAllCategoryData'))
-		this._selectQuery('category', null, null, baton, callback)
+		this._selectQuery(baton, 'category', null, callback)
 	},
 	insertCategory(baton, values, callback) {
 		baton.addMethod(this._formatMethod('insertCategory'))
@@ -210,12 +210,10 @@ module.exports = {
 			callback(values)
 		});
 	},
-	getAllTimestampData(baton, episode_ids, timestamp_ids, callback) {
+	getAllTimestampData(baton, data, callback) {
 		baton.addMethod(this._formatMethod('getAllTimestampData'))
-		var data = {}
-		data.episode_id = (episode_ids ? episode_ids : null)
-		data.timestamp_id = (timestamp_ids ? timestamp_ids : null)
-		this._selectQuery('timestamp', null, data, baton, callback)
+		
+		this._selectQuery(baton, 'timestamp',data, callback)
 	},
 	insertTimestamp(baton, values, callback) {
 		baton.addMethod(this._formatMethod('insertTimestamp'))
@@ -223,15 +221,9 @@ module.exports = {
 			callback(values)
 		});
 	},
-	getAllTimestampCategory(baton, params, callback) {
+	getAllTimestampCategory(baton, data, callback) {
 		baton.addMethod(this._formatMethod('getAllTimestampCategory'))
-		var data = {}
-		data.timestamp_id = (params.timestamp_ids ? params.timestamp_ids : null)
-		data.category_id = (params.category_ids ? params.category_ids : null)
-		data = (Object.keys(data).filter(key => {
-			return data[key] != null
-		}).length == 0 ? null : data)
-		this._selectQuery('timestamp_category', null, data, baton, callback)
+		this._selectQuery(baton, 'timestamp_category',data, callback)
 	},
 	insertTimestampCategory(baton, values, callback) {
 		baton.addMethod(this._formatMethod('insertTimestampCategory'))
@@ -245,15 +237,9 @@ module.exports = {
 			'timestamp_id': timestamp_ids
 		} : null), baton, callback)
 	},
-	getAllTimestampCharacter(baton, params, callback) {
+	getAllTimestampCharacter(baton, data, callback) {
 		baton.addMethod(this._formatMethod('getAllTimestampCharacter'))
-		var data = {}
-		data.timestamp_id = (params.timestamp_ids ? params.timestamp_ids : null)
-		data.character_id = (params.character_ids ? params.character_ids : null)
-		data = (Object.keys(data).filter(key => {
-			return data[key] != null
-		}).length == 0 ? null : data)
-		this._selectQuery('timestamp_characters', null, data, baton, callback)
+		this._selectQuery(baton, 'timestamp_characters',data, callback)
 	},
 	insertTimestampCharacter(baton, values, callback) {
 		baton.addMethod(this._formatMethod('insertTimestampCharacter'))
@@ -267,15 +253,9 @@ module.exports = {
 			'timestamp_id': timestamp_ids
 		} : null), baton, callback)
 	},
-	getAllCompilationData(baton, params, callback) {
+	getAllCompilationData(baton, data, callback) {
 		baton.addMethod(this._formatMethod('getAllCompilationData'))
-		var data = {}
-		data.compilation_id = (params.compilation_ids ? params.compilation_ids : null)
-		data.timestamp_id = (params.timestamp_ids ? params.timestamp_ids : null)
-		data = (Object.keys(data).filter(key => {
-			return data[key] != null
-		}).length == 0 ? null : data)
-		this._selectQuery('compilation', null, data, baton, callback)
+		this._selectQuery(baton, 'compilation',data, callback)
 	},
 	insertCompilation(baton, values, callback) {
 		baton.addMethod(this._formatMethod('insertCategory'))
@@ -283,15 +263,9 @@ module.exports = {
 			callback(values)
 		});
 	},
-	getAllCompilationTimestamp(baton, params, callback) {
+	getAllCompilationTimestamp(baton, data, callback) {
 		baton.addMethod(this._formatMethod('getAllCompilationTimestamp'))
-		var data = {}
-		data.compilation_id = (params.compilation_ids ? params.compilation_ids : null)
-		data.timestamp_id = (params.timestamp_ids ? params.timestamp_ids : null)
-		data = (Object.keys(data).filter(key => {
-			return data[key] != null
-		}).length == 0 ? null : data)
-		this._selectQuery('compilation_timestamp', null, data, baton, callback)
+		this._selectQuery(baton, 'compilation_timestamp',data, callback)
 	},
 
 	insertUser(baton, values, callback) {
@@ -301,13 +275,9 @@ module.exports = {
 		});
 	},
 
-	getUserData(baton, params, callback) {
+	getUserData(baton, data, callback) {
 		baton.addMethod(this._formatMethod('getUserData'))
-		var data = {}
-		data.username = (params.username ? [params.username] : null)
-		data.email = (params.email ? [params.email] : null)
-		data.auth_token = (params.auth_token ? [params.auth_token] : null)
-		this._selectQuery('user', null, data, baton, callback)
+		this._selectQuery(baton, 'user',data, callback)
 	},
 
 	insertUser(baton, values, callback) {
@@ -392,24 +362,9 @@ module.exports = {
 	/**
 	 * Makes the SELECT _query
 	 * @param {string} table name of the table to get data
-	 * @param {string[]} attributes list of attributes to select from table
 	 * @param {json} conditions key is the attribute, value is an array of values for the conditions
-	 * @param {function} callback returning function with resulting data
 	 */
-	_selectQuery(table, attributes, conditions, baton, callback) {
-		var t = this;
-		if (attributes == null) attributes = ['*'];
-		var conditions_string = "";
-		if (conditions != null) {
-			conditions_string = " WHERE "
-			Object.keys(conditions).forEach(function(attr) {
-				if (conditions[attr]) conditions_string += t._multipleConditions(table, attr, conditions[attr]) + " OR "
-			})
-		}
-		this._makequery("SELECT " + attributes.join(',') + " FROM `" + table + "`" + conditions_string.slice(0, -3), null, table, baton, callback)
-
-	},
-	_updatedSelectQuery(baton, table, conditions, callback) {
+	_selectQuery(baton, table, conditions, callback) {
 		var t = this;
 		var condition_delimiter = ' OR '
 		var condition_string = ""
