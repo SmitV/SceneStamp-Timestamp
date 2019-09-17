@@ -17,7 +17,7 @@ var MAIN_POOLS = {
 		database: "heroku_2648a9aa380b8d4"
 	})
 }
-var VIDEO_SERVER_URL = 'http://ec2-18-224-0-88.us-east-2.compute.amazonaws.com'
+var VIDEO_SERVER_URL = 'http://ubuntu@ec2-18-221-3-92.us-east-2.compute.amazonaws.com'
 var VIDEO_SERVER_PORT = 8081
 
 var pools = MAIN_POOLS
