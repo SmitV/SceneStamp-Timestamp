@@ -140,10 +140,32 @@ describe('db tests', () => {
 		})
 	})
 
+	describe('roles and actions', function() {
+		it('get all role data', () => {
+
+			dbActions.getAllRoleData(fakeBaton, null, () => {
+				expect(sqlQuery).to.equal('SELECT * FROM `role`');
+			})
+		})
+
+		it('get all action data', () => {
+
+			dbActions.getAllActionData(fakeBaton,null,  () => {
+				expect(sqlQuery).to.equal('SELECT * FROM `action`');
+			})
+		})
+		it('get all role and action data', () => {
+
+			dbActions.getAllRoleActionData(fakeBaton,null, () => {
+				expect(sqlQuery).to.equal('SELECT * FROM `role_action`');
+			})
+		})
+	})
+
 	describe('series', function() {
 		it('get all series data', () => {
 
-			dbActions.getAllSeriesData(fakeBaton, () => {
+			dbActions.getAllSeriesData(fakeBaton,  () => {
 				expect(sqlQuery).to.equal('SELECT * FROM `series`');
 			})
 		})

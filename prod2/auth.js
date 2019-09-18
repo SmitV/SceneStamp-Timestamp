@@ -5,6 +5,7 @@ var passwordValidator = require('password-validator');
 var bcrypt = require('bcrypt')
 var jwt = require('jsonwebtoken')
 var fs = require('fs')
+var AccessControl = require('accesscontrol')
 
 // PRIVATE and PUBLIC key
 var privateKEY = fs.readFileSync(__dirname + '/jwt_private.key', 'utf8');
@@ -12,6 +13,10 @@ var publicKEY = fs.readFileSync(__dirname + '/jwt_public.key', 'utf8');
 
 //Schema for password validation
 var schema = new passwordValidator();
+
+// Access Control Validator
+var ac = new AccessControl();
+var ROLE_DATA;
 
 schema
 	.is().min(8) // Minimum length 8
@@ -238,7 +243,6 @@ module.exports = {
 				})
 			})
 		}
-
 		createParams(params => {
 			validateRequest(params, (update_params) => {
 				validateParams(update_params, (user) => {
@@ -254,9 +258,6 @@ module.exports = {
 	},
 
 	_createJwt(user, callback) {
-
-		console.log('aud')
-		console.log(user.username)
 		// SIGNING OPTIONS
 		var signOptions = {
 			issuer: 'SceneStamp',
@@ -267,7 +268,8 @@ module.exports = {
 		};
 
 		callback(jwt.sign({
-			user_id: user.user_id
+			user_id: user.user_id,
+			user_role: user.role
 		}, privateKEY, signOptions))
 	},
 
@@ -289,32 +291,123 @@ module.exports = {
 		}
 
 		var validateAuthtoken = (params, callback) => {
-
-
-			var token = jwt.verify(params.auth_token, publicKEY, function(err, decoded) {
-				if (err|| decoded === undefined) {
-					baton.setError({
-						auth_token: params.auth_token,
-						public_message: 'Auth token invalid'
-					})
-					actions._generateError(baton)
-					return
-				} else {
-					baton.user_id = decoded.user_id
-					callback()
-				}
-			})
+			if (!params.test_mode) callback()
+			else {
+				var token = jwt.verify(params.auth_token, publicKEY, function(err, decoded) {
+					if (err || decoded === undefined) {
+						baton.setError({
+							auth_token: params.auth_token,
+							public_message: 'Auth token invalid'
+						})
+						actions._generateError(baton)
+						return
+					} else {
+						baton.user_id = decoded.user_id
+						callback(decoded.user_role)
+					}
+				})
+			}
 		}
 
 		createParams((params) => {
-			if(params.test_mode) validateAuthtoken(params, suc_callback)
-			else suc_callback()
+			validateAuthtoken(params, (role_id) => {
+				this._validateRole(baton, params, role_id, function() {
+					suc_callback();
+				})
+			})
 		})
 
+	},
+
+	_validateRole(baton, params, role_id, callback) {
+		var checkPermission = (role_name, callback) => {
+			if (!ac.can(role_name).readAny(baton.endpoint).granted) {
+				baton.setError({
+					public_message: 'Permission Denied'
+				})
+				actions._generateError(baton)
+				return
+			}
+			callback()
+		}
+
+		var validateRoleData = (callback) => {
+			if (ROLE_DATA == null) {
+				this.setUpAccessControl(callback)
+				return
+			}
+			callback()
+		}
+
+		validateRoleData(() => {
+			var matchingRole = ROLE_DATA.filter(role => {
+				return role.role_id == role_id
+			})
+			if (!params.test_mode) callback()
+			else if (role_id == null) {
+				baton.setError({
+					details: "User not assigned a role ",
+					public_message: 'Permission Denied'
+				})
+				actions._generateError(baton)
+			} else if (matchingRole.length !== 1) {
+				baton.setError({
+					role_id: role_id,
+					details: "Invalid Role ",
+					public_message: 'Permission Denied'
+				})
+				actions._generateError(baton)
+			} else {
+				checkPermission(matchingRole[0].role_name, callback)
+			}
+		})
 	},
 	_getUserData(baton, params, callback) {
 		db.getUserData(baton, params, (userData) => {
 			actions._handleDBCall(baton, userData, false /*multiple*/ , callback)
+		})
+	},
+
+
+	setUpAccessControl(callback) {
+		ac = new AccessControl();
+		var baton = actions._getBaton('setUpAccessControl', null, null)
+		baton.sendError = (data) => {
+			callback(data)
+		}
+		this._getAllRoleActionData(baton, (roleData, actionData, roleActionData) => {
+			ROLE_DATA = roleData
+			roleData.forEach(role => {
+				var actionsWithSameRole = roleActionData.filter(rta => {
+					return rta.role_id === role.role_id
+				}).map(rta => {
+					return rta.action_id
+				})
+				var validActions = actionData.filter(action => {
+					return actionsWithSameRole.includes(action.action_id)
+				})
+				validActions.forEach(action => {
+					ac.grant(role.role_name).readAny(action.action_name)
+				})
+			})
+			callback()
+
+		})
+	},
+
+
+	_getAllRoleActionData(baton, callback) {
+		this._dbCall(baton, 'getAllRoleData', null, (roleData) => {
+			this._dbCall(baton, 'getAllActionData', null, (actionData) => {
+				this._dbCall(baton, 'getAllRoleActionData', null, (roleActionData) => {
+					callback(roleData, actionData, roleActionData)
+				})
+			})
+		})
+	},
+	_dbCall(baton, action, params, callback) {
+		db[action](baton, params, (data) => {
+			actions._handleDBCall(baton, data, false /*multiple*/ , callback)
 		})
 	}
 }

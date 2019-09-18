@@ -97,6 +97,9 @@ var user_endpoints = [{
 }, {
 	url: 'decode',
 	action: 'decode'
+}, {
+	url: 'permission',
+	action: 'permission'
 }]
 
 user_endpoints.forEach(function(endpoint) {

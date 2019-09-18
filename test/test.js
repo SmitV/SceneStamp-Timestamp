@@ -6,6 +6,8 @@ var chaiHttp = require('chai-http');
 var nock = require('nock')
 var bcrypt = require('bcrypt')
 var jwt = require('jsonwebtoken')
+var AccessControl = require('accesscontrol')
+
 
 var server = require('../index').server
 
@@ -29,6 +31,7 @@ function assertSuccess(res, post) {
 
 var TIMEOUT = 100;
 var EXTENDED_TIMEOUT = 500;
+
 
 describe('timestamp server tests', function() {
 
@@ -68,6 +71,8 @@ describe('timestamp server tests', function() {
 	var fakeCategoryData;
 	var fakeCompilationData;
 	var fakeCompilationTimestampData;
+
+
 
 	beforeEach(function() {
 		sandbox = sinon.createSandbox()
@@ -166,6 +171,10 @@ describe('timestamp server tests', function() {
 		}];
 
 		sandbox.stub(auth, 'authValidate').callsFake(function(baton, req, callback) {
+			callback()
+		})
+
+		sandbox.stub(auth, '_validateRole').callsFake((baton, params, role_id, callback) => {
 			callback()
 		})
 
@@ -346,6 +355,24 @@ describe('timestamp server tests', function() {
 				})
 			})
 
+			it('should login user and set user role', function(done) {
+				fakeUserData[0].role = 101
+				var user = fakeUserData[0]
+				var headers = {
+					email: user.email,
+					password: user.password
+				}
+				sucsPassCompare();
+				sendRequest('login', {}, /*post=*/ false, headers).end((err, res, body) => {
+					assertSuccess(res)
+					expect(res.body.auth_token.payload).to.deep.equal({
+						user_id: user.user_id,
+						user_role: user.role
+					})
+					done()
+				})
+			})
+
 			it('should throw for invalid username', function(done) {
 				var user = fakeUserData[0]
 				var headers = {
@@ -442,6 +469,115 @@ describe('timestamp server tests', function() {
 					done()
 				}, TIMEOUT)
 			})
+		})
+
+		describe('actions and roles', function() {
+
+			var action_stub;
+
+			var fakeRoleData = [{
+				role_id: 0,
+				role_name: 'Admin',
+			}, {
+				role_id: 1,
+				role_name: 'Other',
+
+			}]
+
+			var fakeActionData = [{
+				action_id: 101,
+				action_name: 'getTimestampData'
+			}, {
+				action_id: 102,
+				action_name: 'getEpisodeData'
+			}]
+
+			var fakeRoleActionData = [{
+				role_id: 0,
+				action_id: 101
+			}, {
+				role_id: 0,
+				action_id: 102
+			}, {
+				role_id: 1,
+				action_id: 101
+			}]
+
+			function setupUserWithRole(user, role_id) {
+				user.role = role_id
+			}
+
+			beforeEach(function() {
+				auth._validateRole.restore()
+
+				sandbox.stub(dbActions, 'getAllRoleData').callsFake(function(baton, queryData, callback) {
+					callback(fakeRoleData)
+				})
+
+				sandbox.stub(dbActions, 'getAllActionData').callsFake(function(baton, queryData, callback) {
+					callback(fakeActionData)
+				})
+
+				sandbox.stub(dbActions, 'getAllRoleActionData').callsFake(function(baton, queryData, callback) {
+					callback(fakeRoleActionData)
+				})
+
+				authVerify();
+			})
+
+			it('should validate user with permission', (done) => {
+				var user = fakeUserData[0]
+				setupUserWithRole(user, 0)
+				fakeReq.headers = {
+					auth_token: {
+						user_id: 101,
+						user_role: 0
+					},
+					test_mode: true
+				}
+				fakeBaton = actions._getBaton('getTimestampData', fakeReq.body, fakeRes)
+				auth.authValidate(fakeBaton, fakeReq, function() {
+					//means the authentication was sucsessful
+					done()
+				})
+			})
+
+			it('should not validate user with unsufficient action', (done) => {
+				var user = fakeUserData[0]
+				setupUserWithRole(user, 1) //1 is not admin, doesn't have 'getEpisodeData' action 
+				fakeReq.headers = {
+					auth_token: {
+						user_id: 101,
+						user_role: 1
+					},
+					test_mode: true
+				}
+				fakeBaton = actions._getBaton('getEpisodeData', fakeReq.body, fakeRes)
+				auth.authValidate(fakeBaton, fakeReq, () => {})
+				setTimeout(() => {
+					expect(fakeBaton.err[0].public_message).to.equal('Permission Denied')
+					done()
+				}, TIMEOUT)
+			})
+
+			it('should not validate user with invalid role_id', (done) => {
+				var user = fakeUserData[0]
+				setupUserWithRole(user, 1) //1 is not admin, doesn't have 'getEpisodeData' action 
+				fakeReq.headers = {
+					auth_token: {
+						user_id: 101,
+						//role_id is missing
+					},
+					test_mode: true
+				}
+				fakeBaton = actions._getBaton('getEpisodeData', fakeReq.body, fakeRes)
+				auth.authValidate(fakeBaton, fakeReq, () => {})
+				setTimeout(() => {
+					expect(fakeBaton.err[0].public_message).to.equal('Permission Denied')
+					done()
+				}, TIMEOUT)
+			})
+
 		})
 
 	})
