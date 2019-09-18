@@ -112,11 +112,35 @@ const MAIN_SCHEME = {
 		'email': {
 			'type': 'string'
 		},
-		'auth_token': {
-			'type': 'string',
+		'role': {
+			'type': 'number',
 			'optional': true
 		}
-	}
+	},
+	'role': {
+		'role_id': {
+			'type': 'number'
+		},
+		'role_name': {
+			'type': 'string'
+		},
+	},
+	'action': {
+		'action_id': {
+			'type': 'number'
+		},
+		'action_name': {
+			'type': 'string'
+		}
+	},
+	'role_action': {
+		'role_id': {
+			'type': 'number'
+		},
+		'action_id': {
+			'type': 'number'
+		},
+	},
 }
 
 var DB_SCHEME = MAIN_SCHEME
@@ -172,7 +196,7 @@ module.exports = {
 	getAllSeriesData(baton, callback) {
 
 		baton.addMethod(this._formatMethod('getAllSeriesData'))
-		this._selectQuery(baton, 'series',null, callback)
+		this._selectQuery(baton, 'series', null, callback)
 	},
 	insertSeries(baton, values, callback) {
 		this._insertMultipleQuery('series', [values], baton, function() {
@@ -212,8 +236,8 @@ module.exports = {
 	},
 	getAllTimestampData(baton, data, callback) {
 		baton.addMethod(this._formatMethod('getAllTimestampData'))
-		
-		this._selectQuery(baton, 'timestamp',data, callback)
+
+		this._selectQuery(baton, 'timestamp', data, callback)
 	},
 	insertTimestamp(baton, values, callback) {
 		baton.addMethod(this._formatMethod('insertTimestamp'))
@@ -223,7 +247,7 @@ module.exports = {
 	},
 	getAllTimestampCategory(baton, data, callback) {
 		baton.addMethod(this._formatMethod('getAllTimestampCategory'))
-		this._selectQuery(baton, 'timestamp_category',data, callback)
+		this._selectQuery(baton, 'timestamp_category', data, callback)
 	},
 	insertTimestampCategory(baton, values, callback) {
 		baton.addMethod(this._formatMethod('insertTimestampCategory'))
@@ -239,7 +263,7 @@ module.exports = {
 	},
 	getAllTimestampCharacter(baton, data, callback) {
 		baton.addMethod(this._formatMethod('getAllTimestampCharacter'))
-		this._selectQuery(baton, 'timestamp_characters',data, callback)
+		this._selectQuery(baton, 'timestamp_characters', data, callback)
 	},
 	insertTimestampCharacter(baton, values, callback) {
 		baton.addMethod(this._formatMethod('insertTimestampCharacter'))
@@ -255,7 +279,7 @@ module.exports = {
 	},
 	getAllCompilationData(baton, data, callback) {
 		baton.addMethod(this._formatMethod('getAllCompilationData'))
-		this._selectQuery(baton, 'compilation',data, callback)
+		this._selectQuery(baton, 'compilation', data, callback)
 	},
 	insertCompilation(baton, values, callback) {
 		baton.addMethod(this._formatMethod('insertCategory'))
@@ -265,7 +289,7 @@ module.exports = {
 	},
 	getAllCompilationTimestamp(baton, data, callback) {
 		baton.addMethod(this._formatMethod('getAllCompilationTimestamp'))
-		this._selectQuery(baton, 'compilation_timestamp',data, callback)
+		this._selectQuery(baton, 'compilation_timestamp', data, callback)
 	},
 
 	insertUser(baton, values, callback) {
@@ -277,7 +301,7 @@ module.exports = {
 
 	getUserData(baton, data, callback) {
 		baton.addMethod(this._formatMethod('getUserData'))
-		this._selectQuery(baton, 'user',data, callback)
+		this._selectQuery(baton, 'user', data, callback)
 	},
 
 	insertUser(baton, values, callback) {
@@ -292,6 +316,20 @@ module.exports = {
 		this._insertMultipleQuery('compilation_timestamp', values, baton, function() {
 			callback(values)
 		});
+	},
+
+	getAllRoleData(baton, data, callback) {
+		console.log('db action get all role actions')
+		baton.addMethod(this._formatMethod('getAllRoleData'))
+		this._selectQuery(baton, 'role', data, callback)
+	},
+	getAllActionData(baton, data, callback) {
+		baton.addMethod(this._formatMethod('getAllActionData'))
+		this._selectQuery(baton, 'action', data, callback)
+	},
+	getAllRoleActionData(baton, data, callback) {
+		baton.addMethod(this._formatMethod('getAllRoleActionData'))
+		this._selectQuery(baton, 'role_action', data, callback)
 	},
 
 	_insertMultipleQuery(table, values, baton, callback) {

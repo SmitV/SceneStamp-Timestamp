@@ -1104,6 +1104,7 @@ module.exports = {
         console.log(this.methods[0] + " | " + this.duration)
         res.status((this.requestType == "GET" ? 200 : 201)).json(data)
       },
+      endpoint: method,
       //method sequence
       methods: [method],
       addMethod: function(meth) {
