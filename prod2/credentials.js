@@ -23,6 +23,9 @@ var VIDEO_SERVER_PORT = 8081
 var pools = MAIN_POOLS
 
 
+var ELASTIC_SEARCH_URL = 'https://elastic:3xzBdhJ4ZeVzNiEQas8xOeep@becc9ba4003e4832aff6237b9a3301f3.us-east-1.aws.found.io:9243'
+
+
 module.exports = {
 
 	// above for testing only
@@ -30,6 +33,8 @@ module.exports = {
 	pool: pools.pool,
 	user_pool: pools.user_pool,
 	VIDEO_SERVER_URL: VIDEO_SERVER_URL,
-	VIDEO_SERVER_PORT: VIDEO_SERVER_PORT
+	VIDEO_SERVER_PORT: VIDEO_SERVER_PORT,
+
+	ELASTIC_SEARCH_URL: ELASTIC_SEARCH_URL
 
 }

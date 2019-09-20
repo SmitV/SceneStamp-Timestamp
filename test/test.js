@@ -7,12 +7,13 @@ var nock = require('nock')
 var bcrypt = require('bcrypt')
 var jwt = require('jsonwebtoken')
 var AccessControl = require('accesscontrol')
-
+var winston = require('winston')
 
 var server = require('../index').server
 
 chai.use(chaiHttp);
 
+var logger = require('../prod2/logger').MAIN_LOGGER
 var actions = require('../prod2/actions')
 var dbActions = require('../prod2/database_actions')
 var auth = require('../prod2/auth')
@@ -76,10 +77,6 @@ describe('timestamp server tests', function() {
 
 	beforeEach(function() {
 		sandbox = sinon.createSandbox()
-
-		//surpress console.log
-		sandbox.stub(console, 'log').callsFake(function() {})
-
 
 		fakeRes = {
 			data: null,

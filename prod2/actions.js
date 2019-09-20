@@ -1,6 +1,7 @@
 var db = require('./database_actions');
 var stub_db = require('./stub_database');
 var cred = require('./credentials')
+var logger = require('./logger').MAIN_LOGGER
 var endpointRequestParams = require('./endpointRequestParams')
 var async = require('async');
 var http = require('http')
@@ -704,7 +705,10 @@ module.exports = {
     baton.addMethod('getAllTimestampData');
     var t = this;
 
-    db.getAllTimestampData(baton, {episode_id: params.episode_ids, timestamp_id: params.timestamp_ids}, function(data) {
+    db.getAllTimestampData(baton, {
+      episode_id: params.episode_ids,
+      timestamp_id: params.timestamp_ids
+    }, function(data) {
       t._handleDBCall(baton, data, false /*multiple*/ , function(timestamp_data) {
         dataLoader(timestamp_data, function(results) {
           if (params.character_ids) {
@@ -1084,6 +1088,7 @@ module.exports = {
    * uses 'call-by-sharing' ; like call-by-reference, but only for properties of objects
    */
   _getBaton(method, params, res) {
+    var t = this;
     var time = new Date();
     return {
       //id to reference detail log
@@ -1101,7 +1106,7 @@ module.exports = {
       json: function(data) {
         var end_time = new Date()
         this.duration = end_time.getTime() - this.start_time
-        console.log(this.methods[0] + " | " + this.duration)
+        logger.info(this.printable())
         res.status((this.requestType == "GET" ? 200 : 201)).json(data)
       },
       endpoint: method,
@@ -1115,21 +1120,24 @@ module.exports = {
         var end_time = new Date()
         this.duration = end_time.getTime() - this.start_time
         this.err.push(error);
+      },
+      printable: function() {
+        return t.printableBaton(this)
       }
     }
   },
 
-  _generateError(baton) {
-
+  printableBaton(baton) {
     var printableBaton = {}
-    baton.duration = new Date().getTime() - baton.start_time
     Object.keys(baton).forEach(function(key) {
       if (typeof baton[key] !== 'function') printableBaton[key] = baton[key]
     });
     delete printableBaton.res
-    console.log('----------------')
-    console.log(printableBaton)
-    console.log()
+    return printableBaton
+  },
+
+  _generateError(baton) {
+    logger.error(baton.printable())
     baton.sendError({
       'id': baton.id,
       'error_message': baton.err.map(function(err) {
