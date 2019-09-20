@@ -36,26 +36,31 @@ switch (process.env.NODE_ENV) {
 
     const elasticLogger = createLogger();
 
-
-    var client = new elasticsearch.Client({
-      host: cred.ELASTIC_SEARCH_URL,
-      log: 'info'
-
-    });
-
-    elasticLogger.add(new winston_elasticsearch({
-      client,
-      index: "logging"
-    }));
-
     logger = createLogger();
     logger.add(consoleLogger)
-    logger.add(elasticLogger)
+
+    if (process.env.HEROKU_SERVER) {
+
+      var client = new elasticsearch.Client({
+        host: cred.ELASTIC_SEARCH_URL,
+        log: 'info'
+
+      });
+
+      elasticLogger.add(new winston_elasticsearch({
+        client,
+        index: "logging"
+      }));
+
+      logger.add(elasticLogger)
+
+    }
+
     break;
   default:
     logger = {
-      info: function(){},
-      error:function(){}
+      info: function() {},
+      error: function() {}
     }
     break;
 }
