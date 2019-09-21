@@ -2,6 +2,7 @@ var db = require('./database_actions');
 var stub_db = require('./stub_database');
 var cred = require('./credentials')
 var logger = require('./logger').MAIN_LOGGER
+var methodLogger = require('./logger').METHOD_LOGGER
 var endpointRequestParams = require('./endpointRequestParams')
 var async = require('async');
 var http = require('http')
@@ -1101,19 +1102,43 @@ module.exports = {
       params: params,
       user_id: null,
       sendError: function(data) {
+        this.lastMethod();
         res.status(500).json(data)
       },
       json: function(data) {
         var end_time = new Date()
         this.duration = end_time.getTime() - this.start_time
+        this.lastMethod()
         logger.info(this.printable())
         res.status((this.requestType == "GET" ? 200 : 201)).json(data)
       },
       endpoint: method,
       //method sequence
-      methods: [method],
+      methods: [],
       addMethod: function(meth) {
-        this.methods.push(meth)
+        if (this.methods.length == 0) {
+          this.methods.push({
+            correlation_id: this.id,
+            method: meth,
+            time: new Date().getTime()
+          })
+        } else {
+          this.methods[this.methods.length - 1].duration = new Date().getTime() - this.methods[this.methods.length - 1].time
+          delete this.methods[this.methods.length - 1].time
+          methodLogger.info(this.methods[this.methods.length - 1])
+          this.methods.push({
+            correlation_id: this.id,
+            method: meth,
+            time: new Date().getTime()
+          })
+        }
+      },
+      lastMethod: function() {
+        if (this.methods.length > 0) {
+          this.methods[this.methods.length - 1].duration = new Date().getTime() - this.methods[this.methods.length - 1].time
+          delete this.methods[this.methods.length - 1].time
+          methodLogger.info(this.methods[this.methods.length - 1])
+        }
       },
       //the error object & public message to display
       setError: function(error) {
@@ -1133,6 +1158,7 @@ module.exports = {
       if (typeof baton[key] !== 'function') printableBaton[key] = baton[key]
     });
     delete printableBaton.res
+    delete printableBaton.methods
     return printableBaton
   },
 

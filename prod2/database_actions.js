@@ -319,7 +319,6 @@ module.exports = {
 	},
 
 	getAllRoleData(baton, data, callback) {
-		console.log('db action get all role actions')
 		baton.addMethod(this._formatMethod('getAllRoleData'))
 		this._selectQuery(baton, 'role', data, callback)
 	},
