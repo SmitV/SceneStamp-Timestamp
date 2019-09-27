@@ -284,8 +284,9 @@ describe('db tests', () => {
 			}
 
 			dbActions.insertTimestamp(fakeBaton, values, () => {
-				expect(sqlQuery).to.equal('INSERT INTO `timestamp` (episode_id,start_time,timestamp_id,user_id) VALUES ?');
+				expect(sqlQuery).to.equal('INSERT INTO `timestamp` (episode_id,creation_time,start_time,timestamp_id,user_id) VALUES ?');
 				values.user_id = null
+				values.creation_time = FAKE_START_TIME
 				expect(sqlValues).to.deep.equal([jsonToArray('timestamp',[values])])
 			})
 		})
@@ -300,8 +301,9 @@ describe('db tests', () => {
 			fakeBaton.user_id = 1001
 
 			dbActions.insertTimestamp(fakeBaton, values, () => {
-				expect(sqlQuery).to.equal('INSERT INTO `timestamp` (episode_id,start_time,timestamp_id,user_id) VALUES ?');
+				expect(sqlQuery).to.equal('INSERT INTO `timestamp` (episode_id,creation_time,start_time,timestamp_id,user_id) VALUES ?');
 				values.user_id = fakeBaton.user_id
+				values.creation_time = FAKE_START_TIME
 				expect(sqlValues).to.deep.equal([jsonToArray('timestamp',[values])])
 			})
 		})

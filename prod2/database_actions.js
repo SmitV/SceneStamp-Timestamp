@@ -54,6 +54,9 @@ const MAIN_SCHEME = {
 		'episode_id': {
 			'type': 'number',
 		},
+		'creation_time':{
+			'retrieve': 'getCreationTime',
+		},
 		'start_time': {
 			'type': 'number',
 		},
