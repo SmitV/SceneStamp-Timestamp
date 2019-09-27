@@ -1020,8 +1020,14 @@ describe('timestamp server tests', function() {
 
 		beforeEach(function() {
 			//stub get all series dat for all tests
-			sandbox.stub(dbActions, 'getAllCharacterData').callsFake(function(baton, callback) {
-				return callback(fakeCharacterData)
+			sandbox.stub(dbActions, 'getAllCharacterData').callsFake(function(baton, queryParams, callback) {
+				var result = [...fakeCharacterData]
+				if (queryParams.character_name) {
+					result = result.filter((character) => {
+						return queryParams.character_name.includes(character.character_name)
+					})
+				}
+				callback(result)
 			})
 		})
 
@@ -1030,6 +1036,19 @@ describe('timestamp server tests', function() {
 			sendRequest('getCharacterData', {}).end((err, res, body) => {
 				assertSuccess(res)
 				expect(res.body).to.deep.equal(fakeCharacterData)
+				done()
+			})
+		})
+
+		it('should filter by character name ', (done) => {
+
+			var values = {
+				character_name: fakeCharacterData[0].character_name
+			}
+
+			sendRequest('getCharacterData', values).end((err, res, body) => {
+				assertSuccess(res)
+				expect(res.body).to.deep.equal([fakeCharacterData[0]])
 				done()
 			})
 		})
@@ -1397,7 +1416,13 @@ describe('timestamp server tests', function() {
 				beforeEach(function() {
 
 					//ensure character data matches series data
-					sandbox.stub(dbActions, 'getAllCharacterData').callsFake(function(baton, callback) {
+					sandbox.stub(dbActions, 'getAllCharacterData').callsFake(function(baton, queryParams, callback) {
+						var result = [...fakeCharacterData]
+						if (queryParams.character_name) {
+							result = result.filter((character) => {
+								return character.character_name === queryParams.character_name
+							})
+						}
 						return callback(fakeCharacterData)
 					})
 

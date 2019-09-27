@@ -563,16 +563,20 @@ module.exports = {
     getCharacterData()
 
     function getCharacterData() {
-      t.getAllCharacterData(baton, function(data) {
+      var queryParams = {
+        //for select queries, format is (the attr from the table) : [all possible values, regardless of if 1 or multiple ]
+        character_name: (params.character_name ? [params.character_name] : undefined)
+      }
+      t.getAllCharacterData(baton,queryParams, function(data) {
         baton.json(data)
       })
     }
   },
 
-  getAllCharacterData(baton, callback) {
+  getAllCharacterData(baton, queryParams, callback) {
     baton.addMethod('getAllCharacterData');
     var t = this;
-    db.getAllCharacterData(baton, function(data) {
+    db.getAllCharacterData(baton,queryParams, function(data) {
       t._handleDBCall(baton, data, false /*multiple*/ , callback)
     })
   },
@@ -581,7 +585,7 @@ module.exports = {
     var t = this;
 
     function ensureCharacterNameIsUnique(params, callback) {
-      t.getAllCharacterData(baton, function(character_data) {
+      t.getAllCharacterData(baton, /*queryParams=*/ {}, function(character_data) {
         if (character_data.map(function(ch) {
             return ch.character_name.toLowerCase()
           }).includes(params.character_name.toLowerCase())) {
@@ -601,7 +605,7 @@ module.exports = {
 
     function addCharacterId(params, callback) {
       //update params to include generated id
-      t.getAllCharacterData(baton, function(character_data) {
+      t.getAllCharacterData(baton, /*queryParams=*/ {}, function(character_data) {
         params.character_id = t._generateId(ID_LENGTH.character, character_data.map(function(ch) {
           return ch.character_id
         }))
@@ -890,7 +894,7 @@ module.exports = {
         episode_id: timestamp.episode_id
       }, function(episode) {
         episode = episode[0]
-        t.getAllCharacterData(baton, function(series_characters) {
+        t.getAllCharacterData(baton, /*queryParams=*/ {}, function(series_characters) {
           if (t._intersection(characters, series_characters.map(function(character) {
               return character.character_id
             })).length !== characters.length) {
@@ -980,7 +984,7 @@ module.exports = {
 
   ensure_CharacterIdsExist(baton, characters, callback) {
     var t = this;
-    t.getAllCharacterData(baton, function(character_data) {
+    t.getAllCharacterData(baton, /*queryParams=*/ {}, function(character_data) {
       if (t._intersection(character_data.map(function(cha) {
           return cha.character_id;
         }), characters).length != characters.length) {

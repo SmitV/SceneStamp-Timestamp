@@ -188,6 +188,28 @@ describe('db tests', () => {
 		})
 	})
 
+	describe('character', function() {
+		it('should get all character data', () =>{
+			dbActions.getAllCharacterData(fakeBaton, {},() => {
+				expect(sqlQuery).to.equal('SELECT * FROM `character`');
+			})
+		})
+
+		it('should filter for character name', () =>{
+			var character_name = 'mark'
+			dbActions.getAllCharacterData(fakeBaton, {character_name : [character_name]},() => {
+				expect(sqlQuery.trim()).to.equal('SELECT * FROM `character` WHERE character_name = \''+character_name+'\'');
+			})
+		})
+
+		it('should filter for character name (similar)', () =>{
+			var character_name = '%mark%'
+			dbActions.getAllCharacterData(fakeBaton, {character_name : [character_name]},() => {
+				expect(sqlQuery.trim()).to.equal('SELECT * FROM `character` WHERE character_name LIKE \''+character_name+'\'');
+			})
+		})
+	})
+
 	describe('episode', function() {
 		it('should get all episode data no series ids', () => {
 

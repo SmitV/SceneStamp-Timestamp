@@ -48,6 +48,7 @@ const MAIN_SCHEME = {
 		},
 		'character_name': {
 			'type': 'string',
+			'like_option':true
 		}
 	},
 	'timestamp': {
@@ -220,9 +221,9 @@ module.exports = {
 			callback(values)
 		});
 	},
-	getAllCharacterData(baton, callback) {
+	getAllCharacterData(baton, data, callback) {
 		baton.addMethod(this._formatMethod('getAllCharacterData'))
-		this._selectQuery(baton, 'character', null, callback)
+		this._selectQuery(baton, 'character', data, callback)
 	},
 	insertCharacter(baton, values, callback) {
 		baton.addMethod(this._formatMethod('insertCharacter'))
@@ -453,8 +454,15 @@ module.exports = {
 	 */
 	_multipleConditions(table, atr, values) {
 		var conditions = ""
+
+		var getEquator = function(value){
+			var re = new RegExp("^\%(([a-z])*([A-Z])*(\\s)*)*\%$");
+			if(DB_SCHEME[table][atr].like_option === true && re.test(value)) return " LIKE "
+			return " = "
+		}
+
 		values.forEach(function(value) {
-			conditions += atr + " = " + (DB_SCHEME[table][atr].type == 'string' ? "'" + value + "'" : value) + " OR "
+			conditions += atr + getEquator(value) + (DB_SCHEME[table][atr].type == 'string' ? "'" + value + "'" : value) + " OR "
 		})
 		return conditions.slice(0, -3)
 	},

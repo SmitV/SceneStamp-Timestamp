@@ -38,6 +38,10 @@ var MAIN_VALIDATION = {
       type: "number",
       optional: true,
       multiple: true
+    },
+    character_name : {
+      type:"string",
+      optional: true
     }
   },
   newCharacter: {
