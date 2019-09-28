@@ -34,19 +34,20 @@ var MAIN_VALIDATION = {
     }
   },
   getCharacterData: {
-    series_ids: {
-      type: "number",
-      optional: true,
-      multiple: true
-    },
-    character_name : {
-      type:"string",
+    character_name: {
+      type: "string",
       optional: true
     }
   },
   newCharacter: {
     character_name: {
       type: "string"
+    }
+  },
+  getCategoryData: {
+    category_name :{
+      type: "string",
+      optional: true
     }
   },
   newCategory: {
@@ -123,28 +124,28 @@ var MAIN_VALIDATION = {
       multiple: true
     }
   },
-  createUser:{
-    username:{
-      type:'string'
+  createUser: {
+    username: {
+      type: 'string'
     },
-    email:{
-      type:'string'
+    email: {
+      type: 'string'
     },
-    password:{
-      type:'string'
+    password: {
+      type: 'string'
     }
   },
-  login:{
-    username:{
-      type:'string',
-      optional:true
+  login: {
+    username: {
+      type: 'string',
+      optional: true
     },
-    email:{
-      type:'string',
-      optional:true
+    email: {
+      type: 'string',
+      optional: true
     },
-    password:{
-      type:'string'
+    password: {
+      type: 'string'
     }
   }
 }

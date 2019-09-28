@@ -637,15 +637,19 @@ module.exports = {
   get_allCategoryData(baton, params, res) {
     var t = this;
 
-    t.getAllCategoryData(baton, function(data) {
+     var queryParams = {
+        //for select queries, format is (the attr from the table) : [all possible values, regardless of if 1 or multiple ]
+        category_name: (params.category_name ? [params.category_name] : undefined)
+      }
+    t.getAllCategoryData(baton,queryParams, function(data) {
       baton.json(data)
     })
   },
 
-  getAllCategoryData(baton, callback) {
+  getAllCategoryData(baton,queryParams, callback) {
     baton.addMethod('getAllCategoryData');
     var t = this;
-    db.getAllCategoryData(baton, function(data) {
+    db.getAllCategoryData(baton,queryParams, function(data) {
       t._handleDBCall(baton, data, false /*multiple*/ , callback)
     })
   },
@@ -654,7 +658,7 @@ module.exports = {
     var t = this;
 
     function ensureCategoryIsUnique(params, callback) {
-      t.getAllCategoryData(baton, function(category_data) {
+      t.getAllCategoryData(baton, /*queryParams=*/{}, function(category_data) {
         if (category_data.map(function(ct) {
             return ct.category_name.toLowerCase()
           }).includes(params.category_name.toLowerCase())) {
@@ -967,7 +971,7 @@ module.exports = {
 
   ensure_CategoryIdsExist(baton, categories, callback) {
     var t = this;
-    t.getAllCategoryData(baton, function(category_data) {
+    t.getAllCategoryData(baton,/*queryParams=*/{}, function(category_data) {
       if (t._intersection(category_data.map(function(cat) {
           return cat.category_id;
         }), categories).length != categories.length) {

@@ -210,6 +210,28 @@ describe('db tests', () => {
 		})
 	})
 
+	describe('category', function() {
+		it('should get all category data', () =>{
+			dbActions.getAllCategoryData(fakeBaton, {},() => {
+				expect(sqlQuery).to.equal('SELECT * FROM `category`');
+			})
+		})
+
+		it('should filter for category name', () =>{
+			var category_name = 'funny'
+			dbActions.getAllCategoryData(fakeBaton, {category_name : [category_name]},() => {
+				expect(sqlQuery.trim()).to.equal('SELECT * FROM `category` WHERE category_name = \''+category_name+'\'');
+			})
+		})
+
+		it('should filter for category name (similar)', () =>{
+			var category_name = '%funny%'
+			dbActions.getAllCategoryData(fakeBaton, {category_name : [category_name]},() => {
+				expect(sqlQuery.trim()).to.equal('SELECT * FROM `category` WHERE category_name LIKE \''+category_name+'\'');
+			})
+		})
+	})
+
 	describe('episode', function() {
 		it('should get all episode data no series ids', () => {
 

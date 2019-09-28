@@ -40,6 +40,7 @@ const MAIN_SCHEME = {
 		},
 		'category_name': {
 			'type': 'string',
+			'like_option':true
 		},
 	},
 	'character': {
@@ -231,9 +232,9 @@ module.exports = {
 			callback(values)
 		});
 	},
-	getAllCategoryData(baton, callback) {
+	getAllCategoryData(baton,data, callback) {
 		baton.addMethod(this._formatMethod('getAllCategoryData'))
-		this._selectQuery(baton, 'category', null, callback)
+		this._selectQuery(baton, 'category', data, callback)
 	},
 	insertCategory(baton, values, callback) {
 		baton.addMethod(this._formatMethod('insertCategory'))

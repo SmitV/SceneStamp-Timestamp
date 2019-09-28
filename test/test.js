@@ -1107,8 +1107,14 @@ describe('timestamp server tests', function() {
 
 		beforeEach(function() {
 			//stub get all series dat for all tests
-			sandbox.stub(dbActions, 'getAllCategoryData').callsFake(function(baton, callback) {
-				return callback(fakeCategoryData)
+			sandbox.stub(dbActions, 'getAllCategoryData').callsFake(function(baton, queryParams, callback) {
+				var result = [...fakeCategoryData]
+				if (queryParams.category_name) {
+					result = result.filter((category) => {
+						return queryParams.category_name.includes(category.category_name)
+					})
+				}
+				callback(result)
 			})
 		})
 
@@ -1121,6 +1127,14 @@ describe('timestamp server tests', function() {
 			})
 		})
 
+		it('should filter by category name', function(done) {
+			var category_name = fakeCategoryData[0].category_name
+			sendRequest('getCategoryData', {category_name : category_name}).end((err, res, body) => {
+				assertSuccess(res)
+				expect(res.body).to.deep.equal([fakeCategoryData[0]])
+				done()
+			})
+		})
 
 		describe('inserting new category', function() {
 
@@ -1420,15 +1434,21 @@ describe('timestamp server tests', function() {
 						var result = [...fakeCharacterData]
 						if (queryParams.character_name) {
 							result = result.filter((character) => {
-								return character.character_name === queryParams.character_name
+								return queryParams.character_name.includes(character.character_name)
 							})
 						}
-						return callback(fakeCharacterData)
+						callback(result)
 					})
 
 					//stub get all series dat for all tests
-					sandbox.stub(dbActions, 'getAllCategoryData').callsFake(function(baton, callback) {
-						return callback(fakeCategoryData)
+					sandbox.stub(dbActions, 'getAllCategoryData').callsFake(function(baton, queryParams, callback) {
+						var result = [...fakeCategoryData]
+						if (queryParams.category_name) {
+							result = result.filter((category) => {
+								return queryParams.category_name.includes(category.category_name)
+							})
+						}
+						callback(result)
 					})
 
 					sandbox.stub(dbActions, 'removeTimestampCharacter').callsFake(function(baton, values, callback) {
