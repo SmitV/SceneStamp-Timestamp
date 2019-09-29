@@ -1,10 +1,12 @@
 var express = require('express');
 const bodyParser = require('body-parser');
+var cors = require('cors')
 
 var production_action = require('./prod2/actions.js');
 var auth = require('./prod2/auth.js')
 
 var app = express();
+app.options('*', cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
 	extended: false
