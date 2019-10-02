@@ -59,6 +59,10 @@ var timestamp_endpoints = [{
 	url: 'newCompilation',
 	action: 'post_newCompilation',
 	post: true
+},
+ {
+	url: 'getCompilationDescription',
+	action: 'get_compilationDescription'
 }, ];
 
 app.all('*', function(req, res, next) {

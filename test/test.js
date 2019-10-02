@@ -1129,7 +1129,9 @@ describe('timestamp server tests', function() {
 
 		it('should filter by category name', function(done) {
 			var category_name = fakeCategoryData[0].category_name
-			sendRequest('getCategoryData', {category_name : category_name}).end((err, res, body) => {
+			sendRequest('getCategoryData', {
+				category_name: category_name
+			}).end((err, res, body) => {
 				assertSuccess(res)
 				expect(res.body).to.deep.equal([fakeCategoryData[0]])
 				done()
@@ -1562,11 +1564,36 @@ describe('timestamp server tests', function() {
 			fakeTimestampData = [{
 				"timestamp_id": 0,
 				"start_time": 0,
-				"episode_id": 1
+				"episode_id": 2
 			}, {
 				"timestamp_id": 1,
 				"start_time": 0,
 				"episode_id": 1
+			}, {
+				"timestamp_id": 2,
+				"start_time": 0,
+				"episode_id": 2
+			}, {
+				"timestamp_id": 3,
+				"start_time": 0,
+				"episode_id": 3
+			}];
+
+			fakeEpisodeData = [{
+				"episode_id": 1,
+				"episode_name": "Test Episode 1",
+				"air_date": 1564034876,
+				"series_id": 0
+			}, {
+				"episode_id": 2,
+				"episode_name": "Test Episode 2",
+				"air_date": 1564038876,
+				"youtube_id": 'ep2yturl'
+			}, {
+				"episode_id": 3,
+				"episode_name": "Test Episode 3",
+				"air_date": 1569038876,
+				"youtube_id": 'ep3yturl'
 			}];
 
 			fakeCompilationData = [{
@@ -1575,6 +1602,9 @@ describe('timestamp server tests', function() {
 			}, {
 				"compilation_id": 102,
 				"compilation_name": "InTest Compilation 2"
+			}, {
+				"compilation_id": 103,
+				"compilation_name": "InTest Compilation 3"
 			}]
 
 			fakeCompilationTimestampData = [{
@@ -1602,9 +1632,25 @@ describe('timestamp server tests', function() {
 				"timestamp_id": 2,
 				"duration": 30,
 				"start_time": 10
-			}]
+			}, {
+				"compilation_id": 103,
+				"timestamp_id": 3,
+				"duration": 30,
+				"start_time": 10
+			}, ]
 
-			//stub get all timestamp data for all tests
+			//stub get all series dat for all tests
+			sandbox.stub(dbActions, 'getAllEpisodeData').callsFake(function(baton, queryData, callback) {
+				var result = [...fakeEpisodeData].filter(ep => {
+					return (queryData.series_id && queryData.series_id.length > 0 ? queryData.series_id.includes(ep.series_id) : true)
+				}).filter(ep => {
+					return (queryData.youtube_id && queryData.youtube_id.length > 0 ? queryData.youtube_id.includes(ep.youtube_id) : true)
+				}).filter(ep => {
+					return (queryData.episode_id && queryData.episode_id.length > 0 ? queryData.episode_id.includes(ep.episode_id) : true)
+				})
+				return callback(result)
+			})
+
 			//stub get all timestamp data for all tests
 			sandbox.stub(dbActions, 'getAllTimestampData').callsFake(function(baton, data, callback) {
 				var result = [...fakeTimestampData]
@@ -1743,6 +1789,43 @@ describe('timestamp server tests', function() {
 				}))
 				done()
 			})
+		})
+
+		describe('get compilation description', function() {
+
+			var getLinkFromCompilationId = (compilation_id) => {
+				var timestamps_ids = fakeCompilationTimestampData
+					.filter(ct => ct.compilation_id === compilation_id)
+					.map(ct => ct.timestamp_id)
+				var episode_ids = fakeTimestampData.filter(ts => timestamps_ids.includes(ts.timestamp_id))
+					.map(ts => ts.episode_id)
+				return fakeEpisodeData.filter(ep => ep.youtube_id !== null)
+					.filter(ep => episode_ids.includes(ep.episode_id))
+					.map(ep => ep.episode_name+":https://www.youtube.com/watch?v=" + ep.youtube_id)
+			}
+
+			it('should get compilation description, for multiple episode links, with two timestamps pointing to one episode', function(done) {
+				var values = {
+					compilation_id: "103"
+				}
+				sendRequest('getCompilationDescription', values).end((err, res, body) => {
+					assertSuccess(res)
+					expect(res.body.links).to.deep.equal(getLinkFromCompilationId(parseInt(values.compilation_id)))
+					done()
+				})
+			})
+
+			it('should get compilation description, one with link, one without', function(done) {
+				var values = {
+					compilation_id: "101"
+				}
+				sendRequest('getCompilationDescription', values).end((err, res, body) => {
+					assertSuccess(res)
+					expect(res.body.links).to.deep.equal(getLinkFromCompilationId(parseInt(values.compilation_id)))
+					done()
+				})
+			})
+
 		})
 
 

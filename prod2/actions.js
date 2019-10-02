@@ -209,17 +209,18 @@ module.exports = {
     getEpisodeData()
 
     function getEpisodeData() {
-      t.getAllEpisodeData(baton, params.series_ids, params.youtube_link, function(data) {
+      t.getAllEpisodeData(baton, params.series_ids, params.youtube_link, null /*episode_ids*/ , function(data) {
         baton.json(data)
       })
     }
   },
-  getAllEpisodeData(baton, series_ids, youtube_link, callback) {
+  getAllEpisodeData(baton, series_ids, youtube_link, episode_ids, callback) {
     baton.addMethod('getAllEpisodeData');
     var t = this;
 
     var queryData = {
-      series_id: series_ids
+      series_id: series_ids,
+      episode_id: episode_ids
     }
 
     if (youtube_link !== undefined && youtube_link !== null) {
@@ -306,6 +307,56 @@ module.exports = {
         callback(updateCompilationData)
       })
     })
+  },
+
+  get_compilationDescription(baton, params, res) {
+
+    var getEpisodeFromCompilationTimestamps = (timestamps, callback) => {
+
+      var getUnique = (value, index, self) => self.indexOf(value) === index
+
+      var getTimestampIds = (timestamps, callback) => {
+        callback(timestamps
+          .map(timestamp => timestamp.timestamp_id)
+          .filter(getUnique));
+      }
+
+      var getEpisodeIdsFromTimestampIds = (baton, timestamp_ids, callback) => {
+        this.getAllTimestampData(baton, {
+          timestamp_ids: timestamp_ids
+        }, function(timestamp_data) {
+          callback(timestamp_data.map(timestamp => timestamp.episode_id).filter(getUnique))
+        })
+      }
+
+      var getYoutubeURL = (youtube_id) => {
+        return "https://www.youtube.com/watch?v=" + youtube_id
+      }
+
+      var getLinksFromEpisodeIds = (baton, episode_ids, callback) => {
+        this.getAllEpisodeData(baton, null /*series_ids*/ , null /*youtube_id*/ , episode_ids /*episode_ids*/ , function(episode_data) {
+          callback(episode_data.filter(ep => ep.youtube_id !== null).map(ep => ep.episode_name + ":" + getYoutubeURL(ep.youtube_id)))
+        })
+      }
+      getTimestampIds(timestamps, timestamp_ids => {
+        getEpisodeIdsFromTimestampIds(baton, timestamp_ids, (episode_ids) => {
+          getLinksFromEpisodeIds(baton, episode_ids, (links) => {
+            callback(links)
+          })
+        })
+      })
+    }
+
+    this.getAllCompilationData(baton, {
+      compilation_ids: [params.compilation_id]
+    }, (compilation_data) => {
+      getEpisodeFromCompilationTimestamps(compilation_data[0].timestamps, links => {
+        baton.json({
+          links: links
+        })
+      })
+    })
+
   },
 
   post_newCompilation(baton, params, res) {
@@ -433,7 +484,7 @@ module.exports = {
     var t = this;
 
     function ensureEpisodeParamsIsUnique(params, callback) {
-      t.getAllEpisodeData(baton, null /*series_ids*/ , null /*youtube_id*/ , function(episode_data) {
+      t.getAllEpisodeData(baton, null /*series_ids*/ , null /*youtube_id*/ , null /*episode_ids*/ , function(episode_data) {
         if (episode_data.map(function(ep) {
             return ep.episode_name.toLowerCase()
           }).includes(params.episode_name.toLowerCase())) {
@@ -567,7 +618,7 @@ module.exports = {
         //for select queries, format is (the attr from the table) : [all possible values, regardless of if 1 or multiple ]
         character_name: (params.character_name ? [params.character_name] : undefined)
       }
-      t.getAllCharacterData(baton,queryParams, function(data) {
+      t.getAllCharacterData(baton, queryParams, function(data) {
         baton.json(data)
       })
     }
@@ -576,7 +627,7 @@ module.exports = {
   getAllCharacterData(baton, queryParams, callback) {
     baton.addMethod('getAllCharacterData');
     var t = this;
-    db.getAllCharacterData(baton,queryParams, function(data) {
+    db.getAllCharacterData(baton, queryParams, function(data) {
       t._handleDBCall(baton, data, false /*multiple*/ , callback)
     })
   },
@@ -637,19 +688,19 @@ module.exports = {
   get_allCategoryData(baton, params, res) {
     var t = this;
 
-     var queryParams = {
-        //for select queries, format is (the attr from the table) : [all possible values, regardless of if 1 or multiple ]
-        category_name: (params.category_name ? [params.category_name] : undefined)
-      }
-    t.getAllCategoryData(baton,queryParams, function(data) {
+    var queryParams = {
+      //for select queries, format is (the attr from the table) : [all possible values, regardless of if 1 or multiple ]
+      category_name: (params.category_name ? [params.category_name] : undefined)
+    }
+    t.getAllCategoryData(baton, queryParams, function(data) {
       baton.json(data)
     })
   },
 
-  getAllCategoryData(baton,queryParams, callback) {
+  getAllCategoryData(baton, queryParams, callback) {
     baton.addMethod('getAllCategoryData');
     var t = this;
-    db.getAllCategoryData(baton,queryParams, function(data) {
+    db.getAllCategoryData(baton, queryParams, function(data) {
       t._handleDBCall(baton, data, false /*multiple*/ , callback)
     })
   },
@@ -658,7 +709,7 @@ module.exports = {
     var t = this;
 
     function ensureCategoryIsUnique(params, callback) {
-      t.getAllCategoryData(baton, /*queryParams=*/{}, function(category_data) {
+      t.getAllCategoryData(baton, /*queryParams=*/ {}, function(category_data) {
         if (category_data.map(function(ct) {
             return ct.category_name.toLowerCase()
           }).includes(params.category_name.toLowerCase())) {
@@ -971,7 +1022,7 @@ module.exports = {
 
   ensure_CategoryIdsExist(baton, categories, callback) {
     var t = this;
-    t.getAllCategoryData(baton,/*queryParams=*/{}, function(category_data) {
+    t.getAllCategoryData(baton, /*queryParams=*/ {}, function(category_data) {
       if (t._intersection(category_data.map(function(cat) {
           return cat.category_id;
         }), categories).length != categories.length) {
@@ -1025,7 +1076,7 @@ module.exports = {
   ensure_EpisodeIdExists(baton, params, callback) {
     var t = this;
     baton.addMethod('ensure_EpisodeIdExists');
-    this.getAllEpisodeData(baton, null /*series_id*/ , null /*youtube_id*/ , function(episode_data) {
+    this.getAllEpisodeData(baton, null /*series_id*/ , null /*youtube_id*/ , null /*episode_ids*/ , function(episode_data) {
       if (!episode_data.map(function(ep) {
           return ep.episode_id
         }).includes(params.episode_id)) {

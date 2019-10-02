@@ -115,6 +115,11 @@ var MAIN_VALIDATION = {
       multiple: true
     }
   },
+  getCompilationDescription : {
+    compilation_id: {
+      type: 'number'
+    }
+  },
   newCompilation: {
     compilation_name: {
       type: 'string'
