@@ -1160,9 +1160,9 @@ module.exports = {
       requestType: "GET",
       params: params,
       user_id: null,
-      sendError: function(data) {
+      sendError: function(data,errorCode) {
         this.lastMethod();
-        res.status(500).json(data)
+        res.status((errorCode ? errorCode : 500)).json(data)
       },
       json: function(data) {
         var end_time = new Date()
@@ -1221,14 +1221,14 @@ module.exports = {
     return printableBaton
   },
 
-  _generateError(baton) {
+  _generateError(baton,errorCode) {
     logger.error(baton.printable())
     baton.sendError({
       'id': baton.id,
       'error_message': baton.err.map(function(err) {
         return err.public_message
       }).join('.')
-    });
+    },errorCode);
   },
   _generateId(length, ids) {
     var id = (Math.pow(10, length - 1)) + Math.floor(+Math.random() * 9 * Math.pow(10, (length - 1)));

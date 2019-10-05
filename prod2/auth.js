@@ -18,6 +18,8 @@ var schema = new passwordValidator();
 var ac = new AccessControl();
 var ROLE_DATA;
 
+var authErrorCode = 401;
+
 schema
 	.is().min(8) // Minimum length 8
 	.is().max(100) // Maximum length 100
@@ -296,9 +298,10 @@ module.exports = {
 				var token = jwt.verify(params.auth_token, publicKEY, function(err, decoded) {
 					if (err || decoded === undefined) {
 						baton.setError({
+							err:err,
 							auth_token: params.auth_token,
 							public_message: 'Auth token invalid'
-						})
+						},authErrorCode)
 						actions._generateError(baton)
 						return
 					} else {
