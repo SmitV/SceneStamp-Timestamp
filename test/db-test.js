@@ -437,6 +437,21 @@ describe('db tests', () => {
 			})
 		})
 
+		it('insert new compilation query', () => {
+
+			var values = {
+				compilation_id: 1,
+				compilation_name:'InTest Compilation'
+			}
+
+			dbActions.insertCompilation(fakeBaton, values, () => {
+				values.creation_time = FAKE_START_TIME
+				expect(sqlQuery).to.equal('INSERT INTO `compilation` (compilation_id,creation_time,compilation_name) VALUES ?');
+				expect(sqlValues).to.deep.equal([jsonToArray('compilation',[values])])
+			})
+
+		})
+
 		it('insert compilation timestamp', () => {
 
 			var values = [{

@@ -103,6 +103,9 @@ const MAIN_SCHEME = {
 		'compilation_id': {
 			'type': 'number',
 		},
+		'creation_time':{
+			'retrieve': 'getCreationTime',
+		},
 		'compilation_name': {
 			'type': 'string',
 		},
