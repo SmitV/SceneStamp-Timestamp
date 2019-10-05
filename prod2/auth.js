@@ -301,8 +301,8 @@ module.exports = {
 							err:err,
 							auth_token: params.auth_token,
 							public_message: 'Auth token invalid'
-						},authErrorCode)
-						actions._generateError(baton)
+						})
+						actions._generateError(baton,authErrorCode)
 						return
 					} else {
 						baton.user_id = decoded.user_id
