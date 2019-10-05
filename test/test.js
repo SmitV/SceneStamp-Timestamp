@@ -463,6 +463,7 @@ describe('timestamp server tests', function() {
 				auth.authValidate(fakeBaton, fakeReq, () => {})
 				setTimeout(() => {
 					expect(fakeBaton.err[0].public_message).to.equal('Auth token invalid')
+					expect(fakeRes.endStatus).to.equal(401);
 					done()
 				}, TIMEOUT)
 			})
