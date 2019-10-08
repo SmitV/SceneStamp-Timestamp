@@ -1039,10 +1039,8 @@ module.exports = {
 
   ensure_CharacterIdsExist(baton, characters, callback) {
     var t = this;
-    t.getAllCharacterData(baton, /*queryParams=*/ {}, function(character_data) {
-      if (t._intersection(character_data.map(function(cha) {
-          return cha.character_id;
-        }), characters).length != characters.length) {
+    t.getAllCharacterData(baton, /*queryParams=*/ {'character_id': characters }, function(character_data) {
+      if (character_data.length !== characters.length) {
         callback({
           character_ids: characters,
           error: "Invalid character ids",

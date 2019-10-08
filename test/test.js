@@ -1064,6 +1064,11 @@ describe('timestamp server tests', function() {
 						return queryParams.character_name.includes(character.character_name)
 					})
 				}
+				if (queryParams.character_id) {
+					result = result.filter((character) => {
+						return queryParams.character_id.includes(character.character_id)
+					})
+				}
 				callback(result)
 			})
 		})
@@ -1474,6 +1479,11 @@ describe('timestamp server tests', function() {
 						if (queryParams.character_name) {
 							result = result.filter((character) => {
 								return queryParams.character_name.includes(character.character_name)
+							})
+						}
+						if (queryParams.character_id) {
+							result = result.filter((character) => {
+								return queryParams.character_id.includes(character.character_id)
 							})
 						}
 						callback(result)

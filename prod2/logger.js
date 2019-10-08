@@ -19,7 +19,7 @@ var stripInfo = printf(({
   meta
 }) => {
   var err = `\n ${JSON.stringify(message.err, null, 2)}\n `
-  return `${timestamp} ${level} : ${message.endpoint} - ${message.duration} ${message.err.length > 0 ? err : ''}`;
+  return `${timestamp} ${level} : ${message.endpoint} - ${message.duration} ${Array.isArray(message.err) && message.err.length > 0 ? err : ''}`;
 });
 
 
