@@ -155,7 +155,6 @@ module.exports = {
 	},
 
 	login(baton, req) {
-
 		var createParams = (callback) => {
 			callback({
 				username: req.get('username'),
@@ -280,6 +279,13 @@ module.exports = {
 	_validateEmail(email) {
 		var re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 		return re.test(String(email).toLowerCase());
+	},
+
+	get_authValidate(baton, req) {
+
+		this.authValidate(baton, req, () => {
+			baton.json({auth_validated : true})
+		})
 	},
 
 	authValidate(baton, req, suc_callback) {

@@ -101,11 +101,12 @@ var user_endpoints = [{
 	url: 'login',
 	action: 'login'
 }, {
-	url: 'decode',
-	action: 'decode'
-}, {
 	url: 'permission',
 	action: 'permission'
+},
+{
+	url: 'validate',
+	action: 'get_authValidate'
 }]
 
 user_endpoints.forEach(function(endpoint) {
