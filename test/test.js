@@ -20,8 +20,8 @@ var auth = require('../prod2/auth')
 var cred = require('../prod2/credentials')
 
 
-function assertErrorMessage(res, msg, custom) {
-	expect((custom == true ? res.endStatus : res.status)).to.equal(500)
+function assertErrorMessage(res, msg, custom, expectedErrorCode) {
+	expect((custom == true ? res.endStatus : res.status)).to.equal((expectedErrorCode ? expectedErrorCode : 500))
 	expect((custom == true ? res.data : res.body)).to.have.property('error_message')
 	expect((custom == true ? res.data : res.body).error_message).to.equal(msg)
 }
@@ -467,6 +467,42 @@ describe('timestamp server tests', function() {
 					done()
 				}, TIMEOUT)
 			})
+		})
+
+		describe('validate endpoint', function() {
+
+			it('should validate user for endpoint', (done) => {
+
+				var headers = {
+					auth_token: {
+						user_id: 101
+					},
+					test_mode: true
+				}
+				authVerify();
+
+				sendRequest('validate', {}, /*post=*/ false, headers).end((err, res, body) => {
+					assertSuccess(res)
+					done()
+				})
+			})
+
+			it('should throw error for invalid jwt', (done) => {
+
+				var headers = {
+					auth_token: {
+						user_id: 101
+					},
+					test_mode: true
+				}
+				authVerifyFail();
+
+				sendRequest('validate', {}, /*post=*/ false, headers).end((err, res, body) => {
+					assertErrorMessage(res, 'Auth token invalid', /*custom=*/ false, 401)
+					done()
+				})
+			})
+
 		})
 
 		describe('actions and roles', function() {
@@ -1802,7 +1838,7 @@ describe('timestamp server tests', function() {
 					.map(ts => ts.episode_id)
 				return fakeEpisodeData.filter(ep => ep.youtube_id !== null)
 					.filter(ep => episode_ids.includes(ep.episode_id))
-					.map(ep => ep.episode_name+":https://www.youtube.com/watch?v=" + ep.youtube_id)
+					.map(ep => ep.episode_name + ":https://www.youtube.com/watch?v=" + ep.youtube_id)
 			}
 
 			it('should get compilation description, for multiple episode links, with two timestamps pointing to one episode', function(done) {
