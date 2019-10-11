@@ -329,6 +329,7 @@ module.exports = {
 	},
 
 	_validateRole(baton, params, role_id, callback) {
+		baton.addMethod('_validateRole')
 		var checkPermission = (role_name, callback) => {
 			if (!ac.can(role_name).readAny(baton.endpoint).granted) {
 				baton.setError({
@@ -341,7 +342,7 @@ module.exports = {
 		}
 
 		var validateRoleData = (callback) => {
-			this.getAccessControl(callback)
+			this.getAccessControl(baton, callback)
 		}
 
 		validateRoleData(() => {
@@ -374,12 +375,9 @@ module.exports = {
 	},
 
 
-	getAccessControl(callback) {
+	getAccessControl(baton, callback) {
+		baton.addMethod('getAccessControl')
 		ac = new AccessControl();
-		var baton = actions._getBaton('getAccessControl', null, null)
-		baton.sendError = (data) => {
-			callback(data)
-		}
 		this._getAllRoleActionData(baton, (roleData, actionData, roleActionData) => {
 			ROLE_DATA = roleData
 			roleData.forEach(role => {
