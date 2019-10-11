@@ -282,7 +282,7 @@ module.exports = {
 	},
 
 	get_authValidate(baton, req) {
-
+		baton.endpoint = req.query.action
 		this.authValidate(baton, req, () => {
 			baton.json({auth_validated : true})
 		})
