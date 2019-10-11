@@ -341,11 +341,7 @@ module.exports = {
 		}
 
 		var validateRoleData = (callback) => {
-			if (ROLE_DATA == null) {
-				this.setUpAccessControl(callback)
-				return
-			}
-			callback()
+			this.getAccessControl(callback)
 		}
 
 		validateRoleData(() => {
@@ -378,9 +374,9 @@ module.exports = {
 	},
 
 
-	setUpAccessControl(callback) {
+	getAccessControl(callback) {
 		ac = new AccessControl();
-		var baton = actions._getBaton('setUpAccessControl', null, null)
+		var baton = actions._getBaton('getAccessControl', null, null)
 		baton.sendError = (data) => {
 			callback(data)
 		}
