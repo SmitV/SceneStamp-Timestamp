@@ -18,6 +18,7 @@ var actions = require('../prod2/actions')
 var dbActions = require('../prod2/database_actions')
 var auth = require('../prod2/auth')
 var cred = require('../prod2/credentials')
+var nbaFetching = require('../prod2/nba_fetching')
 
 
 function assertErrorMessage(res, msg, custom, expectedErrorCode) {
@@ -755,6 +756,44 @@ describe('timestamp server tests', function() {
 
 			sendRequest('newSeries', params).end((err, res, body) => {
 				assertErrorMessage(res, 'Series Name exists')
+				done()
+			})
+		})
+	})
+
+	describe('get nba players', function(){
+
+		var player_data = [{player_id:1, name:'InTest Player 1'},{player_id:2, name:'InTest Player 2'}]
+
+		var setupFetchingSucsess = () => {
+			sandbox.stub(nbaFetching, 'getPlayerData').callsFake((baton, callback) => {
+				callback(player_data)
+			})
+		}
+
+		//assumption that error has public msg
+		var setupFetchingFailing = (err) => {
+			sandbox.stub(nbaFetching, 'getPlayerData').callsFake((baton, callback) => {
+				baton.setError(err)
+				callback(player_data)
+			})
+		}
+
+		it('should get player data', (done) => {
+			setupFetchingSucsess();
+			sendRequest('getPlayersFromNBA',{}).end((err, res, body) => {
+				assertSuccess(res)
+				expect(res.body.players).to.deep.equal(player_data)
+				done()
+			})
+		})
+
+		it('should throw error when getting player data', (done) => {
+
+			var error = {public_message: 'InTest Error'}
+			setupFetchingFailing(error);
+			sendRequest('getPlayersFromNBA',{}).end((err, res, body) => {
+				assertErrorMessage(res, error.public_message)
 				done()
 			})
 		})

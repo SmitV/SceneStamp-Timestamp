@@ -63,7 +63,11 @@ var timestamp_endpoints = [{
  {
 	url: 'getCompilationDescription',
 	action: 'get_compilationDescription'
-}, ];
+}, 
+{
+	url:'getPlayersFromNBA',
+	action: 'get_CurrentNBAPlayers'
+}];
 
 app.all('*', function(req, res, next) {
 	var origin = req.get('origin');

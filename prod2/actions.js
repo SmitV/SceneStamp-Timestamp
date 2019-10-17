@@ -7,6 +7,8 @@ var endpointRequestParams = require('./endpointRequestParams')
 var async = require('async');
 var http = require('http')
 
+var nba_fetching = require('./nba_fetching')
+
 /**
 
 GENERAL DESIGN
@@ -151,6 +153,17 @@ module.exports = {
       callback({})
     }
   },
+
+  get_CurrentNBAPlayers(baton, params, res) {
+    nba_fetching.getPlayerData(baton, players => {
+      this._handleDBCall(baton, /*data=*/ null, /*multiple=*/ false, () => {
+        baton.json({
+          players: players
+        });
+      })
+    })
+  },
+
   get_allSeriesData(baton, params, res) {
     this.getAllSeriesData(baton, function(data) {
       baton.json(data)
@@ -1039,7 +1052,9 @@ module.exports = {
 
   ensure_CharacterIdsExist(baton, characters, callback) {
     var t = this;
-    t.getAllCharacterData(baton, /*queryParams=*/ {'character_id': characters }, function(character_data) {
+    t.getAllCharacterData(baton, /*queryParams=*/ {
+      'character_id': characters
+    }, function(character_data) {
       if (character_data.length !== characters.length) {
         callback({
           character_ids: characters,
@@ -1158,7 +1173,7 @@ module.exports = {
       requestType: "GET",
       params: params,
       user_id: null,
-      sendError: function(data,errorCode) {
+      sendError: function(data, errorCode) {
         this.lastMethod();
         res.status((errorCode ? errorCode : 500)).json(data)
       },
@@ -1219,14 +1234,14 @@ module.exports = {
     return printableBaton
   },
 
-  _generateError(baton,errorCode) {
+  _generateError(baton, errorCode) {
     logger.error(baton.printable())
     baton.sendError({
       'id': baton.id,
       'error_message': baton.err.map(function(err) {
         return err.public_message
       }).join('.')
-    },errorCode);
+    }, errorCode);
   },
   _generateId(length, ids) {
     var id = (Math.pow(10, length - 1)) + Math.floor(+Math.random() * 9 * Math.pow(10, (length - 1)));
