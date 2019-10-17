@@ -879,6 +879,47 @@ module.exports = {
     });
   },
 
+
+  post_massAddTimestamp(baton, params) {
+
+    var addTimestampIds = (params, callback) => {
+      this.getAllTimestampData(baton, {}, timestamp_data => {
+        callback(params.timestamps.map(ts => {
+          ts.timestamp_id = this._generateId(ID_LENGTH.timestamp, timestamp_data.map(function(ts) {
+            return ts.timestamp_id
+          }))
+          return ts
+        }))
+
+      })
+    }
+
+    var verifyParams = (callback) => {
+      addTimestampIds(params, updated_timestamps => {
+        this.ensure_EpisodeIdExists(baton, {
+          episode_id: params.timestamps.map(ts => ts.episode_id).filter(this._onlyUnique)
+        }, () => {
+          callback({timestamps: updated_timestamps})
+        })
+      })
+    }
+
+    var insertNewTimestamps = (params, callback) => {
+      db.insertTimestamp(baton, params.timestamps, (data) => {
+        this._handleDBCall(baton, data, false /*multiple*/ , callback)
+      })
+    }
+
+    verifyParams(updated_params => {
+      insertNewTimestamps(updated_params, () => {
+        baton.json(updated_params)
+      })
+    })
+
+
+
+  },
+
   post_updateTimestamp(baton, params, res) {
     var t = this;
 
@@ -1086,13 +1127,13 @@ module.exports = {
     })
   },
 
+  //will get params.episode_id and ensure all exist
   ensure_EpisodeIdExists(baton, params, callback) {
     var t = this;
     baton.addMethod('ensure_EpisodeIdExists');
-    this.getAllEpisodeData(baton, null /*series_id*/ , null /*youtube_id*/ , null /*episode_ids*/ , function(episode_data) {
-      if (!episode_data.map(function(ep) {
-          return ep.episode_id
-        }).includes(params.episode_id)) {
+    this.getAllEpisodeData(baton, null /*series_id*/ , null /*youtube_id*/ , (Array.isArray(params.episode_id) ? params.episode_id : [params.episode_id]) /*episode_ids*/ , function(episode_data) {
+      var numOfEpisodeIds = (Array.isArray(params.episode_id) ? params.episode_id.length : 1)
+      if (episode_data.length !== numOfEpisodeIds) {
         baton.setError({
           episode_id: params.episode_id,
           error: "Episode id not registered",
@@ -1271,5 +1312,10 @@ module.exports = {
     }
     return result;
   },
+
+  _onlyUnique(value, index, self) {
+    return self.indexOf(value) === index;
+  }
+
 
 }

@@ -48,6 +48,12 @@ var timestamp_endpoints = [{
 	url: 'newTimestamp',
 	action: 'post_newTimestamp'
 
+},
+{
+	url: 'massAddTimestamps',
+	action: 'post_massAddTimestamp',
+	post: true
+
 }, {
 	url: 'updateTimestamp',
 	action: 'post_updateTimestamp'

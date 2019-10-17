@@ -15,7 +15,7 @@ const MAIN_SCHEME = {
 		'episode_id': {
 			'type': 'number',
 		},
-		'creation_time':{
+		'creation_time': {
 			'retrieve': 'getCreationTime',
 		},
 		'episode_name': {
@@ -40,7 +40,7 @@ const MAIN_SCHEME = {
 		},
 		'category_name': {
 			'type': 'string',
-			'like_option':true
+			'like_option': true
 		},
 	},
 	'character': {
@@ -49,14 +49,14 @@ const MAIN_SCHEME = {
 		},
 		'character_name': {
 			'type': 'string',
-			'like_option':true
+			'like_option': true
 		}
 	},
 	'timestamp': {
 		'episode_id': {
 			'type': 'number',
 		},
-		'creation_time':{
+		'creation_time': {
 			'retrieve': 'getCreationTime',
 		},
 		'start_time': {
@@ -103,7 +103,7 @@ const MAIN_SCHEME = {
 		'compilation_id': {
 			'type': 'number',
 		},
-		'creation_time':{
+		'creation_time': {
 			'retrieve': 'getCreationTime',
 		},
 		'compilation_name': {
@@ -235,7 +235,7 @@ module.exports = {
 			callback(values)
 		});
 	},
-	getAllCategoryData(baton,data, callback) {
+	getAllCategoryData(baton, data, callback) {
 		baton.addMethod(this._formatMethod('getAllCategoryData'))
 		this._selectQuery(baton, 'category', data, callback)
 	},
@@ -252,7 +252,7 @@ module.exports = {
 	},
 	insertTimestamp(baton, values, callback) {
 		baton.addMethod(this._formatMethod('insertTimestamp'))
-		this._insertMultipleQuery('timestamp', [values], baton, function() {
+		this._insertMultipleQuery('timestamp', (Array.isArray(values) ? values : [values]), baton, function() {
 			callback(values)
 		});
 	},
@@ -459,9 +459,9 @@ module.exports = {
 	_multipleConditions(table, atr, values) {
 		var conditions = ""
 
-		var getEquator = function(value){
+		var getEquator = function(value) {
 			var re = new RegExp("^\%(([a-z])*([A-Z])*(\\s)*)*\%$");
-			if(DB_SCHEME[table][atr].like_option === true && re.test(value)) return " LIKE "
+			if (DB_SCHEME[table][atr].like_option === true && re.test(value)) return " LIKE "
 			return " = "
 		}
 

@@ -241,6 +241,13 @@ describe('db tests', () => {
 
 		})
 
+		it('should get all episode data with episode ids',() =>{
+			var data = {episode_id: [1,2]}
+			dbActions.getAllEpisodeData(fakeBaton, data,() => {
+				expect(sqlQuery.trim()).to.equal("SELECT * FROM `episode` WHERE episode_id = 1 OR episode_id = 2");
+			})
+		})
+
 		it('should get all episode data with series ids', () => {
 
 			var data = {series_id: [1,2]}
@@ -318,6 +325,28 @@ describe('db tests', () => {
 				expect(sqlQuery.trim()).to.equal("DELETE FROM `timestamp_category` WHERE timestamp_id = 1");
 			})
 
+		})
+
+		it('insert multiple timestamp self', () => {
+			var values = [{
+				episode_id: 101,
+				start_time: 100,
+				timestamp_id: 100
+			},{
+				episode_id: 102,
+				start_time: 1400,
+				timestamp_id: 140
+			}]
+
+			dbActions.insertTimestamp(fakeBaton, values, () => {
+				expect(sqlQuery).to.equal('INSERT INTO `timestamp` (episode_id,creation_time,start_time,timestamp_id,user_id) VALUES ?');
+				values = values.map(val => {
+					val.user_id = null
+					val.creation_time = FAKE_START_TIME
+					return val
+				})
+				expect(sqlValues).to.deep.equal([jsonToArray('timestamp',values)])
+			})
 		})
 
 		it('insert timestamp self', () => {

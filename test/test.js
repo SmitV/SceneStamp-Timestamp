@@ -176,7 +176,6 @@ describe('timestamp server tests', function() {
 			callback()
 		})
 
-
 		sandbox.stub(actions, '_generateId').callsFake(function() {
 			return 10
 		})
@@ -761,9 +760,15 @@ describe('timestamp server tests', function() {
 		})
 	})
 
-	describe('get nba players', function(){
+	describe('get nba players', function() {
 
-		var player_data = [{player_id:1, name:'InTest Player 1'},{player_id:2, name:'InTest Player 2'}]
+		var player_data = [{
+			player_id: 1,
+			name: 'InTest Player 1'
+		}, {
+			player_id: 2,
+			name: 'InTest Player 2'
+		}]
 
 		var setupFetchingSucsess = () => {
 			sandbox.stub(nbaFetching, 'getPlayerData').callsFake((baton, callback) => {
@@ -781,7 +786,7 @@ describe('timestamp server tests', function() {
 
 		it('should get player data', (done) => {
 			setupFetchingSucsess();
-			sendRequest('getPlayersFromNBA',{}).end((err, res, body) => {
+			sendRequest('getPlayersFromNBA', {}).end((err, res, body) => {
 				assertSuccess(res)
 				expect(res.body.players).to.deep.equal(player_data)
 				done()
@@ -790,9 +795,11 @@ describe('timestamp server tests', function() {
 
 		it('should throw error when getting player data', (done) => {
 
-			var error = {public_message: 'InTest Error'}
+			var error = {
+				public_message: 'InTest Error'
+			}
 			setupFetchingFailing(error);
-			sendRequest('getPlayersFromNBA',{}).end((err, res, body) => {
+			sendRequest('getPlayersFromNBA', {}).end((err, res, body) => {
 				assertErrorMessage(res, error.public_message)
 				done()
 			})
@@ -809,6 +816,8 @@ describe('timestamp server tests', function() {
 					return (queryData.series_id && queryData.series_id.length > 0 ? queryData.series_id.includes(ep.series_id) : true)
 				}).filter(ep => {
 					return (queryData.youtube_id && queryData.youtube_id.length > 0 ? queryData.youtube_id.includes(ep.youtube_id) : true)
+				}).filter(ep => {
+					return (queryData.episode_id && queryData.episode_id.length > 0 ? queryData.episode_id.includes(ep.episode_id) : true)
 				})
 				return callback(result)
 			})
@@ -1447,6 +1456,8 @@ describe('timestamp server tests', function() {
 						return (queryData.series_id && queryData.series_id.length > 0 ? queryData.series_id.includes(ep.series_id) : true)
 					}).filter(ep => {
 						return (queryData.youtube_id && queryData.youtube_id.length > 0 ? queryData.youtube_id.includes(ep.youtube_id) : true)
+					}).filter(ep => {
+						return (queryData.episode_id && queryData.episode_id.length > 0 ? queryData.episode_id.includes(ep.episode_id) : true)
 					})
 					return callback(result)
 				})
@@ -1506,6 +1517,85 @@ describe('timestamp server tests', function() {
 					assertErrorMessage(res, 'Invalid Episode Id')
 					done()
 				})
+			})
+
+			describe('mass adding timestamps', function() {
+
+				//for now all of the new timestamp will have the same timestamp id, since faking _generateId will only return one number
+
+				it('should add multiple timestamps', function(done) {
+					var values = {
+						timestamps: [{
+							start_time: 100,
+							episode_id: 1
+						},{
+							start_time: 200,
+							episode_id: 1
+						}]
+					}
+
+					sendRequest('massAddTimestamps', values, /*post=*/ true).end((err, res, body) => {						assertSuccess(res, /*post=*/ true)
+						values.timestamps = values.timestamps.map(ts => {
+							ts.timestamp_id = 10;
+							return ts
+						})
+						expect(res.body.timestamps).to.deep.equal(values.timestamps)
+						done()
+					})
+				})
+
+				it('should get validation error for missing attr for one timestamp', function(done) {
+					var values = {
+						timestamps: [{
+							start_time: 200,
+							episode_id: 1
+						}, {
+							start_time: 100,
+							//episode_id: 1 missing
+						}]
+					}
+
+					sendRequest('massAddTimestamps', values, /*post=*/ true).end((err, res, body) => {
+						assertErrorMessage(res, 'Parameter validation error')
+						done()
+					})
+				})
+
+
+				it('should get validation error for invalid attr for one timestamp', function(done) {
+					var values = {
+						timestamps: [{
+							start_time: 200,
+							episode_id: 1
+						}, {
+							start_time: 100,
+							episode_id: '1'
+						}]
+					}
+
+					sendRequest('massAddTimestamps', values, /*post=*/ true).end((err, res, body) => {
+						assertErrorMessage(res, 'Parameter validation error')
+						done()
+					})
+				})
+
+				it('should get validation error for inlvalid episode id', function(done) {
+					var values = {
+						timestamps: [{
+							start_time: 200,
+							episode_id: 100//invalid 
+						}, {
+							start_time: 100,
+							episode_id: 1 
+						}]
+					}
+
+					sendRequest('massAddTimestamps', values, /*post=*/ true).end((err, res, body) => {
+						assertErrorMessage(res, 'Invalid Episode Id')
+						done()
+					})
+				})
+
 			})
 
 			describe('updating timestamp data', function() {

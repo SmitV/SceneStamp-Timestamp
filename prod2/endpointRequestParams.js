@@ -80,6 +80,12 @@ var MAIN_VALIDATION = {
       type: 'number'
     },
   },
+  massAddTimestamps : {
+    timestamps:{
+      type:'mass_timestamp',
+      multiple: true
+    }
+  },
   updateTimestamp: {
     timestamp_id: {
       type: 'number'
@@ -125,7 +131,7 @@ var MAIN_VALIDATION = {
       type: 'string'
     },
     timestamps: {
-      type: 'timestamp',
+      type: 'compilation_timestamp',
       multiple: true
     }
   },
@@ -152,11 +158,17 @@ var MAIN_VALIDATION = {
     password: {
       type: 'string'
     }
-  }
+  },
 }
 
 var CUSTOM_OBJECTS = {
-  timestamp: {
+
+  mass_timestamp : {
+    start_time: 'number', 
+    episode_id: 'number'
+  },
+
+  compilation_timestamp: {
     timestamp_id: "number",
     duration: "number",
     start_time: "number",
