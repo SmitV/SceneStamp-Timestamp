@@ -33,6 +33,10 @@ const MAIN_SCHEME = {
 			'type': 'string',
 			'optional': true
 		},
+		'nba_game_id':{
+			'type':'number',
+			'optional':true
+		}
 	},
 	'category': {
 		'category_id': {

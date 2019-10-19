@@ -267,6 +267,17 @@ describe('db tests', () => {
 
 		})
 
+		it('should get all episode data with nba game id', () => {
+
+			var data = {nba_game_id: [101]}
+
+			dbActions.getAllEpisodeData(fakeBaton, data,() => {
+				expect(sqlQuery.trim()).to.equal("SELECT * FROM `episode` WHERE nba_game_id = "+data.nba_game_id+"");
+			})
+
+		})
+
+
 		it('insert new episode', () => {
 
 			var values = {
@@ -276,9 +287,10 @@ describe('db tests', () => {
 			}
 
 			dbActions.insertEpisode(fakeBaton, values, () => {
-				expect(sqlQuery).to.equal('INSERT INTO `episode` (episode_id,creation_time,episode_name,series_id,air_date,youtube_id) VALUES ?');
+				expect(sqlQuery).to.equal('INSERT INTO `episode` (episode_id,creation_time,episode_name,series_id,air_date,youtube_id,nba_game_id) VALUES ?');
 				values.air_date = null
 				values.youtube_id = null
+				values.nba_game_id = null
 				values.creation_time = FAKE_START_TIME
 				expect(sqlValues).to.deep.equal([jsonToArray('episode',[values])])
 			})
@@ -294,10 +306,31 @@ describe('db tests', () => {
 			}
 
 			dbActions.insertEpisode(fakeBaton, values, () => {
-				expect(sqlQuery).to.equal('INSERT INTO `episode` (episode_id,creation_time,episode_name,series_id,air_date,youtube_id) VALUES ?');
+				expect(sqlQuery).to.equal('INSERT INTO `episode` (episode_id,creation_time,episode_name,series_id,air_date,youtube_id,nba_game_id) VALUES ?');
 				delete values.youtube_id
 				values.air_date = null
 				values.youtube_id = 'abc'
+				values.nba_game_id = null
+				values.creation_time = FAKE_START_TIME
+				expect(sqlValues).to.deep.equal([jsonToArray('episode',[values])])
+			})
+		})
+
+		it('insert new episode with nba game id', () => {
+
+			var values = {
+				episode_id: 101,
+				episode_name: 'InTest Episode',
+				series_id: 1,
+				nba_game_id: 201
+			}
+
+			dbActions.insertEpisode(fakeBaton, values, () => {
+				expect(sqlQuery).to.equal('INSERT INTO `episode` (episode_id,creation_time,episode_name,series_id,air_date,youtube_id,nba_game_id) VALUES ?');
+				delete values.nba_game_id
+				values.air_date = null
+				values.youtube_id = null
+				values.nba_game_id = 201
 				values.creation_time = FAKE_START_TIME
 				expect(sqlValues).to.deep.equal([jsonToArray('episode',[values])])
 			})

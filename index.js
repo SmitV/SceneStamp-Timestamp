@@ -48,8 +48,7 @@ var timestamp_endpoints = [{
 	url: 'newTimestamp',
 	action: 'post_newTimestamp'
 
-},
-{
+}, {
 	url: 'massAddTimestamps',
 	action: 'post_massAddTimestamp',
 	post: true
@@ -65,13 +64,11 @@ var timestamp_endpoints = [{
 	url: 'newCompilation',
 	action: 'post_newCompilation',
 	post: true
-},
- {
+}, {
 	url: 'getCompilationDescription',
 	action: 'get_compilationDescription'
-}, 
-{
-	url:'getPlayersFromNBA',
+}, {
+	url: 'getPlayersFromNBA',
 	action: 'get_CurrentNBAPlayers'
 }];
 
@@ -93,7 +90,7 @@ timestamp_endpoints.forEach(function(endpoint) {
 		if (endpoint.post) baton.requestType = 'POST'
 		auth.authValidate(baton, req, function() {
 			production_action.validateRequest(baton, params, endpoint.url, function(updated_params) {
-				if(updated_params) production_action[endpoint.action](baton, updated_params, res);
+				if (updated_params) production_action[endpoint.action](baton, updated_params, res);
 			})
 		})
 	}
@@ -113,8 +110,7 @@ var user_endpoints = [{
 }, {
 	url: 'permission',
 	action: 'permission'
-},
-{
+}, {
 	url: 'validate',
 	action: 'get_authValidate'
 }]

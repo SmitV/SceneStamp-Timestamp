@@ -14,6 +14,11 @@ var MAIN_VALIDATION = {
     youtube_link: {
       type: 'string',
       optional: true
+    },
+    nba_game_ids: {
+      type: 'number',
+      optional: true,
+      multiple: true
     }
   },
   newEpisode: {
@@ -30,6 +35,10 @@ var MAIN_VALIDATION = {
     },
     youtube_link: {
       type: 'string',
+      optional: true
+    },
+    nba_game_id: {
+      type: 'number',
       optional: true
     }
   },

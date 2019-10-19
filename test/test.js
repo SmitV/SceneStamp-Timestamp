@@ -128,6 +128,11 @@ describe('timestamp server tests', function() {
 			"episode_id": 4,
 			"episode_name": "Test Episode 4",
 			"youtube_id": 'hvTKfVQWU40'
+		}, {
+			"episode_id": 5,
+			"episode_name": "Test Episode 3",
+			"air_date": 1564064876,
+			"nba_game_id": 1001
 		}];
 
 		fakeCharacterData = [{
@@ -935,6 +940,8 @@ describe('timestamp server tests', function() {
 					return (queryData.youtube_id && queryData.youtube_id.length > 0 ? queryData.youtube_id.includes(ep.youtube_id) : true)
 				}).filter(ep => {
 					return (queryData.episode_id && queryData.episode_id.length > 0 ? queryData.episode_id.includes(ep.episode_id) : true)
+				}).filter(ep => {
+					return (queryData.nba_game_id && queryData.nba_game_id.length > 0 ? queryData.nba_game_id.includes(ep.nba_game_id) : true)
 				})
 				return callback(result)
 			})
@@ -985,6 +992,29 @@ describe('timestamp server tests', function() {
 			sendRequest('getEpisodeData', params).end((err, res, body) => {
 				assertSuccess(res)
 				expect(res.body[0]).to.deep.equal(fakeEpisodeData[3])
+				done()
+			})
+		})
+
+		it('should filter by nba game id', function(done) {
+			var params = {
+				nba_game_ids: fakeEpisodeData[4].nba_game_id
+			}
+
+			sendRequest('getEpisodeData', params).end((err, res, body) => {
+				assertSuccess(res)
+				expect(res.body[0]).to.deep.equal(fakeEpisodeData[4])
+				done()
+			})
+		})
+
+		it('should throw error for invalid nba game id param', function(done) {
+			var params = {
+				nba_game_ids: 'aaa' //invalid id
+			}
+
+			sendRequest('getEpisodeData', params).end((err, res, body) => {
+				assertErrorMessage(res, 'Parameter validation error')
 				done()
 			})
 		})
@@ -1168,6 +1198,57 @@ describe('timestamp server tests', function() {
 							error: 'Timeout while making download youtube call to video server'
 						}
 					})
+					done()
+				})
+			})
+
+			it('should create new episode with optional nba game id', function(done) {
+				var nbaGameId = 60600
+				var episode_data = {
+					episode_name: "InTest Episode",
+					series_id: '0',
+					nba_game_id: nbaGameId
+				}
+				sendRequest('newEpisode', episode_data).end((err, res, body) => {
+					assertSuccess(res)
+					expect(res.body).to.deep.equal({
+						episode_name: episode_data.episode_name,
+						episode_id: 10,
+						series_id: 0,
+						nba_game_id: nbaGameId
+					})
+					expect(fakeEpisodeData).to.deep.contains({
+						episode_name: 'InTest Episode',
+						series_id: 0,
+						nba_game_id: 60600,
+						episode_id: 10
+					});
+					done()
+				})
+			})
+
+			it('should throw for already registered nba game id', function(done) {
+				var testNbaGameId = fakeEpisodeData[4].nba_game_id //existing nba game id
+				var episode_data = {
+					episode_name: "InTest Episode",
+					series_id: '0',
+					nba_game_id: testNbaGameId
+				}
+				sendRequest('newEpisode', episode_data).end((err, res, body) => {
+					assertErrorMessage(res, 'NBA Game Id already Registered')
+					done()
+				})
+			})
+
+			it('should throw for already registered youtube id', function(done) {
+				var testYoutubeId = fakeEpisodeData[3].youtube_id //existing youtube id
+				var episode_data = {
+					episode_name: "InTest Episode",
+					series_id: '0',
+					youtube_link: 'https://www.youtube.com/watch?v=' + testYoutubeId
+				}
+				sendRequest('newEpisode', episode_data).end((err, res, body) => {
+					assertErrorMessage(res, 'Youtube Id already Registered')
 					done()
 				})
 			})
@@ -1620,6 +1701,8 @@ describe('timestamp server tests', function() {
 						return (queryData.youtube_id && queryData.youtube_id.length > 0 ? queryData.youtube_id.includes(ep.youtube_id) : true)
 					}).filter(ep => {
 						return (queryData.episode_id && queryData.episode_id.length > 0 ? queryData.episode_id.includes(ep.episode_id) : true)
+					}).filter(ep => {
+						return (queryData.nba_game_id && queryData.nba_game_id.length > 0 ? queryData.nba_game_id.includes(ep.nba_game_id) : true)
 					})
 					return callback(result)
 				})
@@ -1693,7 +1776,7 @@ describe('timestamp server tests', function() {
 			it('should throw error for invalid episode id', function(done) {
 				var values = {
 					start_time: "100",
-					episode_id: "5"
+					episode_id: "6"
 				}
 				sendRequest('newTimestamp', values).end((err, res, body) => {
 					assertErrorMessage(res, 'Invalid Episode Id')
@@ -2088,6 +2171,8 @@ describe('timestamp server tests', function() {
 					return (queryData.youtube_id && queryData.youtube_id.length > 0 ? queryData.youtube_id.includes(ep.youtube_id) : true)
 				}).filter(ep => {
 					return (queryData.episode_id && queryData.episode_id.length > 0 ? queryData.episode_id.includes(ep.episode_id) : true)
+				}).filter(ep => {
+					return (queryData.nba_game_id && queryData.nba_game_id.length > 0 ? queryData.nba_game_id.includes(ep.nba_game_id) : true)
 				})
 				return callback(result)
 			})

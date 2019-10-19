@@ -226,22 +226,25 @@ module.exports = {
   },
   get_allEpisodeData(baton, params, res) {
     var t = this;
-
     getEpisodeData()
 
     function getEpisodeData() {
-      t.getAllEpisodeData(baton, params.series_ids, params.youtube_link, null /*episode_ids*/ , function(data) {
+      t.getAllEpisodeData(baton, params.series_ids, params.youtube_link, null /*episode_ids*/ , params.nba_game_ids, function(data) {
         baton.json(data)
       })
     }
   },
-  getAllEpisodeData(baton, series_ids, youtube_link, episode_ids, callback) {
+  getAllEpisodeData(baton, series_ids, youtube_link, episode_ids, nba_game_ids, callback) {
     baton.addMethod('getAllEpisodeData');
     var t = this;
 
     var queryData = {
       series_id: series_ids,
       episode_id: episode_ids
+    }
+
+    if (nba_game_ids !== undefined) {
+      queryData.nba_game_id = nba_game_ids
     }
 
     if (youtube_link !== undefined && youtube_link !== null) {
@@ -355,7 +358,7 @@ module.exports = {
       }
 
       var getLinksFromEpisodeIds = (baton, episode_ids, callback) => {
-        this.getAllEpisodeData(baton, null /*series_ids*/ , null /*youtube_id*/ , episode_ids /*episode_ids*/ , function(episode_data) {
+        this.getAllEpisodeData(baton, null /*series_ids*/ , null /*youtube_id*/ , episode_ids /*episode_ids*/ , null /*nba_game_ids*/ , function(episode_data) {
           callback(episode_data.filter(ep => ep.youtube_id !== null).map(ep => ep.episode_name + ":" + getYoutubeURL(ep.youtube_id)))
         })
       }
@@ -505,7 +508,7 @@ module.exports = {
     var t = this;
 
     function ensureEpisodeParamsIsUnique(params, callback) {
-      t.getAllEpisodeData(baton, null /*series_ids*/ , null /*youtube_id*/ , null /*episode_ids*/ , function(episode_data) {
+      t.getAllEpisodeData(baton, null /*series_ids*/ , null /*youtube_id*/ , null /*episode_ids*/ , null /*nba_game_ids*/ , function(episode_data) {
         if (episode_data.map(function(ep) {
             return ep.episode_name.toLowerCase()
           }).includes(params.episode_name.toLowerCase())) {
@@ -525,6 +528,16 @@ module.exports = {
             youtube_link: params.youtube_link,
             error: "Episode exists with youtube id",
             public_message: 'Youtube Id already Registered'
+          })
+          t._generateError(baton)
+          return
+        } else if (params.nba_game_id !== undefined && episode_data.find(function(ep) {
+            return ep.nba_game_id == params.nba_game_id
+          }) !== undefined) {
+          baton.setError({
+            nba_game_id: params.nba_game_id,
+            error: "Episode exists with nba game id",
+            public_message: 'NBA Game Id already Registered'
           })
           t._generateError(baton)
           return
@@ -952,7 +965,7 @@ module.exports = {
           validateCategoryCharacterValues(allCategoryIds, allCharacterIds, () => {
             callback({
               timestamps: updated_timestamps
-            },allCategoryIds.length,allCharacterIds.length)
+            }, allCategoryIds.length, allCharacterIds.length)
           })
         })
       })
@@ -1013,9 +1026,9 @@ module.exports = {
 
     verifyParams((updated_params, category_id_num, character_id_num) => {
       insertNewTimestamps(updated_params, () => {
-        addCharactersAndCategories(updated_params.timestamps,category_id_num, character_id_num, () =>{
-           baton.json(updated_params)
-        } )
+        addCharactersAndCategories(updated_params.timestamps, category_id_num, character_id_num, () => {
+          baton.json(updated_params)
+        })
       })
     })
 
@@ -1235,7 +1248,7 @@ module.exports = {
   ensure_EpisodeIdExists(baton, params, callback) {
     var t = this;
     baton.addMethod('ensure_EpisodeIdExists');
-    this.getAllEpisodeData(baton, null /*series_id*/ , null /*youtube_id*/ , (Array.isArray(params.episode_id) ? params.episode_id : [params.episode_id]) /*episode_ids*/ , function(episode_data) {
+    this.getAllEpisodeData(baton, null /*series_id*/ , null /*youtube_id*/ , (Array.isArray(params.episode_id) ? params.episode_id : [params.episode_id]) /*episode_ids*/ , null /*nba_game_ids*/ , function(episode_data) {
       var numOfEpisodeIds = (Array.isArray(params.episode_id) ? params.episode_id.length : 1)
       if (episode_data.length !== numOfEpisodeIds) {
         baton.setError({
