@@ -93,7 +93,7 @@ timestamp_endpoints.forEach(function(endpoint) {
 		if (endpoint.post) baton.requestType = 'POST'
 		auth.authValidate(baton, req, function() {
 			production_action.validateRequest(baton, params, endpoint.url, function(updated_params) {
-				production_action[endpoint.action](baton, updated_params, res);
+				if(updated_params) production_action[endpoint.action](baton, updated_params, res);
 			})
 		})
 	}

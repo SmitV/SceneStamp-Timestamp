@@ -45,7 +45,7 @@ var MAIN_VALIDATION = {
     }
   },
   getCategoryData: {
-    category_name :{
+    category_name: {
       type: "string",
       optional: true
     }
@@ -80,9 +80,9 @@ var MAIN_VALIDATION = {
       type: 'number'
     },
   },
-  massAddTimestamps : {
-    timestamps:{
-      type:'mass_timestamp',
+  massAddTimestamps: {
+    timestamps: {
+      type: 'mass_timestamp',
       multiple: true
     }
   },
@@ -121,7 +121,7 @@ var MAIN_VALIDATION = {
       multiple: true
     }
   },
-  getCompilationDescription : {
+  getCompilationDescription: {
     compilation_id: {
       type: 'number'
     }
@@ -163,9 +163,11 @@ var MAIN_VALIDATION = {
 
 var CUSTOM_OBJECTS = {
 
-  mass_timestamp : {
-    start_time: 'number', 
-    episode_id: 'number'
+  mass_timestamp: {
+    start_time: 'number',
+    episode_id: 'number',
+    category_ids: 'array',
+    character_ids: 'array',
   },
 
   compilation_timestamp: {
@@ -177,5 +179,11 @@ var CUSTOM_OBJECTS = {
 
 module.exports = {
   MAIN_VALIDATION: MAIN_VALIDATION,
-  CUSTOM_OBJECTS: CUSTOM_OBJECTS
+  CUSTOM_OBJECTS: CUSTOM_OBJECTS,
+  setCustomObjects(obj) {
+    this.CUSTOM_OBJECTS = obj
+  },
+  resetCustomObjects() {
+    this.CUSTOM_OBJECTS = CUSTOM_OBJECTS
+  }
 }

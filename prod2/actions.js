@@ -45,39 +45,45 @@ module.exports = {
 
   convertParams(baton, params, action, callback) {
 
+    var throwConversionError = (attr) => {
+      baton.setError({
+        sub_attr: attr
+      })
+      callback(NaN)
+    }
+
     function checkCustom(customObj, obj, callback) {
       var index = 0
       var updated_obj = {}
       Object.keys(customObj).every(attr => {
-        if (customObj[attr] == typeof obj[attr]) {
-          updated_obj[attr] = obj[attr]
-          index++;
-          if (index === Object.keys(customObj).length) {
-            callback(obj)
-            return false
+        if (customObj[attr] == 'array') {
+          if (Array.isArray(obj[attr]) && !obj[attr].map(val => parseInt(val)).includes(NaN)) {
+            index++;
+            return true
           }
+          return false
+        } else if (customObj[attr] == typeof obj[attr]) {
+          index++;
           return true
-
         } else {
           baton.setError({
             sub_attr: attr
           })
-          callback(NaN)
           return false
         }
       })
-
+      if (index === Object.keys(customObj).length) callback(obj)
+      else callback(NaN)
     }
     var update_params = {}
     var index = 0
-
     Object.keys(ACTION_VALIDATION[action]).every(attr => {
       if (params[attr] == null || params[attr] == undefined) update_params[attr] = null
       else {
         update_params[attr] = (baton.requestType == 'GET' ? params[attr].split(',') : (Array.isArray(params[attr]) ? params[attr] : [params[attr]])).map(arrayValue => {
           switch (ACTION_VALIDATION[action][attr].type) {
             case 'string':
-              return arrayValue
+              return (typeof arrayValue === 'string' ? arrayValue : NaN)
             case 'number':
               return parseInt(arrayValue)
             case 'boolean':
@@ -85,7 +91,7 @@ module.exports = {
                 return NaN
               }
               return arrayValue === 'true'
-            default:
+            default: //the param type is custom 
               var value;
               checkCustom(endpointRequestParams.CUSTOM_OBJECTS[ACTION_VALIDATION[action][attr].type], arrayValue, val => {
                 value = val;
@@ -148,6 +154,8 @@ module.exports = {
             callback(updated_params)
           } else return true
         })
+        //function goes here when something fails
+        //b/c throwsInvalidParam is called, the response is given
       })
     } else {
       callback({})
@@ -894,12 +902,58 @@ module.exports = {
       })
     }
 
+    var validateCategoryCharacterValues = (all_category_ids, all_character_ids, suc_callback) => {
+      var createTasks = (after_task_created_callback) => {
+        var tasks = []
+        if (all_category_ids.length > 0) {
+          tasks.push((callback) => {
+            this.ensure_CategoryIdsExist(baton, all_category_ids, function(err) {
+              if (err) baton.setError(err)
+              callback()
+            })
+          })
+        }
+
+        if (all_character_ids.length > 0) {
+          tasks.push((callback) => {
+            this.ensure_CharacterIdsExist(baton, all_character_ids, function(err) {
+              if (err) baton.setError(err)
+              callback()
+            })
+          })
+        }
+        after_task_created_callback(tasks)
+      }
+
+      createTasks((tasks) => {
+        async.parallel(tasks,
+          (err) => {
+            if (baton.err.length > 0) {
+              this._generateError(baton);
+            } else {
+              suc_callback(params)
+            }
+          });
+      })
+    }
+
     var verifyParams = (callback) => {
       addTimestampIds(params, updated_timestamps => {
         this.ensure_EpisodeIdExists(baton, {
           episode_id: params.timestamps.map(ts => ts.episode_id).filter(this._onlyUnique)
         }, () => {
-          callback({timestamps: updated_timestamps})
+
+          var flattenArray = (arr) => {
+            return [].concat.apply([], arr)
+          }
+          var allCategoryIds = flattenArray(updated_timestamps.map(ts => ts.category_ids))
+          var allCharacterIds = flattenArray(updated_timestamps.map(ts => ts.character_ids))
+          //verify all of the timestamps' category and character ids
+          validateCategoryCharacterValues(allCategoryIds, allCharacterIds, () => {
+            callback({
+              timestamps: updated_timestamps
+            },allCategoryIds.length,allCharacterIds.length)
+          })
         })
       })
     }
@@ -910,9 +964,58 @@ module.exports = {
       })
     }
 
-    verifyParams(updated_params => {
+    var addCharactersAndCategories = (timestamps, category_ids_num, character_ids_num, suc_callback) => {
+      var tasks = {}
+
+      if (category_ids_num > 0) {
+        tasks.categories = (callback) => {
+          var category_values = [];
+          timestamps.filter(ts => ts.category_ids.length > 0).forEach(ts => {
+            ts.category_ids.forEach(cat_id => {
+              category_values.push({
+                timestamp_id: ts.timestamp_id,
+                category_id: cat_id
+              });
+            })
+          })
+          db.insertTimestampCategory(baton, category_values, (data) => {
+            this._handleDBCall(baton, data, true /*multiple*/ , callback)
+          })
+        }
+      }
+      if (character_ids_num > 0) {
+        tasks.characters = (callback) => {
+          var character_values = [];
+          timestamps.filter(ts => ts.character_ids.length > 0).forEach(ts => {
+            ts.character_ids.forEach(char_id => {
+              character_values.push({
+                timestamp_id: ts.timestamp_id,
+                character_id: char_id
+              });
+            })
+          })
+          db.insertTimestampCharacter(baton, character_values, (data) => {
+            this._handleDBCall(baton, data, true /*multiple*/ , callback)
+          })
+        }
+      }
+
+      async.parallel(tasks,
+        (err, results) => {
+          if (err) {
+            t._generateError(baton);
+            return
+          } else {
+            suc_callback()
+          }
+        });
+    }
+
+    verifyParams((updated_params, category_id_num, character_id_num) => {
       insertNewTimestamps(updated_params, () => {
-        baton.json(updated_params)
+        addCharactersAndCategories(updated_params.timestamps,category_id_num, character_id_num, () =>{
+           baton.json(updated_params)
+        } )
       })
     })
 
@@ -1074,14 +1177,15 @@ module.exports = {
 
   },
 
+  //categories is the category ids
   ensure_CategoryIdsExist(baton, categories, callback) {
     var t = this;
-    t.getAllCategoryData(baton, /*queryParams=*/ {}, function(category_data) {
-      if (t._intersection(category_data.map(function(cat) {
-          return cat.category_id;
-        }), categories).length != categories.length) {
+    t.getAllCategoryData(baton, /*queryParams=*/ {
+      category_id: categories.filter(this._onlyUnique)
+    }, (category_data) => {
+      if (category_data.length !== categories.length) {
         callback({
-          category_ids: categories,
+          category_ids: categories.filter(ct => !category_data.map(cd => cd.category_id).includes(ct)),
           error: "Invalid category ids",
           public_message: 'Invalid categories'
         })
@@ -1094,11 +1198,11 @@ module.exports = {
   ensure_CharacterIdsExist(baton, characters, callback) {
     var t = this;
     t.getAllCharacterData(baton, /*queryParams=*/ {
-      'character_id': characters
+      'character_id': characters.filter(this._onlyUnique)
     }, function(character_data) {
       if (character_data.length !== characters.length) {
         callback({
-          character_ids: characters,
+          character_ids: characters.filter(ch => !character_data.map(cd => cd.character_id).includes(ch)),
           error: "Invalid character ids",
           public_message: 'Invalid characters'
         })

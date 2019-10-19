@@ -19,6 +19,7 @@ var dbActions = require('../prod2/database_actions')
 var auth = require('../prod2/auth')
 var cred = require('../prod2/credentials')
 var nbaFetching = require('../prod2/nba_fetching')
+var endpointRequestParams = require('../prod2/endpointRequestParams')
 
 
 function assertErrorMessage(res, msg, custom, expectedErrorCode) {
@@ -633,17 +634,37 @@ describe('timestamp server tests', function() {
 					attr_3: {
 						type: "number",
 						multiple: true
+					},
+					attr_4: {
+						type: "intest_custom_obj_1",
+						optional: true
+					},
+					attr_5: {
+						type: "intest_custom_obj_2",
+						optional: true
 					}
+				}
+			})
+
+			endpointRequestParams.setCustomObjects({
+				intest_custom_obj_1: {
+					custom_obj_attr_1: 'number',
+				},
+				intest_custom_obj_2: {
+					custom_obj_attr_2: 'array'
 				}
 			})
 		})
 
 		afterEach(() => {
 			actions.resetActionValidation()
+			endpointRequestParams.resetCustomObjects();
 		})
 
-		function createFakeBaton(params) {
-			return actions._getBaton('testAction', params, fakeRes)
+		function createFakeBaton(params, post) {
+			var baton = actions._getBaton('testAction', params, fakeRes)
+			if (post) baton.requestType = 'POST'
+			return baton
 		}
 
 		it('should validate request params', function(done) {
@@ -654,6 +675,54 @@ describe('timestamp server tests', function() {
 			actions.validateRequest(createFakeBaton(params), params, 'testAction', updated_params => {
 				expect(updated_params.attr_1).to.equal(101)
 				expect(updated_params.attr_3).to.deep.equal([101, 102])
+				done()
+			})
+		})
+
+		it('should vaildate request params for post request', (done) => {
+			var params = {
+				attr_1: 101,
+				attr_3: [101, 102]
+			}
+			actions.validateRequest(createFakeBaton(params, /*post=*/ true), params, 'testAction', updated_params => {
+				expect(updated_params.attr_1).to.equal(101)
+				expect(updated_params.attr_3).to.deep.equal([101, 102])
+				done()
+			})
+		})
+
+		it('should vaildate request params for post request with custom obj', (done) => {
+			var params = {
+				attr_1: 101,
+				attr_3: [101, 102],
+				attr_4: {
+					custom_obj_attr_1: 1
+				}
+			}
+			actions.validateRequest(createFakeBaton(params, /*post=*/ true), params, 'testAction', updated_params => {
+				expect(updated_params.attr_1).to.equal(101)
+				expect(updated_params.attr_3).to.deep.equal([101, 102])
+				expect(updated_params.attr_4).to.deep.equal({
+					custom_obj_attr_1: 1
+				})
+				done()
+			})
+		})
+
+		it('should vaildate request params for post request with custom obj with array', (done) => {
+			var params = {
+				attr_1: 101,
+				attr_3: [101, 102],
+				attr_5: {
+					custom_obj_attr_2: [1, 2, 3]
+				}
+			}
+			actions.validateRequest(createFakeBaton(params, /*post=*/ true), params, 'testAction', updated_params => {
+				expect(updated_params.attr_1).to.equal(101)
+				expect(updated_params.attr_3).to.deep.equal([101, 102])
+				expect(updated_params.attr_5).to.deep.equal({
+					custom_obj_attr_2: [1, 2, 3]
+				})
 				done()
 			})
 		})
@@ -693,6 +762,54 @@ describe('timestamp server tests', function() {
 				attr_3: "101,102"
 			}
 			var fakeBaton = createFakeBaton(params)
+			actions.validateRequest(fakeBaton, params, 'testAction')
+			setTimeout(function() {
+				assertErrorMessage(fakeRes, 'Parameter validation error', /*custom=*/ true)
+				expect(fakeBaton.err[0].error_detail).to.equal('Invalid Attribute Type')
+				done()
+			}, TIMEOUT)
+		})
+
+		it('should throw invalid attribute type for post request', (done) => {
+			var params = {
+				attr_1: 101,
+				attr_3: [101, 'a102'] //102 invalid type
+			}
+			var fakeBaton = createFakeBaton(params, /*post=*/ true)
+			actions.validateRequest(fakeBaton, params, 'testAction')
+			setTimeout(function() {
+				assertErrorMessage(fakeRes, 'Parameter validation error', /*custom=*/ true)
+				expect(fakeBaton.err[0].error_detail).to.equal('Invalid Attribute Type')
+				done()
+			}, TIMEOUT)
+		})
+
+		it('should throw invalid attribute type for post request custom object', (done) => {
+			var params = {
+				attr_1: 101,
+				attr_3: [101, 102],
+				attr_5: {
+					custom_obj_attr_2: 101 //invalid, expecting an array 
+				}
+			}
+			var fakeBaton = createFakeBaton(params, /*post=*/ true)
+			actions.validateRequest(fakeBaton, params, 'testAction')
+			setTimeout(function() {
+				assertErrorMessage(fakeRes, 'Parameter validation error', /*custom=*/ true)
+				expect(fakeBaton.err[0].error_detail).to.equal('Invalid Attribute Type')
+				done()
+			}, TIMEOUT)
+		})
+
+		it('should throw for invalid value in post req custom object array', (done) => {
+			var params = {
+				attr_1: 101,
+				attr_3: [101, 102],
+				attr_5: {
+					custom_obj_attr_2: [1, 2, 'a'] //invalid a 
+				}
+			}
+			var fakeBaton = createFakeBaton(params, /*post=*/ true)
 			actions.validateRequest(fakeBaton, params, 'testAction')
 			setTimeout(function() {
 				assertErrorMessage(fakeRes, 'Parameter validation error', /*custom=*/ true)
@@ -1204,6 +1321,11 @@ describe('timestamp server tests', function() {
 						return queryParams.category_name.includes(category.category_name)
 					})
 				}
+				if (queryParams.category_id) {
+					result = result.filter((category) => {
+						return queryParams.category_id.includes(category.category_id)
+					})
+				}
 				callback(result)
 			})
 		})
@@ -1275,8 +1397,16 @@ describe('timestamp server tests', function() {
 
 
 	describe('timestamp', function() {
+		var universal_timestamps;
 
 		beforeEach(function() {
+
+			universal_timestamps = [10, 20, 30, 40]
+
+			actions._generateId.restore()
+			sandbox.stub(actions, '_generateId').callsFake((len) => {
+				return (len === 10 ? 10000 : universal_timestamps.shift())
+			})
 
 			fakeTimestampData = [{
 				"timestamp_id": 0,
@@ -1450,6 +1580,38 @@ describe('timestamp server tests', function() {
 
 			beforeEach(function() {
 
+				//ensure character data matches series data
+				sandbox.stub(dbActions, 'getAllCharacterData').callsFake(function(baton, queryParams, callback) {
+					var result = [...fakeCharacterData]
+					if (queryParams.character_name) {
+						result = result.filter((character) => {
+							return queryParams.character_name.includes(character.character_name)
+						})
+					}
+					if (queryParams.character_id) {
+						result = result.filter((character) => {
+							return queryParams.character_id.includes(character.character_id)
+						})
+					}
+					callback(result)
+				})
+
+				//stub get all series dat for all tests
+				sandbox.stub(dbActions, 'getAllCategoryData').callsFake(function(baton, queryParams, callback) {
+					var result = [...fakeCategoryData]
+					if (queryParams.category_name) {
+						result = result.filter((category) => {
+							return queryParams.category_name.includes(category.category_name)
+						})
+					}
+					if (queryParams.category_id) {
+						result = result.filter((category) => {
+							return queryParams.category_id.includes(category.category_id)
+						})
+					}
+					callback(result)
+				})
+
 				//for ensureEpisodeIdExists
 				sandbox.stub(dbActions, 'getAllEpisodeData').callsFake(function(baton, queryData, callback) {
 					var result = [...fakeEpisodeData].filter(ep => {
@@ -1460,6 +1622,26 @@ describe('timestamp server tests', function() {
 						return (queryData.episode_id && queryData.episode_id.length > 0 ? queryData.episode_id.includes(ep.episode_id) : true)
 					})
 					return callback(result)
+				})
+
+				sandbox.stub(dbActions, 'insertTimestampCharacter').callsFake(function(baton, values, callback) {
+					fakeTimestampCharacterData = fakeTimestampCharacterData.filter(function(ts) {
+						return !values.map(function(v) {
+							return v[0]
+						}).includes(ts.timestamp_id)
+					})
+
+					values.forEach(function(v) {
+						fakeTimestampCharacterData.push(v)
+					})
+					callback(values)
+				})
+
+				sandbox.stub(dbActions, 'insertTimestampCategory').callsFake(function(baton, values, callback) {
+					values.forEach(function(v) {
+						fakeTimestampCategoryData.push(v)
+					})
+					callback(values)
 				})
 
 
@@ -1527,19 +1709,74 @@ describe('timestamp server tests', function() {
 					var values = {
 						timestamps: [{
 							start_time: 100,
-							episode_id: 1
-						},{
+							episode_id: 1,
+							category_ids: [],
+							character_ids: []
+						}, {
 							start_time: 200,
-							episode_id: 1
+							episode_id: 1,
+							category_ids: [],
+							character_ids: []
 						}]
 					}
-
-					sendRequest('massAddTimestamps', values, /*post=*/ true).end((err, res, body) => {						assertSuccess(res, /*post=*/ true)
+					var orig_timestamps = [...universal_timestamps]
+					sendRequest('massAddTimestamps', values, /*post=*/ true).end((err, res, body) => {
+						assertSuccess(res, /*post=*/ true)
 						values.timestamps = values.timestamps.map(ts => {
-							ts.timestamp_id = 10;
+							ts.timestamp_id = orig_timestamps.shift();
 							return ts
 						})
 						expect(res.body.timestamps).to.deep.equal(values.timestamps)
+						done()
+					})
+				})
+
+				it('should add multiple timestamps with category and character ids ', function(done) {
+					var values = {
+						timestamps: [{
+							start_time: 100,
+							episode_id: 1,
+							category_ids: [0],
+							character_ids: [2, 4]
+						}, {
+							start_time: 200,
+							episode_id: 1,
+							category_ids: [2],
+							character_ids: [1, 3]
+						}]
+					}
+					var orig_timestamps = [...universal_timestamps]
+					sendRequest('massAddTimestamps', values, /*post=*/ true).end((err, res, body) => {
+						assertSuccess(res, /*post=*/ true)
+						values.timestamps = values.timestamps.map(ts => {
+							ts.timestamp_id = orig_timestamps.shift();
+							return ts
+						})
+						expect(res.body.timestamps).to.deep.equal(values.timestamps)
+						expect(fakeTimestampCharacterData).to.deep.contains({
+							timestamp_id: 10,
+							character_id: 2
+						});
+						expect(fakeTimestampCharacterData).to.deep.contains({
+							timestamp_id: 10,
+							character_id: 4
+						});
+						expect(fakeTimestampCategoryData).to.deep.contains({
+							timestamp_id: 10,
+							category_id: 0
+						});
+						expect(fakeTimestampCharacterData).to.deep.contains({
+							timestamp_id: 20,
+							character_id: 3
+						});
+						expect(fakeTimestampCharacterData).to.deep.contains({
+							timestamp_id: 20,
+							character_id: 1
+						});
+						expect(fakeTimestampCategoryData).to.deep.contains({
+							timestamp_id: 20,
+							category_id: 2
+						});
 						done()
 					})
 				})
@@ -1548,10 +1785,36 @@ describe('timestamp server tests', function() {
 					var values = {
 						timestamps: [{
 							start_time: 200,
-							episode_id: 1
+							episode_id: 1,
+							category_ids: [],
+							character_ids: []
 						}, {
 							start_time: 100,
-							//episode_id: 1 missing
+							//episode_id: 1 missing,
+							category_ids: [],
+							character_ids: []
+						}]
+					}
+
+					sendRequest('massAddTimestamps', values, /*post=*/ true).end((err, res, body) => {
+						assertErrorMessage(res, 'Parameter validation error')
+						done()
+					})
+				})
+
+				//same as the test above 
+				it('should get validation error for (another) missing attr for one timestamp', function(done) {
+					var values = {
+						timestamps: [{
+							start_time: 200,
+							episode_id: 1,
+							//category_ids:[], missing
+							character_ids: []
+						}, {
+							start_time: 100,
+							//episode_id: 1 missing,
+							category_ids: [],
+							character_ids: []
 						}]
 					}
 
@@ -1566,10 +1829,14 @@ describe('timestamp server tests', function() {
 					var values = {
 						timestamps: [{
 							start_time: 200,
-							episode_id: 1
+							episode_id: 1,
+							category_ids: [],
+							character_ids: []
 						}, {
 							start_time: 100,
-							episode_id: '1'
+							episode_id: '1',
+							category_ids: [],
+							character_ids: []
 						}]
 					}
 
@@ -1583,15 +1850,59 @@ describe('timestamp server tests', function() {
 					var values = {
 						timestamps: [{
 							start_time: 200,
-							episode_id: 100//invalid 
+							episode_id: 100, //invalid
+							category_ids: [],
+							character_ids: []
 						}, {
 							start_time: 100,
-							episode_id: 1 
+							episode_id: 1,
+							category_ids: [],
+							character_ids: []
 						}]
 					}
 
 					sendRequest('massAddTimestamps', values, /*post=*/ true).end((err, res, body) => {
 						assertErrorMessage(res, 'Invalid Episode Id')
+						done()
+					})
+				})
+
+				it('should get validation error for invalid character id', function(done) {
+					var values = {
+						timestamps: [{
+							start_time: 100,
+							episode_id: 1,
+							category_ids: [0],
+							character_ids: [2, 5] //5 is invalid
+						}, {
+							start_time: 200,
+							episode_id: 1,
+							category_ids: [2],
+							character_ids: [1, 3]
+						}]
+					}
+					sendRequest('massAddTimestamps', values, /*post=*/ true).end((err, res, body) => {
+						assertErrorMessage(res, 'Invalid characters')
+						done()
+					})
+				})
+
+				it('should get validation error for invalid category id', function(done) {
+					var values = {
+						timestamps: [{
+							start_time: 100,
+							episode_id: 1,
+							category_ids: [0],
+							character_ids: [2]
+						}, {
+							start_time: 200,
+							episode_id: 1,
+							category_ids: [2, 10], //10 is invalid
+							character_ids: [1, 3]
+						}]
+					}
+					sendRequest('massAddTimestamps', values, /*post=*/ true).end((err, res, body) => {
+						assertErrorMessage(res, 'Invalid categories')
 						done()
 					})
 				})
@@ -1602,33 +1913,6 @@ describe('timestamp server tests', function() {
 
 				beforeEach(function() {
 
-					//ensure character data matches series data
-					sandbox.stub(dbActions, 'getAllCharacterData').callsFake(function(baton, queryParams, callback) {
-						var result = [...fakeCharacterData]
-						if (queryParams.character_name) {
-							result = result.filter((character) => {
-								return queryParams.character_name.includes(character.character_name)
-							})
-						}
-						if (queryParams.character_id) {
-							result = result.filter((character) => {
-								return queryParams.character_id.includes(character.character_id)
-							})
-						}
-						callback(result)
-					})
-
-					//stub get all series dat for all tests
-					sandbox.stub(dbActions, 'getAllCategoryData').callsFake(function(baton, queryParams, callback) {
-						var result = [...fakeCategoryData]
-						if (queryParams.category_name) {
-							result = result.filter((category) => {
-								return queryParams.category_name.includes(category.category_name)
-							})
-						}
-						callback(result)
-					})
-
 					sandbox.stub(dbActions, 'removeTimestampCharacter').callsFake(function(baton, values, callback) {
 						fakeTimestampCharacterData = fakeTimestampCharacterData.filter(function(ts) {
 							return !values.map(function(v) {
@@ -1638,31 +1922,12 @@ describe('timestamp server tests', function() {
 						callback(values)
 					})
 
-					sandbox.stub(dbActions, 'insertTimestampCharacter').callsFake(function(baton, values, callback) {
-						fakeTimestampCharacterData = fakeTimestampCharacterData.filter(function(ts) {
-							return !values.map(function(v) {
-								return v[0]
-							}).includes(ts.timestamp_id)
-						})
-
-						values.forEach(function(v) {
-							fakeTimestampCharacterData.push(v)
-						})
-						callback(values)
-					})
 
 					sandbox.stub(dbActions, 'removeTimestampCategory').callsFake(function(baton, values, callback) {
 						fakeTimestampCategoryData = fakeTimestampCategoryData.filter(function(ts) {
 							return !values.map(function(v) {
 								return v[0]
 							}).includes(ts.timestamp_id)
-						})
-						callback(values)
-					})
-
-					sandbox.stub(dbActions, 'insertTimestampCategory').callsFake(function(baton, values, callback) {
-						values.forEach(function(v) {
-							fakeTimestampCategoryData.push(v)
 						})
 						callback(values)
 					})
