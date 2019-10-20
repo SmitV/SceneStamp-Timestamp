@@ -40,6 +40,10 @@ var MAIN_VALIDATION = {
     nba_game_id: {
       type: 'number',
       optional: true
+    },
+    nba_start_time: {
+      type: 'string',
+      optional: true
     }
   },
   getCharacterData: {

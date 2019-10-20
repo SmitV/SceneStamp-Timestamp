@@ -1044,6 +1044,9 @@ describe('timestamp server tests', function() {
 
 		describe('inserting new episode', function() {
 
+			var universalNbaStartTime = "2000-01-01 01:01:01 UTC"
+			var universalResultingEpochTime = 946688461000
+
 			function createUrl() {
 				return cred.VIDEO_SERVER_URL + ':' + cred.VIDEO_SERVER_PORT
 			}
@@ -1207,7 +1210,8 @@ describe('timestamp server tests', function() {
 				var episode_data = {
 					episode_name: "InTest Episode",
 					series_id: '0',
-					nba_game_id: nbaGameId
+					nba_game_id: nbaGameId,
+					nba_start_time: universalNbaStartTime
 				}
 				sendRequest('newEpisode', episode_data).end((err, res, body) => {
 					assertSuccess(res)
@@ -1215,13 +1219,15 @@ describe('timestamp server tests', function() {
 						episode_name: episode_data.episode_name,
 						episode_id: 10,
 						series_id: 0,
-						nba_game_id: nbaGameId
+						nba_game_id: nbaGameId,
+						nba_start_time: universalResultingEpochTime
 					})
 					expect(fakeEpisodeData).to.deep.contains({
 						episode_name: 'InTest Episode',
 						series_id: 0,
-						nba_game_id: 60600,
-						episode_id: 10
+						nba_game_id: nbaGameId,
+						episode_id: 10,
+						nba_start_time: universalResultingEpochTime
 					});
 					done()
 				})
@@ -1232,10 +1238,39 @@ describe('timestamp server tests', function() {
 				var episode_data = {
 					episode_name: "InTest Episode",
 					series_id: '0',
-					nba_game_id: testNbaGameId
+					nba_game_id: testNbaGameId,
+					nba_start_time: universalNbaStartTime
 				}
 				sendRequest('newEpisode', episode_data).end((err, res, body) => {
 					assertErrorMessage(res, 'NBA Game Id already Registered')
+					done()
+				})
+			})
+
+			it('should throw for missing nba start time if nba game id is present', function(done) {
+				var nbaGameId = 60600
+				var episode_data = {
+					episode_name: "InTest Episode",
+					series_id: '0',
+					nba_game_id: nbaGameId,
+					//nba_start_time: universalNbaStarttime 
+				}
+				sendRequest('newEpisode', episode_data).end((err, res, body) => {
+					assertErrorMessage(res, 'NBA Start Time is invalid')
+					done()
+				})
+			})
+
+			it('should throw for invalid nba start time', function(done) {
+				var nbaGameId = 60600
+				var episode_data = {
+					episode_name: "InTest Episode",
+					series_id: '0',
+					nba_game_id: nbaGameId,
+					nba_start_time: '2000 01 01 01:01:01 UTC' //invalid utc format
+				}
+				sendRequest('newEpisode', episode_data).end((err, res, body) => {
+					assertErrorMessage(res, 'NBA Start Time is invalid')
 					done()
 				})
 			})

@@ -36,6 +36,10 @@ const MAIN_SCHEME = {
 		'nba_game_id':{
 			'type':'number',
 			'optional':true
+		},
+		'nba_start_time':{
+			'type':'number',
+			'optional':true
 		}
 	},
 	'category': {

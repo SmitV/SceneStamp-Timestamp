@@ -41,6 +41,13 @@ module.exports = {
   },
   //the above is for testing only
 
+  UTC_REGEX: /^\s*(\d{4})-(\d\d)-(\d\d)\s+(\d\d):(\d\d):(\d\d)\s+UTC\s*$/,
+  convertUtcToEpoch(utc_time) {
+    if (utc_time === undefined) return null
+    var m = (utc_time).match(this.UTC_REGEX);
+    return (m) ? Date.UTC(m[1], m[2] - 1, m[3], m[4], m[5], m[6]) : null;
+  },
+
   ID_LENGTH: ID_LENGTH,
 
   convertParams(baton, params, action, callback) {
@@ -507,8 +514,8 @@ module.exports = {
   post_newEpisode(baton, params, res) {
     var t = this;
 
-    function ensureEpisodeParamsIsUnique(params, callback) {
-      t.getAllEpisodeData(baton, null /*series_ids*/ , null /*youtube_id*/ , null /*episode_ids*/ , null /*nba_game_ids*/ , function(episode_data) {
+    var ensureEpisodeParamsIsUnique = (params, callback) => {
+      t.getAllEpisodeData(baton, null /*series_ids*/ , null /*youtube_id*/ , null /*episode_ids*/ , null /*nba_game_ids*/ , (episode_data) => {
         if (episode_data.map(function(ep) {
             return ep.episode_name.toLowerCase()
           }).includes(params.episode_name.toLowerCase())) {
@@ -531,16 +538,30 @@ module.exports = {
           })
           t._generateError(baton)
           return
-        } else if (params.nba_game_id !== undefined && episode_data.find(function(ep) {
-            return ep.nba_game_id == params.nba_game_id
-          }) !== undefined) {
-          baton.setError({
-            nba_game_id: params.nba_game_id,
-            error: "Episode exists with nba game id",
-            public_message: 'NBA Game Id already Registered'
-          })
-          t._generateError(baton)
-          return
+        } else if (params.nba_game_id !== undefined) {
+          if (episode_data.find(function(ep) {
+              return ep.nba_game_id == params.nba_game_id
+            }) !== undefined) {
+            baton.setError({
+              nba_game_id: params.nba_game_id,
+              error: "Episode exists with nba game id",
+              public_message: 'NBA Game Id already Registered'
+            })
+            t._generateError(baton)
+            return
+          }
+          if (params.nba_start_time === undefined || this.convertUtcToEpoch(params.nba_start_time) === null) {
+            baton.setError({
+              nba_start_time: params.nba_start_time,
+              utc_regex_match: this.convertUtcToEpoch(params.nba_start_time),
+              error: "Invalid Nba start time",
+              public_message: 'NBA Start Time is invalid'
+            })
+            t._generateError(baton)
+            return
+          } else {
+            params.nba_start_time = this.convertUtcToEpoch(params.nba_start_time)
+          }
         }
         //update params to include generated id
         params.episode_id = t._generateId(ID_LENGTH.episode, episode_data.map(function(ep) {
