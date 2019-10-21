@@ -132,7 +132,7 @@ describe('timestamp server tests', function() {
 			"episode_id": 5,
 			"episode_name": "Test Episode 3",
 			"air_date": 1564064876,
-			"nba_game_id": 1001
+			"nba_game_id": '1001'
 		}];
 
 		fakeCharacterData = [{
@@ -1008,17 +1008,6 @@ describe('timestamp server tests', function() {
 			})
 		})
 
-		it('should throw error for invalid nba game id param', function(done) {
-			var params = {
-				nba_game_ids: 'aaa' //invalid id
-			}
-
-			sendRequest('getEpisodeData', params).end((err, res, body) => {
-				assertErrorMessage(res, 'Parameter validation error')
-				done()
-			})
-		})
-
 		it('should throw error for invalid youtube ', function(done) {
 			var params = {
 				youtube_link: 'https://www.youtube.com/wat?v=' + fakeEpisodeData[3].youtube_id
@@ -1206,7 +1195,7 @@ describe('timestamp server tests', function() {
 			})
 
 			it('should create new episode with optional nba game id', function(done) {
-				var nbaGameId = 60600
+				var nbaGameId = '60600'
 				var episode_data = {
 					episode_name: "InTest Episode",
 					series_id: '0',
@@ -1248,7 +1237,7 @@ describe('timestamp server tests', function() {
 			})
 
 			it('should throw for missing nba start time if nba game id is present', function(done) {
-				var nbaGameId = 60600
+				var nbaGameId = '60600'
 				var episode_data = {
 					episode_name: "InTest Episode",
 					series_id: '0',
@@ -1262,7 +1251,7 @@ describe('timestamp server tests', function() {
 			})
 
 			it('should throw for invalid nba start time', function(done) {
-				var nbaGameId = 60600
+				var nbaGameId = '60600'
 				var episode_data = {
 					episode_name: "InTest Episode",
 					series_id: '0',

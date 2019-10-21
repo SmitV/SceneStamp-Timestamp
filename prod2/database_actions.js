@@ -34,7 +34,7 @@ const MAIN_SCHEME = {
 			'optional': true
 		},
 		'nba_game_id':{
-			'type':'number',
+			'type':'string',
 			'optional':true
 		},
 		'nba_start_time':{

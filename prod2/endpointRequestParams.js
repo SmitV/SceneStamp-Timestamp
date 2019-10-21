@@ -16,7 +16,7 @@ var MAIN_VALIDATION = {
       optional: true
     },
     nba_game_ids: {
-      type: 'number',
+      type: 'string',
       optional: true,
       multiple: true
     }
@@ -38,7 +38,7 @@ var MAIN_VALIDATION = {
       optional: true
     },
     nba_game_id: {
-      type: 'number',
+      type: 'string',
       optional: true
     },
     nba_start_time: {

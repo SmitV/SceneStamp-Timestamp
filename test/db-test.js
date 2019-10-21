@@ -284,11 +284,11 @@ describe('db tests', () => {
 		it('should get all episode data with nba game id', () => {
 
 			var data = {
-				nba_game_id: [101]
+				nba_game_id: ['101']
 			}
 
 			dbActions.getAllEpisodeData(fakeBaton, data, () => {
-				expect(sqlQuery.trim()).to.equal("SELECT * FROM `episode` WHERE nba_game_id = " + data.nba_game_id + "");
+				expect(sqlQuery.trim()).to.equal("SELECT * FROM `episode` WHERE nba_game_id = '" + data.nba_game_id + "'");
 			})
 
 		})
@@ -340,7 +340,7 @@ describe('db tests', () => {
 				episode_id: 101,
 				episode_name: 'InTest Episode',
 				series_id: 1,
-				nba_game_id: 201,
+				nba_game_id: '201',
 				nba_start_time: 10001
 			}
 
@@ -349,7 +349,7 @@ describe('db tests', () => {
 				delete values.nba_game_id
 				values.air_date = null
 				values.youtube_id = null
-				values.nba_game_id = 201
+				values.nba_game_id = '201'
 				values.nba_start_time = 10001
 				values.creation_time = FAKE_START_TIME
 				expect(sqlValues).to.deep.equal([jsonToArray('episode', [values])])
