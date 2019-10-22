@@ -62,6 +62,10 @@ const MAIN_SCHEME = {
 		'character_name': {
 			'type': 'string',
 			'like_option': true
+		},
+		'nba_player_id':{
+			'type':'number',
+			'optional':true
 		}
 	},
 	'timestamp': {
@@ -247,7 +251,7 @@ module.exports = {
 	},
 	insertCharacter(baton, values, callback) {
 		baton.addMethod(this._formatMethod('insertCharacter'))
-		this._insertMultipleQuery('character', [values], baton, function() {
+		this._insertMultipleQuery('character', (Array.isArray(values) ? values : [values]), baton, function() {
 			callback(values)
 		});
 	},

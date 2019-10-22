@@ -63,6 +63,10 @@ var MAIN_VALIDATION = {
   newCharacter: {
     character_name: {
       type: "string"
+    },
+    nba_player_id: {
+      type:'number',
+      optional:true
     }
   },
   getCategoryData: {

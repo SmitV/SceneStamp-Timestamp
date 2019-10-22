@@ -133,6 +133,7 @@ var server = app.listen(process.env.PORT || 8081, function() {
 	console.log("Scene Stamp Server Running @ port ", this.address().port)
 
 	startIntervalTasks()
+	automated_tasks._updateActivePlayers()
 })
 
 

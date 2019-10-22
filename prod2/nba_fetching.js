@@ -1,12 +1,11 @@
 var actions = require('./actions')
-var http = require('http')
+var http = require('follow-redirects').http;
 
 const Nightmare = require('nightmare')
 
-const NBA_MAIN_SITE = 'https://www.nba.com'
+const NBA_MAIN_SITE = 'http://www.nba.com'
 const NBA_DATA_SITE = 'http://data.nba.net'
-NBA_PLAYERS_URL = NBA_MAIN_SITE + '/players'
-
+NBA_PLAYERS_URL = NBA_MAIN_SITE + '/players/active_players.json'
 
 var PLAYER_UI_SELECTOR = '.nba-player-index__trending-item'
 
@@ -45,9 +44,26 @@ module.exports = {
 		})
 	},
 
+	getActivePlayers(baton, callback) {
+		var t = this;
+		baton.addMethod('getActivePlayers')
+
+		var formatRawData = (raw_data) => {
+			return raw_data.map(player => {
+				return {
+					character_name: player.firstName + ' '+player.lastName ,
+					nba_player_id: parseInt(player.personId)
+				}
+			})
+		}
+
+		this._makeHttpCallWithUrl(baton, 'http://www.nba.com/players/active_players.json', raw_data => {
+			callback(formatRawData(raw_data))
+		})
+	},
+
 	_makeHttpCallWithUrl(baton, url, callback) {
 		baton.addMethod('_makeHttpCallWithUrl')
-
 		var chunks = ''
 		var req = http.get(url, (res) => {
 			res.on('data', function(data) {

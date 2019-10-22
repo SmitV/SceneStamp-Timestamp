@@ -75,8 +75,10 @@ describe('timestamp server tests', function() {
 	var fakeCategoryData;
 	var fakeCompilationData;
 	var fakeCompilationTimestampData;
-	var fakeNbaGameScheduleData;
 
+	//fake nba
+	var fakeNbaGameScheduleData;
+	var fakeNbaPlayerData;
 
 
 	beforeEach(function() {
@@ -149,6 +151,10 @@ describe('timestamp server tests', function() {
 		}, {
 			"character_name": "Character 4",
 			"character_id": 4
+		}, {
+			character_name: 'Intest nba player 1',
+			nba_player_id: 10001,
+			character_id: 5
 		}];
 
 		fakeCategoryData = [{
@@ -200,6 +206,20 @@ describe('timestamp server tests', function() {
 			}
 		}
 
+		fakeNbaPlayerData = [{
+			firstName: 'Intest nba', //this player is already in the fakecharacterdata
+			lastName: 'player 1',
+			personId: '10001'
+		}, {
+			firstName: 'Intest nba',
+			lastName: 'player 2',
+			personId: '10002'
+		}, {
+			firstName: 'Intest nba',
+			lastName: 'player 3',
+			personId: '10003'
+		}]
+
 		sandbox.stub(auth, 'authValidate').callsFake(function(baton, req, callback) {
 			callback()
 		})
@@ -221,15 +241,6 @@ describe('timestamp server tests', function() {
 
 	describe('automated tasks', function() {
 
-		var universalEpochTime = 1000000000;
-
-		var validNBAGameSchedule = () => {
-			nock(nbaFetching.getNbaGamesForMonthUrl()).get(/.*/).reply(200, fakeNbaGameScheduleData)
-		}
-
-		var invalidNBAGameSchedule = (err) => {
-			nock(nbaFetching.getNbaGamesForMonthUrl()).get(/.*/).reply(500, err)
-		}
 
 		beforeEach(function() {
 
@@ -239,80 +250,183 @@ describe('timestamp server tests', function() {
 				return baton
 			})
 
-			sandbox.stub(actions, 'convertUtcToEpoch').callsFake(() => {
-				return universalEpochTime
-			})
-
-			//stub get all series data for all tests
-			sandbox.stub(dbActions, 'getAllEpisodeData').callsFake(function(baton, queryData, callback) {
-				var result = [...fakeEpisodeData].filter(ep => {
-					return (queryData.series_id && queryData.series_id.length > 0 ? queryData.series_id.includes(ep.series_id) : true)
-				}).filter(ep => {
-					return (queryData.youtube_id && queryData.youtube_id.length > 0 ? queryData.youtube_id.includes(ep.youtube_id) : true)
-				}).filter(ep => {
-					return (queryData.episode_id && queryData.episode_id.length > 0 ? queryData.episode_id.includes(ep.episode_id) : true)
-				}).filter(ep => {
-					return (queryData.nba_game_id && queryData.nba_game_id.length > 0 ? queryData.nba_game_id.includes(ep.nba_game_id) : true)
-				})
-				callback(result)
-			})
-
-			sandbox.stub(dbActions, 'insertEpisode').callsFake(function(baton, episode, callback) {
-				if (Array.isArray(episode)) fakeEpisodeData = fakeEpisodeData.concat(episode)
-				else fakeEpisodeData.push(episode)
-				callback(episode)
-			})
 		})
 
-		it('should fetch and insert new episodes', (done) => {
-			var gid_1 = '1002' //game ids of games to be added
-			var gid_2 = '1003'
-			validNBAGameSchedule()
-			automated_tasks._updateActiveNBAGames()
-			setTimeout(() => {
-				expect(fakeEpisodeData).to.deep.contains({
-					nba_game_id: gid_1,
-					episode_name: 'HOULAK2019-10-05',
-					nba_start_time: universalEpochTime,
-					episode_id: 10
-				})
-				expect(fakeEpisodeData).to.deep.contains({
-					nba_game_id: gid_2,
-					episode_name: 'CELLAK2019-12-10',
-					nba_start_time: universalEpochTime,
-					episode_id: 10
-				})
-				expect(fakeBaton.additionalData).to.deep.equal({
-					nba_game_ids_added: [gid_1, gid_2]
-				})
-				done()
-			}, 50)
-		})
+		describe('nba players', () => {
 
-		it('should not add any when all games are already added', (done) => {
-			fakeNbaGameScheduleData.mscd.g = [fakeNbaGameScheduleData.mscd.g[0]] //the first game is already added  
-			validNBAGameSchedule()
-			automated_tasks._updateActiveNBAGames()
-			setTimeout(() => {
-				expect(fakeBaton.additionalData).to.deep.equal({
-					none_to_add: true
-				})
-				done()
-			}, 50)
-		})
-
-		it('should finish flow when invalid req to nba server', (done) => {
-			var err = {
-				err: 'InTest Error'
+			var validNbaPlayers = () => {
+				nock(nbaFetching.NBA_PLAYERS_URL).get(/.*/).reply(200, fakeNbaPlayerData)
 			}
-			invalidNBAGameSchedule(err)
-			automated_tasks._updateActiveNBAGames()
-			setTimeout(() => {
-				expect(fakeBaton.additionalData).to.deep.equal(err)
-				done()
-			}, 50)
+
+			var invalidNBAPlayers = (err) => {
+				nock(nbaFetching.NBA_PLAYERS_URL).get(/.*/).reply(500, err)
+			}
+
+			beforeEach(function() {
+
+				sandbox.stub(dbActions, 'getAllCharacterData').callsFake(function(baton, queryParams, callback) {
+					var result = [...fakeCharacterData]
+					if (queryParams.character_name) {
+						result = result.filter((character) => {
+							return queryParams.character_name.includes(character.character_name)
+						})
+					}
+					if (queryParams.character_id) {
+						result = result.filter((character) => {
+							return queryParams.character_id.includes(character.character_id)
+						})
+					}
+					if (queryParams.nba_player_id) {
+						result = result.filter((character) => {
+							return queryParams.nba_player_id.includes(character.nba_player_id)
+						})
+					}
+					callback(result)
+				})
+
+				sandbox.stub(dbActions, 'insertCharacter').callsFake(function(baton, character, callback) {
+					if (Array.isArray(character)) fakeCharacterData = fakeCharacterData.concat(character)
+					else fakeCharacterData.push(character)
+					callback(character)
+				})
+			})
+
+			it('should fetch and insert new nba players as characters', (done) => {
+				var char_1 = 10002 //nba player ids to be added
+				var char_2 = 10003
+				validNbaPlayers()
+				automated_tasks._updateActivePlayers()
+				setTimeout(() => {
+					expect(fakeCharacterData).to.deep.contains({
+						character_id:10,
+						character_name:'Intest nba player 2',
+						nba_player_id: char_1
+					})
+					expect(fakeCharacterData).to.deep.contains({
+						character_id:10,
+						character_name:'Intest nba player 3',
+						nba_player_id: char_2
+					})
+					expect(fakeBaton.additionalData).to.deep.equal({
+						nba_player_ids_added: [char_1, char_2]
+					})
+					done()
+				}, 50)
+			})
+
+			it('should not add any when all players are already added', (done) => {
+				fakeCharacterData[0].nba_player_id = 10002
+				fakeCharacterData[1].nba_player_id = 10003 
+				validNbaPlayers()
+				automated_tasks._updateActivePlayers()
+				setTimeout(() => {
+					expect(fakeBaton.additionalData).to.deep.equal({
+						none_to_add: true
+					})
+					done()
+				}, 50)
+			})
+
+			it('should finish flow when invalid req to nba server', (done) => {
+				var err = {
+					err: 'InTest Error'
+				}
+				invalidNBAPlayers(err)
+				automated_tasks._updateActivePlayers()
+				setTimeout(() => {
+					expect(fakeBaton.additionalData).to.deep.equal(err)
+					done()
+				}, 50)
+			})
 		})
 
+		describe('nba games', () => {
+
+			var universalEpochTime = 1000000000;
+
+			var validNBAGameSchedule = () => {
+				nock(nbaFetching.getNbaGamesForMonthUrl()).get(/.*/).reply(200, fakeNbaGameScheduleData)
+			}
+
+			var invalidNBAGameSchedule = (err) => {
+				nock(nbaFetching.getNbaGamesForMonthUrl()).get(/.*/).reply(500, err)
+			}
+
+			beforeEach(() => {
+				sandbox.stub(actions, 'convertUtcToEpoch').callsFake(() => {
+					return universalEpochTime
+				})
+
+				//stub get all series data for all tests
+				sandbox.stub(dbActions, 'getAllEpisodeData').callsFake(function(baton, queryData, callback) {
+					var result = [...fakeEpisodeData].filter(ep => {
+						return (queryData.series_id && queryData.series_id.length > 0 ? queryData.series_id.includes(ep.series_id) : true)
+					}).filter(ep => {
+						return (queryData.youtube_id && queryData.youtube_id.length > 0 ? queryData.youtube_id.includes(ep.youtube_id) : true)
+					}).filter(ep => {
+						return (queryData.episode_id && queryData.episode_id.length > 0 ? queryData.episode_id.includes(ep.episode_id) : true)
+					}).filter(ep => {
+						return (queryData.nba_game_id && queryData.nba_game_id.length > 0 ? queryData.nba_game_id.includes(ep.nba_game_id) : true)
+					})
+					callback(result)
+				})
+
+				sandbox.stub(dbActions, 'insertEpisode').callsFake(function(baton, episode, callback) {
+					if (Array.isArray(episode)) fakeEpisodeData = fakeEpisodeData.concat(episode)
+					else fakeEpisodeData.push(episode)
+					callback(episode)
+				})
+			})
+
+			it('should fetch and insert new episodes', (done) => {
+				var gid_1 = '1002' //game ids of games to be added
+				var gid_2 = '1003'
+				validNBAGameSchedule()
+				automated_tasks._updateActiveNBAGames()
+				setTimeout(() => {
+					expect(fakeEpisodeData).to.deep.contains({
+						nba_game_id: gid_1,
+						episode_name: 'HOULAK2019-10-05',
+						nba_start_time: universalEpochTime,
+						episode_id: 10
+					})
+					expect(fakeEpisodeData).to.deep.contains({
+						nba_game_id: gid_2,
+						episode_name: 'CELLAK2019-12-10',
+						nba_start_time: universalEpochTime,
+						episode_id: 10
+					})
+					expect(fakeBaton.additionalData).to.deep.equal({
+						nba_game_ids_added: [gid_1, gid_2]
+					})
+					done()
+				}, 50)
+			})
+
+			it('should not add any when all games are already added', (done) => {
+				fakeNbaGameScheduleData.mscd.g = [fakeNbaGameScheduleData.mscd.g[0]] //the first game is already added  
+				validNBAGameSchedule()
+				automated_tasks._updateActiveNBAGames()
+				setTimeout(() => {
+					expect(fakeBaton.additionalData).to.deep.equal({
+						none_to_add: true
+					})
+					done()
+				}, 50)
+			})
+
+			it('should finish flow when invalid req to nba server', (done) => {
+				var err = {
+					err: 'InTest Error'
+				}
+				invalidNBAGameSchedule(err)
+				automated_tasks._updateActiveNBAGames()
+				setTimeout(() => {
+					expect(fakeBaton.additionalData).to.deep.equal(err)
+					done()
+				}, 50)
+			})
+		})
 
 	})
 
@@ -2111,7 +2225,7 @@ describe('timestamp server tests', function() {
 							start_time: 100,
 							episode_id: 1,
 							category_ids: [0],
-							character_ids: [2, 5] //5 is invalid
+							character_ids: [2, 6] //6 is invalid
 						}, {
 							start_time: 200,
 							episode_id: 1,

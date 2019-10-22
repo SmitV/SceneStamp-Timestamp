@@ -767,19 +767,19 @@ module.exports = {
       })
     }
 
-    function insertNewCharacter(params, callback) {
-      db.insertCharacter(baton, params, function(data) {
-        t._handleDBCall(baton, data, false /*multiple*/ , callback)
-      })
-    }
-
     //execute
-    verifyParams(function(params) {
-      insertNewCharacter(params, function(character_added) {
+    verifyParams((params) =>{
+      this.insertNewCharacter(baton,params,  function(character_added) {
         baton.json(character_added)
       })
     });
 
+  },
+
+  insertNewCharacter(baton, params, callback){
+    db.insertCharacter(baton, params, (data) => {
+        this._handleDBCall(baton, data, false /*multiple*/ , callback)
+      })
   },
 
   get_allCategoryData(baton, params, res) {

@@ -322,6 +322,36 @@ describe('db tests', () => {
 				expect(sqlQuery.trim()).to.equal('SELECT * FROM `character` WHERE character_name LIKE \'' + character_name + '\'');
 			})
 		})
+
+		it('insert character', (done) => {
+
+			var values = {
+				character_id:101,
+				character_name:'InTest Character'
+			}
+
+			dbActions.insertCharacter(fakeBaton, values, () => {
+				expect(sqlQuery).to.equal('INSERT INTO `character` (character_id,character_name,nba_player_id) VALUES ?');
+				values.nba_player_id = null
+				expect(sqlValues).to.deep.equal([jsonToArray('character', [values])])
+				done()
+			})
+		})
+
+		it('insert character with nba player id', (done) => {
+
+			var values = {
+				character_id:101,
+				character_name:'InTest Character',
+				nba_player_id: 500000
+			}
+
+			dbActions.insertCharacter(fakeBaton, values, () => {
+				expect(sqlQuery).to.equal('INSERT INTO `character` (character_id,character_name,nba_player_id) VALUES ?');
+				expect(sqlValues).to.deep.equal([jsonToArray('character', [values])])
+				done()
+			})
+		})
 	})
 
 	describe('category', function() {

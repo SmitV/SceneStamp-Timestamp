@@ -13,9 +13,67 @@ module.exports = {
 
 	tasksInfo() {
 		return [{
-			interval: 3000,
+			interval: 60 *60 * 12,
 			function: this._updateActiveNBAGames()
+		},
+		{
+			interval: 60 *60 * 12,
+			function: this._updateActivePlayers()
 		}]
+	},
+
+	_updateActivePlayers() {
+		var baton = this._getBaton('_updateActivePlayers')
+
+		var getNonRegisteredNbaCharacters = (nba_characters, callback) => {
+			actions.getAllCharacterData(baton, {
+				nba_player_id: nba_characters.map(char => char.nba_player_id)
+			}, function(character_data) {
+				var nonRegCharacters = nba_characters.filter(nba_player => !character_data.map(existing_char => existing_char.nba_player_id).includes(nba_player.nba_player_id))
+				if (nonRegCharacters.length === 0) {
+					baton.done({
+						none_to_add: true
+					})
+				} else callback(nonRegCharacters)
+			})
+		}
+
+		var prepareCharacters = (characters, callback) => {
+			actions.getAllCharacterData(baton, {}, function(character_data) {
+				callback(characters.map(character => {
+					character.character_id = actions._generateId(actions.ID_LENGTH.character, character_data.map(char => char.character_id))
+					return character
+				}))
+			})
+		}
+
+		function insertAllCharacters(characters, callback) {
+			db.insertCharacter(baton, characters, function(data) {
+				actions._handleDBCall(baton, data, true /*multiple*/ , (err, data) => {
+					if (err) {
+						callback({
+							nba_player_ids_attempted: characters.map(char => char.nba_player_id),
+							error: err
+						})
+						return
+					}
+					callback({
+						nba_player_ids_added: characters.map(char => char.nba_player_id),
+					})
+
+				})
+			})
+		}
+
+		nba_fetching.getActivePlayers(baton, (players) => {
+			getNonRegisteredNbaCharacters(players, (nonRegCharacters) => {
+				prepareCharacters(nonRegCharacters, (updated_characters) => {
+					insertAllCharacters(updated_characters, (result) => {
+						baton.done(result)
+					})
+				})
+			})
+		})
 	},
 
 	_updateActiveNBAGames() {
@@ -24,10 +82,11 @@ module.exports = {
 		var getNonRegisteredNbaGameIds = (nba_game_ids, callback) => {
 			actions.getAllEpisodeData(baton, null /*series_ids*/ , null /*youtube_id*/ , null /*episode_ids*/ , nba_game_ids /*nba_game_ids*/ , function(episode_data) {
 				var nonRegEpisodes = nba_game_ids.filter(gid => !episode_data.map(ep => ep.nba_game_id).includes(gid))
-				if(nonRegEpisodes.length === 0){
-					baton.done({none_to_add:true})
-				}
-				else callback(nonRegEpisodes)
+				if (nonRegEpisodes.length === 0) {
+					baton.done({
+						none_to_add: true
+					})
+				} else callback(nonRegEpisodes)
 			})
 		}
 
