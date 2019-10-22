@@ -313,6 +313,33 @@ describe('db tests', () => {
 			})
 		})
 
+		it('insert multiple episodes', () => {
+
+			var values = [{
+				episode_id: 101,
+				episode_name: 'InTest Episode 1',
+				series_id: 1
+			},{
+				episode_id: 102,
+				episode_name: 'InTest Episode 2',
+				series_id: 1
+			}]
+
+			dbActions.insertEpisode(fakeBaton, values, () => {
+				expect(sqlQuery).to.equal('INSERT INTO `episode` (episode_id,creation_time,episode_name,series_id,air_date,youtube_id,nba_game_id,nba_start_time) VALUES ?');
+				
+				values = values.map(val =>{
+					val.air_date = null
+					val.youtube_id = null
+					val.nba_game_id = null
+					val.nba_start_time = null
+					val.creation_time = FAKE_START_TIME
+					return val
+				})
+				expect(sqlValues).to.deep.equal([jsonToArray('episode', values)])
+			})
+		})
+
 		it('insert new episode with youtube id', () => {
 
 			var values = {

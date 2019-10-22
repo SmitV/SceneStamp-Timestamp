@@ -5,6 +5,8 @@ var cors = require('cors')
 var production_action = require('./prod2/actions.js');
 var auth = require('./prod2/auth.js')
 
+var automated_tasks = require('./prod2/automated_tasks')
+
 var app = express();
 app.options('*', cors());
 app.use(bodyParser.json());
@@ -67,9 +69,6 @@ var timestamp_endpoints = [{
 }, {
 	url: 'getCompilationDescription',
 	action: 'get_compilationDescription'
-}, {
-	url: 'getPlayersFromNBA',
-	action: 'get_CurrentNBAPlayers'
 }];
 
 app.all('*', function(req, res, next) {
@@ -83,7 +82,6 @@ app.all('*', function(req, res, next) {
 
 
 timestamp_endpoints.forEach(function(endpoint) {
-
 	var endpointFunction = function(req, res) {
 		var params = (endpoint.post ? req.body : req.query)
 		var baton = production_action._getBaton(endpoint.url, params, res)
@@ -128,8 +126,20 @@ user_endpoints.forEach(function(endpoint) {
 
 var server = app.listen(process.env.PORT || 8081, function() {
 	console.log("Scene Stamp Server Running @ port ", this.address().port)
+
+	startIntervalTasks()
 })
 
+
+var startIntervalTasks = () => {
+	if(process.env.NODE_ENV === 'production'){
+		automated_tasks.tasksInfo().forEach(task => {
+			setInterval(() => task.function, task.interval)
+		})
+	}
+}
+
 module.exports = {
-	server: server
+	server: server,
+	startIntervalTasks: startIntervalTasks,
 }

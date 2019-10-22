@@ -168,17 +168,6 @@ module.exports = {
       callback({})
     }
   },
-
-  get_CurrentNBAPlayers(baton, params, res) {
-    nba_fetching.getPlayerData(baton, players => {
-      this._handleDBCall(baton, /*data=*/ null, /*multiple=*/ false, () => {
-        baton.json({
-          players: players
-        });
-      })
-    })
-  },
-
   get_allSeriesData(baton, params, res) {
     this.getAllSeriesData(baton, function(data) {
       baton.json(data)
@@ -233,13 +222,30 @@ module.exports = {
   },
   get_allEpisodeData(baton, params, res) {
     var t = this;
-    getEpisodeData()
+
+    var verifyParams = (callback) => {
+      if (params.youtube_link && t.youtubeLinkParser(params.youtube_link) == null) {
+        baton.setError({
+          youtube_link: params.youtube_link,
+          youtube_id: t.youtubeLinkParser(params.youtube_link),
+          error: "Youtube Link is not valid, pattern wise",
+          public_message: 'Invalid Youtube Link'
+        })
+        t._generateError(baton)
+        return
+      }
+      callback()
+    }
 
     function getEpisodeData() {
       t.getAllEpisodeData(baton, params.series_ids, params.youtube_link, null /*episode_ids*/ , params.nba_game_ids, function(data) {
         baton.json(data)
       })
     }
+
+    verifyParams(() => {
+      getEpisodeData()
+    })
   },
   getAllEpisodeData(baton, series_ids, youtube_link, episode_ids, nba_game_ids, callback) {
     baton.addMethod('getAllEpisodeData');
@@ -250,23 +256,13 @@ module.exports = {
       episode_id: episode_ids
     }
 
-    if (nba_game_ids !== undefined) {
-      queryData.nba_game_id = nba_game_ids
+    if (youtube_link) {
+      var youtubeId = t.youtubeLinkParser(youtube_link)
+      queryData.youtube_id = [youtubeId]
     }
 
-    if (youtube_link !== undefined && youtube_link !== null) {
-      var youtubeId = t.youtubeLinkParser(youtube_link)
-      if (youtubeId == null) {
-        baton.setError({
-          youtube_link: youtube_link,
-          youtube_id: youtubeId,
-          error: "Youtube Link is not valid, pattern wise",
-          public_message: 'Invalid Youtube Link'
-        })
-        t._generateError(baton)
-        return
-      }
-      queryData.youtube_id = [youtubeId]
+    if (nba_game_ids !== undefined) {
+      queryData.nba_game_id = nba_game_ids
     }
     db.getAllEpisodeData(baton, queryData, function(data) {
       t._handleDBCall(baton, data, false /*multiple*/ , callback)
@@ -1315,12 +1311,13 @@ module.exports = {
   },
   /**
    * Handles if error occurs from DB Call
-   * in case of multiple, callback will be error,results
+   * in case of multiple, callback will be errorExists,results
    */
   _handleDBCall(baton, data, multiple, callback) {
+    //the db is called from an automated source
     if (baton.err.length > 0) {
       //the error would have been set on the DB side
-      if (multiple) {
+      if (multiple || baton.automated_task_name) {
         callback(true)
         return
       }

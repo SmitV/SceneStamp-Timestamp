@@ -19,13 +19,13 @@ var stripInfo = printf(({
   meta
 }) => {
   var err = `\n ${JSON.stringify(message.err, null, 2)}\n `
-  return `${timestamp} ${level} : ${message.endpoint} - ${message.duration} ${Array.isArray(message.err) && message.err.length > 0 ? err : ''}`;
+  return `${timestamp} ${level} : ${message.endpoint ? message.endpoint : message.automated_task_name} - ${message.duration} ${Array.isArray(message.err) && message.err.length > 0 ? err : ''}`;
 });
 
 
 var logger;
 var methodLogger;
-
+var automatedSystemLogger;
 
 var createConsoleLogger = () => {
   return createLogger({
@@ -39,7 +39,7 @@ var createConsoleLogger = () => {
   });
 }
 
-
+//logger for all user endpoint calls
 var createElasticLogger = () => {
 
   var elasticLogger = createLogger();
@@ -54,6 +54,26 @@ var createElasticLogger = () => {
   elasticLogger.add(new winston_elasticsearch({
     client,
     index: "logging"
+  }));
+
+  return elasticLogger
+}
+
+//logger for all automated system initiated tasks
+var createAutomatedSystemLogger = () => {
+
+  var elasticLogger = createLogger();
+
+
+  var client = new elasticsearch.Client({
+    host: cred.ELASTIC_SEARCH_URL,
+    log: 'info'
+
+  });
+
+  elasticLogger.add(new winston_elasticsearch({
+    client,
+    index: "automated_system_logging"
   }));
 
   return elasticLogger
@@ -86,6 +106,9 @@ switch (process.env.NODE_ENV) {
     logger = createLogger();
     logger.add(createConsoleLogger())
 
+    automatedSystemLogger = createLogger()
+    automatedSystemLogger.add(createConsoleLogger())
+
     methodLogger = {
       info: function() {},
       error: function() {}
@@ -96,6 +119,10 @@ switch (process.env.NODE_ENV) {
     logger = createLogger();
     logger.add(createConsoleLogger())
     logger.add(createElasticLogger())
+
+    automatedSystemLogger = createLogger()
+    automatedSystemLogger.add(createConsoleLogger())
+    automatedSystemLogger.add(createAutomatedSystemLogger())
 
     methodLogger = createLogger()
     methodLogger.add(createMethodLogger())
@@ -110,11 +137,17 @@ switch (process.env.NODE_ENV) {
       info: function() {},
       error: function() {}
     }
+
+    automatedSystemLogger = {
+      info: function() {},
+      error: function() {}
+    }
     break;
 }
 
 
 module.exports = {
   MAIN_LOGGER: logger,
-  METHOD_LOGGER: methodLogger
+  METHOD_LOGGER: methodLogger,
+  AUTOMATED_SYSTEM_LOGGER:automatedSystemLogger
 }

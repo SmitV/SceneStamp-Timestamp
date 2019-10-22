@@ -229,7 +229,7 @@ module.exports = {
 	},
 	insertEpisode(baton, values, callback) {
 		baton.addMethod(this._formatMethod('insertEpisode'))
-		this._insertMultipleQuery('episode', [values], baton, function() {
+		this._insertMultipleQuery('episode', (Array.isArray(values) ? values : [values]), baton, function() {
 			callback(values)
 		});
 	},
