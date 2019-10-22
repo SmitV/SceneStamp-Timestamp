@@ -29,6 +29,11 @@ var timestamp_endpoints = [{
 	url: 'newEpisode',
 	action: 'post_newEpisode'
 
+},{
+	url: 'updateEpisode',
+	action: 'post_updateEpisode',
+	post:true
+
 }, {
 	url: 'getCharacterData',
 	action: 'get_allCharacterData'

@@ -33,11 +33,15 @@ const MAIN_SCHEME = {
 			'type': 'string',
 			'optional': true
 		},
-		'nba_game_id':{
-			'type':'string',
-			'optional':true
+		'nba_game_id': {
+			'type': 'string',
+			'optional': true
 		},
-		'nba_start_time':{
+		'nba_start_time': {
+			'type': 'number',
+			'optional': true
+		},
+		'video_offset':{
 			'type':'number',
 			'optional':true
 		}
@@ -233,6 +237,10 @@ module.exports = {
 			callback(values)
 		});
 	},
+	updateEpisode(baton, values, condition, callback){
+		baton.addMethod(this._formatMethod('updateEpisode'))
+		this._updateQuery(baton, 'episode', values,condition, callback);
+	},
 	getAllCharacterData(baton, data, callback) {
 		baton.addMethod(this._formatMethod('getAllCharacterData'))
 		this._selectQuery(baton, 'character', data, callback)
@@ -350,6 +358,85 @@ module.exports = {
 		this._selectQuery(baton, 'role_action', data, callback)
 	},
 
+	//@param values json where attr and value are new values to be set
+	//@param condition json with single attr 
+	_updateQuery(baton, table, values, conditions, suc_callback) {
+		//UPDATE table SET {values} WHERE {conditions}
+		var values_array = []
+		var condition_string
+		var getValuesArray = (callback) => {
+			Object.keys(values).every((attr) => {
+				if (!DB_SCHEME[table][attr]) {
+					baton.setError({
+						details: 'DB Actions: invalid attr for table',
+						table: table,
+						attr: attr,
+						value: values[attr]
+					})
+					suc_callback()
+					return false
+				}
+				if (DB_SCHEME[table][attr].type !== typeof values[attr]) {
+					baton.setError({
+						details: 'DB Actions: type of value not valid',
+						table: table,
+						attr: attr,
+						expected_type: DB_SCHEME[table][attr].type,
+						object: values[attr]
+					})
+					suc_callback()
+					return false
+				}
+				values_array.push(attr + '=' + (DB_SCHEME[table][attr].type === 'string' ? "'" + values[attr] + "'" : values[attr]))
+				return true
+			})
+			if(baton.err.length === 0) callback()
+		}
+
+		var getConditionalArray = (callback) => {
+			if (Object.keys(conditions).length !== 1) {
+				baton.setError({
+					details: 'DB Actions: only one condition is allowed for update query',
+					table: table,
+					values: values,
+					conditions: conditions
+				})
+				suc_callback()
+				return
+			}
+			var attr = Object.keys(conditions)[0]
+			if (!DB_SCHEME[table][attr]) {
+				baton.setError({
+					details: 'DB Actions: invalid attr for table',
+					table: table,
+					attr: attr,
+					cond_value: conditions[attr]
+				})
+				suc_callback()
+				return
+			}
+			if (DB_SCHEME[table][attr].type !== typeof conditions[attr]) {
+				baton.setError({
+					details: 'DB Actions: type of value not valid',
+					table: table,
+					attr: attr,
+					expected_type: DB_SCHEME[table][attr].type,
+					cond_val: conditions[attr]
+				})
+				suc_callback()
+				return
+			}
+			condition_string = (attr + '=' + (DB_SCHEME[table][attr].type === 'string' ? "'" + conditions[attr] + "'" : conditions[attr]))
+			callback()
+		}
+
+		getValuesArray(() => {
+			getConditionalArray(() => {
+				this._makequery(" UPDATE `" + table + "` SET " + values_array.join(',') + " WHERE "+ condition_string, /*values=*/ null, table, baton, suc_callback)
+			})
+		})
+	},
+
 	_insertMultipleQuery(table, values, baton, callback) {
 		var t = this
 		var attr_string = Object.keys(DB_SCHEME[table]).map(function(key) {
@@ -394,14 +481,10 @@ module.exports = {
 				}
 			})
 			value_array.push(single_val)
-			if (value_array.length === values.length && baton.err.length === 0) {
-				//the values need to be in three arrays 
-				// [[[value],[value]]]
-				t._makequery("INSERT INTO `" + table + "` (" + attr_string + ") VALUES ?", [value_array], table, baton, callback)
-			} else {
-				return true
-			}
+			return true
 		})
+		t._makequery("INSERT INTO `" + table + "` (" + attr_string + ") VALUES ?", [value_array], table, baton, callback)
+
 	},
 
 	_deleteQuery(table, conditions, baton, callback) {

@@ -46,6 +46,14 @@ var MAIN_VALIDATION = {
       optional: true
     }
   },
+  updateEpisode:{
+    episode_id : {
+      type:'number'
+    },
+    video_offset : {
+      type:'number'
+    }
+  },
   getCharacterData: {
     character_name: {
       type: "string",

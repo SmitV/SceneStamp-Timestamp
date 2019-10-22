@@ -31,6 +31,12 @@ describe('db tests', () => {
 		return values_array
 	}
 
+	function jsonToUpdateValuesOrCondition(values) {
+		var result = Object.keys(values).map(attr => attr + '=' + (typeof values[attr] == 'string' ? "'" + values[attr] + "'" : values[attr]))
+		if (Object.keys(values).length === 1) return result[0]
+		return result.join(',')
+	}
+
 
 	beforeEach(() => {
 
@@ -140,6 +146,110 @@ describe('db tests', () => {
 			}]
 			dbActions._insertMultipleQuery('test_table', values, fakeBaton, function() {
 				expect(fakeBaton.err[0].details).to.equal('DB Actions: type of value not valid')
+			})
+		})
+	})
+
+	describe('update query', () => {
+
+		var originalscheme = dbActions.DB_SCHEME
+		beforeEach(function() {
+
+			dbActions.setScheme({
+				'test_table': {
+					'test_attr1': {
+						'type': 'number'
+					},
+					'test_attr2': {
+						'type': 'number',
+					},
+					'test_attr3': {
+						'type': 'string'
+					}
+				},
+			})
+		})
+
+
+
+		afterEach(function() {
+			dbActions.resetScheme()
+		})
+
+
+		it('should make update query', (done) => {
+			var values = {
+				test_attr3: 'intest_value',
+				test_attr2: 101,
+			}
+			var conditions = {
+				test_attr1: 300
+			}
+
+			dbActions._updateQuery(fakeBaton, 'test_table', values, conditions, () => {
+				expect(sqlQuery.trim()).to.equal('UPDATE `test_table` SET ' + jsonToUpdateValuesOrCondition(values) + ' WHERE ' + jsonToUpdateValuesOrCondition(conditions))
+				done()
+			})
+		})
+
+		it('should make update query with string conditional', (done) => {
+			var values = {
+				test_attr1: 300,
+				test_attr2: 101,
+			}
+			var conditions = {
+				test_attr3: 'intest_value'
+			}
+
+			dbActions._updateQuery(fakeBaton, 'test_table', values, conditions, () => {
+				expect(sqlQuery.trim()).to.equal('UPDATE `test_table` SET ' + jsonToUpdateValuesOrCondition(values) + ' WHERE ' + jsonToUpdateValuesOrCondition(conditions))
+				done()
+			})
+		})
+
+		it('should throw for invalid param type', (done) => {
+			var values = {
+				test_attr3: 101, //should be string
+				test_attr2: 101,
+			}
+			var conditions = {
+				test_attr1: 300
+			}
+
+			dbActions._updateQuery(fakeBaton, 'test_table', values, conditions, () => {
+				expect(fakeBaton.err[0].details).to.equal('DB Actions: type of value not valid')
+				done()
+			})
+		})
+
+		it('should throw for more than one condition', (done) => {
+			var values = {
+				test_attr3: 'InTest string',
+			}
+			var conditions = {
+				test_attr1: 300,
+				test_attr2: 101
+			}
+
+			dbActions._updateQuery(fakeBaton, 'test_table', values, conditions, () => {
+				expect(fakeBaton.err[0].details).to.equal('DB Actions: only one condition is allowed for update query')
+				done()
+			})
+		})
+
+		it('should throw for invalid attr', (done) => {
+			var values = {
+				test_attr3: 'InTest string',
+				test_attr2: 101,
+				invalid_attr: '101'
+			}
+			var conditions = {
+				test_attr1: 300,
+			}
+
+			dbActions._updateQuery(fakeBaton, 'test_table', values, conditions, () => {
+				expect(fakeBaton.err[0].details).to.equal('DB Actions: invalid attr for table')
+				done()
 			})
 		})
 	})
@@ -293,6 +403,21 @@ describe('db tests', () => {
 
 		})
 
+		it('should update episode', (done) => {
+			var values = {
+				episode_name: 'New Episode Name'
+			}
+
+			var conditions = {
+				episode_id: 101
+			}
+
+			dbActions.updateEpisode(fakeBaton, values, conditions, () => {
+				expect(sqlQuery.trim()).to.equal('UPDATE `episode` SET ' + jsonToUpdateValuesOrCondition(values) + ' WHERE ' + jsonToUpdateValuesOrCondition(conditions));
+				done()
+			})
+		})
+
 
 		it('insert new episode', () => {
 
@@ -303,11 +428,12 @@ describe('db tests', () => {
 			}
 
 			dbActions.insertEpisode(fakeBaton, values, () => {
-				expect(sqlQuery).to.equal('INSERT INTO `episode` (episode_id,creation_time,episode_name,series_id,air_date,youtube_id,nba_game_id,nba_start_time) VALUES ?');
+				expect(sqlQuery).to.equal('INSERT INTO `episode` (episode_id,creation_time,episode_name,series_id,air_date,youtube_id,nba_game_id,nba_start_time,video_offset) VALUES ?');
 				values.air_date = null
 				values.youtube_id = null
 				values.nba_game_id = null
 				values.nba_start_time = null
+				values.video_offset = null
 				values.creation_time = FAKE_START_TIME
 				expect(sqlValues).to.deep.equal([jsonToArray('episode', [values])])
 			})
@@ -319,20 +445,21 @@ describe('db tests', () => {
 				episode_id: 101,
 				episode_name: 'InTest Episode 1',
 				series_id: 1
-			},{
+			}, {
 				episode_id: 102,
 				episode_name: 'InTest Episode 2',
 				series_id: 1
 			}]
 
 			dbActions.insertEpisode(fakeBaton, values, () => {
-				expect(sqlQuery).to.equal('INSERT INTO `episode` (episode_id,creation_time,episode_name,series_id,air_date,youtube_id,nba_game_id,nba_start_time) VALUES ?');
-				
-				values = values.map(val =>{
+				expect(sqlQuery).to.equal('INSERT INTO `episode` (episode_id,creation_time,episode_name,series_id,air_date,youtube_id,nba_game_id,nba_start_time,video_offset) VALUES ?');
+
+				values = values.map(val => {
 					val.air_date = null
 					val.youtube_id = null
 					val.nba_game_id = null
 					val.nba_start_time = null
+					val.video_offset = null
 					val.creation_time = FAKE_START_TIME
 					return val
 				})
@@ -350,12 +477,13 @@ describe('db tests', () => {
 			}
 
 			dbActions.insertEpisode(fakeBaton, values, () => {
-				expect(sqlQuery).to.equal('INSERT INTO `episode` (episode_id,creation_time,episode_name,series_id,air_date,youtube_id,nba_game_id,nba_start_time) VALUES ?');
+				expect(sqlQuery).to.equal('INSERT INTO `episode` (episode_id,creation_time,episode_name,series_id,air_date,youtube_id,nba_game_id,nba_start_time,video_offset) VALUES ?');
 				delete values.youtube_id
 				values.air_date = null
 				values.youtube_id = 'abc'
 				values.nba_game_id = null
 				values.nba_start_time = null
+				values.video_offset = null
 				values.creation_time = FAKE_START_TIME
 				expect(sqlValues).to.deep.equal([jsonToArray('episode', [values])])
 			})
@@ -372,12 +500,13 @@ describe('db tests', () => {
 			}
 
 			dbActions.insertEpisode(fakeBaton, values, () => {
-				expect(sqlQuery).to.equal('INSERT INTO `episode` (episode_id,creation_time,episode_name,series_id,air_date,youtube_id,nba_game_id,nba_start_time) VALUES ?');
+				expect(sqlQuery).to.equal('INSERT INTO `episode` (episode_id,creation_time,episode_name,series_id,air_date,youtube_id,nba_game_id,nba_start_time,video_offset) VALUES ?');
 				delete values.nba_game_id
 				values.air_date = null
 				values.youtube_id = null
 				values.nba_game_id = '201'
 				values.nba_start_time = 10001
+				values.video_offset = null
 				values.creation_time = FAKE_START_TIME
 				expect(sqlValues).to.deep.equal([jsonToArray('episode', [values])])
 			})

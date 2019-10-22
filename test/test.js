@@ -233,8 +233,8 @@ describe('timestamp server tests', function() {
 
 		beforeEach(function() {
 
-			sandbox.stub(automated_tasks, '_getBaton').callsFake(function(task_name){
-				var baton = automated_tasks._getBaton.wrappedMethod.apply(this,arguments)
+			sandbox.stub(automated_tasks, '_getBaton').callsFake(function(task_name) {
+				var baton = automated_tasks._getBaton.wrappedMethod.apply(this, arguments)
 				fakeBaton = baton;
 				return baton
 			})
@@ -301,8 +301,10 @@ describe('timestamp server tests', function() {
 			}, 50)
 		})
 
-		it('should finish flow when invalid req to nba server', (done) =>{
-			var err = {err: 'InTest Error'}
+		it('should finish flow when invalid req to nba server', (done) => {
+			var err = {
+				err: 'InTest Error'
+			}
 			invalidNBAGameSchedule(err)
 			automated_tasks._updateActiveNBAGames()
 			setTimeout(() => {
@@ -1104,6 +1106,60 @@ describe('timestamp server tests', function() {
 				assertErrorMessage(res, 'Parameter validation error')
 				done()
 			})
+		})
+
+		describe('update episode', () => {
+
+			beforeEach(() => {
+				//stub get all series dat for all tests
+				sandbox.stub(dbActions, 'updateEpisode').callsFake(function(baton, values, conditions, callback) {
+					var attr = Object.keys(conditions)[0]
+					fakeEpisodeData = fakeEpisodeData.map(ep => {
+						if (ep[attr] === conditions[attr]) {
+							Object.keys(values).forEach(val_attr => {
+								console.log(val_attr)
+								ep[val_attr] = values[val_attr]
+							})
+						}
+						return ep
+					})
+					callback(fakeEpisodeData.filter(ep => ep[attr] === conditions[attr])[0])
+				})
+			})
+
+
+			it('should update offset of episode', (done) => {
+				var params = {
+					video_offset: 10,
+					episode_id: 5 // this ep has nba game id
+				}
+
+				sendRequest('updateEpisode', params, /*post=*/ true).end((err, res, body) => {
+					assertSuccess(res,/*post=*/ true)
+					expect(fakeEpisodeData).to.deep.contains({
+						"episode_id": 5,
+						"episode_name": "Test Episode 3",
+						"air_date": 1564064876,
+						"nba_game_id": '1001',
+						"video_offset": 10
+					})
+					done()
+				})
+			})
+
+
+			it('should throw for invalid episdoe without game id', (done) => {
+				var params = {
+					video_offset: 10,
+					episode_id: 4 // this ep has no game id
+				}
+
+				sendRequest('updateEpisode', params, /*post=*/ true).end((err, res, body) => {
+					assertErrorMessage(res,'Invalid Episode Id')
+					done()
+				})
+			})
+
 		})
 
 		describe('inserting new episode', function() {
