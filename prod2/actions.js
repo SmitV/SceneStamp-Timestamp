@@ -619,32 +619,38 @@ module.exports = {
     });
   },
 
-  post_updateEpisode(baton, params){
+  post_updateEpisode(baton, params) {
 
     var verifyParams = (callback) => {
-       this.ensure_EpisodeIdExists(baton, {episode_id: [params.episode_id]}, (episode) => {
-         episode = episode[0]
-         if(episode.nba_game_id === undefined || episode.nba_game_id === null){
-           baton.setError({
-           episode_id:params.episode_id,
+      this.ensure_EpisodeIdExists(baton, {
+        episode_id: [params.episode_id]
+      }, (episode) => {
+        episode = episode[0]
+        if (episode.nba_game_id === undefined || episode.nba_game_id === null) {
+          baton.setError({
+            episode_id: params.episode_id,
             error: "Only episodes with game id can have video offset",
             public_message: 'Invalid Episode Id'
           })
           this._generateError(baton)
           return
-         }
-         callback(episode)
-       })
+        }
+        callback(episode)
+      })
     }
 
-    var updateEpisodeWithOffset = (episode_id, callback) =>{
-      this.updateEpisode(baton, {video_offset: params.video_offset}, {episode_id:episode_id},callback)
+    var updateEpisodeWithOffset = (episode_id, callback) => {
+      this.updateEpisode(baton, {
+        video_offset: params.video_offset
+      }, {
+        episode_id: episode_id
+      }, callback)
     }
 
-    verifyParams((episode) =>{
-      updateEpisodeWithOffset(episode.episode_id, () =>{
+    verifyParams((episode) => {
+      updateEpisodeWithOffset(episode.episode_id, () => {
         baton.json({
-          episode_id:episode.episode_id,
+          episode_id: episode.episode_id,
           video_offset: params.video_offset
         })
       })
@@ -654,7 +660,7 @@ module.exports = {
   updateEpisode(baton, params, conditions, callback) {
     baton.addMethod('updateEpisode');
     var t = this;
-    db.updateEpisode(baton, params,conditions, (data) => {
+    db.updateEpisode(baton, params, conditions, (data) => {
       t._handleDBCall(baton, data, false /*multiple*/ , callback)
     })
   },

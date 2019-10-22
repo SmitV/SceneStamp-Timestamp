@@ -41,9 +41,9 @@ const MAIN_SCHEME = {
 			'type': 'number',
 			'optional': true
 		},
-		'video_offset':{
-			'type':'number',
-			'optional':true
+		'video_offset': {
+			'type': 'number',
+			'optional': true
 		}
 	},
 	'category': {
@@ -237,9 +237,9 @@ module.exports = {
 			callback(values)
 		});
 	},
-	updateEpisode(baton, values, condition, callback){
+	updateEpisode(baton, values, condition, callback) {
 		baton.addMethod(this._formatMethod('updateEpisode'))
-		this._updateQuery(baton, 'episode', values,condition, callback);
+		this._updateQuery(baton, 'episode', values, condition, callback);
 	},
 	getAllCharacterData(baton, data, callback) {
 		baton.addMethod(this._formatMethod('getAllCharacterData'))
@@ -390,7 +390,7 @@ module.exports = {
 				values_array.push(attr + '=' + (DB_SCHEME[table][attr].type === 'string' ? "'" + values[attr] + "'" : values[attr]))
 				return true
 			})
-			if(baton.err.length === 0) callback()
+			if (baton.err.length === 0) callback()
 		}
 
 		var getConditionalArray = (callback) => {
@@ -432,7 +432,7 @@ module.exports = {
 
 		getValuesArray(() => {
 			getConditionalArray(() => {
-				this._makequery(" UPDATE `" + table + "` SET " + values_array.join(',') + " WHERE "+ condition_string, /*values=*/ null, table, baton, suc_callback)
+				this._makequery(" UPDATE `" + table + "` SET " + values_array.join(',') + " WHERE " + condition_string, /*values=*/ null, table, baton, suc_callback)
 			})
 		})
 	},

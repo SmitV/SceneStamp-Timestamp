@@ -46,12 +46,12 @@ var MAIN_VALIDATION = {
       optional: true
     }
   },
-  updateEpisode:{
-    episode_id : {
-      type:'number'
+  updateEpisode: {
+    episode_id: {
+      type: 'number'
     },
-    video_offset : {
-      type:'number'
+    video_offset: {
+      type: 'number'
     }
   },
   getCharacterData: {

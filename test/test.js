@@ -1135,7 +1135,7 @@ describe('timestamp server tests', function() {
 				}
 
 				sendRequest('updateEpisode', params, /*post=*/ true).end((err, res, body) => {
-					assertSuccess(res,/*post=*/ true)
+					assertSuccess(res, /*post=*/ true)
 					expect(fakeEpisodeData).to.deep.contains({
 						"episode_id": 5,
 						"episode_name": "Test Episode 3",
@@ -1155,7 +1155,7 @@ describe('timestamp server tests', function() {
 				}
 
 				sendRequest('updateEpisode', params, /*post=*/ true).end((err, res, body) => {
-					assertErrorMessage(res,'Invalid Episode Id')
+					assertErrorMessage(res, 'Invalid Episode Id')
 					done()
 				})
 			})

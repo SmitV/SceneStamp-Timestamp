@@ -29,10 +29,10 @@ var timestamp_endpoints = [{
 	url: 'newEpisode',
 	action: 'post_newEpisode'
 
-},{
+}, {
 	url: 'updateEpisode',
 	action: 'post_updateEpisode',
-	post:true
+	post: true
 
 }, {
 	url: 'getCharacterData',
@@ -137,7 +137,7 @@ var server = app.listen(process.env.PORT || 8081, function() {
 
 
 var startIntervalTasks = () => {
-	if(process.env.NODE_ENV === 'production'){
+	if (process.env.NODE_ENV === 'production') {
 		automated_tasks.tasksInfo().forEach(task => {
 			setInterval(() => task.function, task.interval)
 		})
