@@ -63,9 +63,9 @@ const MAIN_SCHEME = {
 			'type': 'string',
 			'like_option': true
 		},
-		'nba_player_id':{
-			'type':'number',
-			'optional':true
+		'nba_player_id': {
+			'type': 'number',
+			'optional': true
 		}
 	},
 	'timestamp': {
@@ -507,6 +507,7 @@ module.exports = {
 	 * Makes the SELECT _query
 	 * @param {string} table name of the table to get data
 	 * @param {json} conditions key is the attribute, value is an array of values for the conditions
+	 * 				 attr lessthan
 	 */
 	_selectQuery(baton, table, conditions, callback) {
 		var t = this;
@@ -523,6 +524,20 @@ module.exports = {
 				}
 				return true
 			})
+			if (conditions.lessThan !== undefined) {
+				Object.keys(conditions.lessThan).every(attr => {
+					if (DB_SCHEME[table][attr] !== undefined) {
+						condition_string += attr + ' < ' + conditions.lessThan[attr] + condition_delimiter
+					}
+				})
+			}
+			if (conditions.greaterThan !== undefined) {
+				Object.keys(conditions.greaterThan).every(attr => {
+					if (DB_SCHEME[table][attr] !== undefined) {
+						condition_string += attr + ' > ' + conditions.greaterThan[attr] + condition_delimiter
+					}
+				})
+			}
 		}
 		this._makequery("SELECT * FROM `" + table + "`" + (condition_string == "" ? "" : " WHERE " + condition_string.slice(0, -3)), null, table, baton, callback)
 	},

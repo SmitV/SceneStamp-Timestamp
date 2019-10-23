@@ -82,7 +82,8 @@ describe('db tests', () => {
 		})
 	})
 
-	describe('insert query', function() {
+
+	describe('query construction', function() {
 
 		var originalscheme = dbActions.DB_SCHEME
 		beforeEach(function() {
@@ -95,59 +96,92 @@ describe('db tests', () => {
 					'test_attr2': {
 						'type': 'number',
 						'optional': true
+					},
+					'test_attr3': {
+						'type': 'string',
+						'optional': true
 					}
 				},
 			})
 		})
 
-
-
 		afterEach(function() {
 			dbActions.resetScheme()
 		})
 
-		it('should make insert multi call', () => {
-			var values = [{
-				test_attr1: 101,
-				test_attr2: 101
-			}, {
-				test_attr1: 103
-			}, {
-				test_attr1: 102,
-				test_attr2: 102
-			}]
-			dbActions._insertMultipleQuery('test_table', values, fakeBaton, function() {
-				expect(sqlValues).to.deep.equal([
-					[
-						[101, 101],
-						[103, null],
-						[102, 102]
-					]
-				])
+		describe('select query', function() {
+			it('should make select call', () => {
+				var queryParams = {
+					test_attr1: [1, 2]
+				}
+				dbActions._selectQuery(fakeBaton, 'test_table', queryParams, function() {
+					expect(sqlQuery.trim()).to.deep.equal('SELECT * FROM `test_table` WHERE test_attr1 = 1 OR test_attr1 = 2')
+				})
+			})
+
+
+			it('should create less than and greater that conditions', () => {
+				var queryParams = {
+					test_attr3: ['text1', 'text2'],
+					lessThan: {
+						test_attr1: 101
+					},
+					greaterThan: {
+						test_attr1: 10
+					}
+				}
+				dbActions._selectQuery(fakeBaton, 'test_table', queryParams, function() {
+					expect(sqlQuery.trim()).to.deep.equal('SELECT * FROM `test_table` WHERE test_attr3 = \'text1\' OR test_attr3 = \'text2\'  OR test_attr1 < 101 OR test_attr1 > 10')
+				})
+			})
+
+		})
+
+		describe('insert query', function() {
+			it('should make insert multi call', () => {
+				var values = [{
+					test_attr1: 101,
+					test_attr2: 101
+				}, {
+					test_attr1: 103
+				}, {
+					test_attr1: 102,
+					test_attr2: 102
+				}]
+				dbActions._insertMultipleQuery('test_table', values, fakeBaton, function() {
+					expect(sqlValues).to.deep.equal([
+						[
+							[101, 101, null],
+							[103, null, null],
+							[102, 102, null]
+						]
+					])
+				})
+			})
+
+			it('should throw error for non optional field', () => {
+				var values = {
+					test_attr2: 101
+				}
+				dbActions._insertMultipleQuery('test_table', [values], fakeBaton, function() {
+					expect(fakeBaton.err[0].details).to.equal('DB Actions: non-optional value not present')
+				})
+			})
+
+			it('should throw error for invalid type field', () => {
+				var values = [{
+					test_attr2: 101,
+					test_attr1: 1
+				}, {
+					test_attr2: 101,
+					test_attr1: 'test'
+				}]
+				dbActions._insertMultipleQuery('test_table', values, fakeBaton, function() {
+					expect(fakeBaton.err[0].details).to.equal('DB Actions: type of value not valid')
+				})
 			})
 		})
 
-		it('should throw error for non optional field', () => {
-			var values = {
-				test_attr2: 101
-			}
-			dbActions._insertMultipleQuery('test_table', [values], fakeBaton, function() {
-				expect(fakeBaton.err[0].details).to.equal('DB Actions: non-optional value not present')
-			})
-		})
-
-		it('should throw error for invalid type field', () => {
-			var values = [{
-				test_attr2: 101,
-				test_attr1: 1
-			}, {
-				test_attr2: 101,
-				test_attr1: 'test'
-			}]
-			dbActions._insertMultipleQuery('test_table', values, fakeBaton, function() {
-				expect(fakeBaton.err[0].details).to.equal('DB Actions: type of value not valid')
-			})
-		})
 	})
 
 	describe('update query', () => {
@@ -326,8 +360,8 @@ describe('db tests', () => {
 		it('insert character', (done) => {
 
 			var values = {
-				character_id:101,
-				character_name:'InTest Character'
+				character_id: 101,
+				character_name: 'InTest Character'
 			}
 
 			dbActions.insertCharacter(fakeBaton, values, () => {
@@ -341,8 +375,8 @@ describe('db tests', () => {
 		it('insert character with nba player id', (done) => {
 
 			var values = {
-				character_id:101,
-				character_name:'InTest Character',
+				character_id: 101,
+				character_name: 'InTest Character',
 				nba_player_id: 500000
 			}
 
