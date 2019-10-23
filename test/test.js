@@ -134,9 +134,15 @@ describe('timestamp server tests', function() {
 			"youtube_id": 'hvTKfVQWU40'
 		}, {
 			"episode_id": 5,
-			"episode_name": "Test Episode 3",
-			"air_date": 1564064876,
+			"episode_name": "Test Episode 5",
+			"nba_start_time": 10,
 			"nba_game_id": '1001'
+		},
+		{
+			"episode_id": 6,
+			"episode_name": "Test Episode 6",
+			"nba_start_time": 15,
+			"nba_game_id": '2001'
 		}];
 
 		fakeCharacterData = [{
@@ -1133,6 +1139,10 @@ describe('timestamp server tests', function() {
 					return (queryData.episode_id && queryData.episode_id.length > 0 ? queryData.episode_id.includes(ep.episode_id) : true)
 				}).filter(ep => {
 					return (queryData.nba_game_id && queryData.nba_game_id.length > 0 ? queryData.nba_game_id.includes(ep.nba_game_id) : true)
+				}).filter(ep => {
+					return (queryData.lessThan ? ep.nba_start_time < queryData.lessThan.nba_start_time : true)
+				}).filter(ep => {
+					return (queryData.greaterThan ? ep.nba_start_time > queryData.greaterThan.nba_start_time : true)
 				})
 				return callback(result)
 			})
@@ -1170,6 +1180,34 @@ describe('timestamp server tests', function() {
 				assertSuccess(res)
 				expect(res.body.length).equal(fakeEpisodeData.filter(ep => {
 					return ep.series_id == 0 || ep.series_id == 1
+				}).length)
+				done()
+			})
+		})
+
+		it('should filter by before nba start time', function(done) {
+			var params = {
+				nbaBeforeEpochTime : 15
+			}
+
+			sendRequest('getEpisodeData', params).end((err, res, body) => {
+				assertSuccess(res)
+				expect(res.body.length).equal(fakeEpisodeData.filter(ep => {
+					return ep.nba_start_time < 15
+				}).length)
+				done()
+			})
+		})
+
+		it('should filter by before after start time', function(done) {
+			var params = {
+				nbaAfterEpochTime: 9
+			}
+
+			sendRequest('getEpisodeData', params).end((err, res, body) => {
+				assertSuccess(res)
+				expect(res.body.length).equal(fakeEpisodeData.filter(ep => {
+					return ep.nba_start_time > 9
 				}).length)
 				done()
 			})
@@ -1231,7 +1269,6 @@ describe('timestamp server tests', function() {
 					fakeEpisodeData = fakeEpisodeData.map(ep => {
 						if (ep[attr] === conditions[attr]) {
 							Object.keys(values).forEach(val_attr => {
-								console.log(val_attr)
 								ep[val_attr] = values[val_attr]
 							})
 						}
@@ -1252,8 +1289,8 @@ describe('timestamp server tests', function() {
 					assertSuccess(res, /*post=*/ true)
 					expect(fakeEpisodeData).to.deep.contains({
 						"episode_id": 5,
-						"episode_name": "Test Episode 3",
-						"air_date": 1564064876,
+						"episode_name": "Test Episode 5",
+						"nba_start_time": 10,
 						"nba_game_id": '1001',
 						"video_offset": 10
 					})
@@ -2045,7 +2082,7 @@ describe('timestamp server tests', function() {
 			it('should throw error for invalid episode id', function(done) {
 				var values = {
 					start_time: "100",
-					episode_id: "6"
+					episode_id: "100"//invalid episode id
 				}
 				sendRequest('newTimestamp', values).end((err, res, body) => {
 					assertErrorMessage(res, 'Invalid Episode Id')

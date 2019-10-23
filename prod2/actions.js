@@ -238,7 +238,19 @@ module.exports = {
     }
 
     function getEpisodeData() {
-      t.getAllEpisodeData(baton, params.series_ids, params.youtube_link, null /*episode_ids*/ , params.nba_game_ids, function(data) {
+      var queryParams = {
+        series_id: params.series_ids,
+        youtube_id: (params.youtube_link ? t.youtubeLinkParser(params.youtube_link) : null),
+        nba_game_id: params.nba_game_ids
+      }
+      if (params.nbaBeforeEpochTime) queryParams.lessThan = {
+        nba_start_time: params.nbaBeforeEpochTime
+      }
+      if (params.nbaAfterEpochTime) queryParams.greaterThan = {
+        nba_start_time: params.nbaAfterEpochTime
+      }
+
+      t.getAllEpisodeData(baton, queryParams, function(data) {
         baton.json(data)
       })
     }
@@ -247,23 +259,9 @@ module.exports = {
       getEpisodeData()
     })
   },
-  getAllEpisodeData(baton, series_ids, youtube_link, episode_ids, nba_game_ids, callback) {
+  getAllEpisodeData(baton, queryData, callback) {
     baton.addMethod('getAllEpisodeData');
     var t = this;
-
-    var queryData = {
-      series_id: series_ids,
-      episode_id: episode_ids
-    }
-
-    if (youtube_link) {
-      var youtubeId = t.youtubeLinkParser(youtube_link)
-      queryData.youtube_id = [youtubeId]
-    }
-
-    if (nba_game_ids !== undefined) {
-      queryData.nba_game_id = nba_game_ids
-    }
     db.getAllEpisodeData(baton, queryData, function(data) {
       t._handleDBCall(baton, data, false /*multiple*/ , callback)
     })
@@ -361,7 +359,9 @@ module.exports = {
       }
 
       var getLinksFromEpisodeIds = (baton, episode_ids, callback) => {
-        this.getAllEpisodeData(baton, null /*series_ids*/ , null /*youtube_id*/ , episode_ids /*episode_ids*/ , null /*nba_game_ids*/ , function(episode_data) {
+        this.getAllEpisodeData(baton, {
+          episode_id: episode_ids
+        }, function(episode_data) {
           callback(episode_data.filter(ep => ep.youtube_id !== null).map(ep => ep.episode_name + ":" + getYoutubeURL(ep.youtube_id)))
         })
       }
@@ -511,7 +511,7 @@ module.exports = {
     var t = this;
 
     var ensureEpisodeParamsIsUnique = (params, callback) => {
-      t.getAllEpisodeData(baton, null /*series_ids*/ , null /*youtube_id*/ , null /*episode_ids*/ , null /*nba_game_ids*/ , (episode_data) => {
+      t.getAllEpisodeData(baton, {}, (episode_data) => {
         if (episode_data.map(function(ep) {
             return ep.episode_name.toLowerCase()
           }).includes(params.episode_name.toLowerCase())) {
@@ -768,18 +768,18 @@ module.exports = {
     }
 
     //execute
-    verifyParams((params) =>{
-      this.insertNewCharacter(baton,params,  function(character_added) {
+    verifyParams((params) => {
+      this.insertNewCharacter(baton, params, function(character_added) {
         baton.json(character_added)
       })
     });
 
   },
 
-  insertNewCharacter(baton, params, callback){
+  insertNewCharacter(baton, params, callback) {
     db.insertCharacter(baton, params, (data) => {
-        this._handleDBCall(baton, data, false /*multiple*/ , callback)
-      })
+      this._handleDBCall(baton, data, false /*multiple*/ , callback)
+    })
   },
 
   get_allCategoryData(baton, params, res) {
@@ -1311,7 +1311,9 @@ module.exports = {
   ensure_EpisodeIdExists(baton, params, callback) {
     var t = this;
     baton.addMethod('ensure_EpisodeIdExists');
-    this.getAllEpisodeData(baton, null /*series_id*/ , null /*youtube_id*/ , (Array.isArray(params.episode_id) ? params.episode_id : [params.episode_id]) /*episode_ids*/ , null /*nba_game_ids*/ , function(episode_data) {
+    this.getAllEpisodeData(baton, {
+      episode_id: (Array.isArray(params.episode_id) ? params.episode_id : [params.episode_id])
+    }, function(episode_data) {
       var numOfEpisodeIds = (Array.isArray(params.episode_id) ? params.episode_id.length : 1)
       if (episode_data.length !== numOfEpisodeIds) {
         baton.setError({

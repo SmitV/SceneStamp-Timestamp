@@ -80,7 +80,7 @@ module.exports = {
 		var baton = this._getBaton('_updateActiveEpisodes')
 
 		var getNonRegisteredNbaGameIds = (nba_game_ids, callback) => {
-			actions.getAllEpisodeData(baton, null /*series_ids*/ , null /*youtube_id*/ , null /*episode_ids*/ , nba_game_ids /*nba_game_ids*/ , function(episode_data) {
+			actions.getAllEpisodeData(baton, {nba_game_id: nba_game_ids}, function(episode_data) {
 				var nonRegEpisodes = nba_game_ids.filter(gid => !episode_data.map(ep => ep.nba_game_id).includes(gid))
 				if (nonRegEpisodes.length === 0) {
 					baton.done({
@@ -92,7 +92,7 @@ module.exports = {
 
 
 		var prepareEpisodes = (episodes, callback) => {
-			actions.getAllEpisodeData(baton, null /*series_ids*/ , null /*youtube_id*/ , null /*episode_ids*/ , null /*nba_game_ids*/ , function(episode_data) {
+			actions.getAllEpisodeData(baton,{}, function(episode_data) {
 				callback(episodes.map(ep => {
 					ep.episode_id = actions._generateId(actions.ID_LENGTH.episode, episode_data.map(ep => ep.episode_id))
 					ep.nba_start_time = actions.convertUtcToEpoch(ep.nba_start_time)

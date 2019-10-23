@@ -19,6 +19,14 @@ var MAIN_VALIDATION = {
       type: 'string',
       optional: true,
       multiple: true
+    },
+    nbaBeforeEpochTime: {
+      type: 'number',
+      optional: true
+    },
+    nbaAfterEpochTime: {
+      type: 'number',
+      optional: true
     }
   },
   newEpisode: {
@@ -65,8 +73,8 @@ var MAIN_VALIDATION = {
       type: "string"
     },
     nba_player_id: {
-      type:'number',
-      optional:true
+      type: 'number',
+      optional: true
     }
   },
   getCategoryData: {
