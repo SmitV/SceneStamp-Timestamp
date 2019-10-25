@@ -16,7 +16,7 @@ module.exports = {
 		var baton = this._getBaton('_updateActiveGameTimestamps')
 
 		var getTodayGames = (callback) => {
-			var hourBuffer = 10
+			var hourBuffer = 5
 			var startEpoch = moment().subtract(hourBuffer, 'hours');
 			var endEpoch = moment().add(hourBuffer, 'hours');
 
