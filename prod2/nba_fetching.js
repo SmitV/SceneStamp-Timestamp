@@ -5,9 +5,13 @@ const Nightmare = require('nightmare')
 
 const NBA_MAIN_SITE = 'http://www.nba.com'
 const NBA_DATA_SITE = 'http://data.nba.net'
-NBA_PLAYERS_URL = NBA_MAIN_SITE + '/players/active_players.json'
+const NBA_PLAYERS_URL = NBA_MAIN_SITE + '/players/active_players.json'
+const BASE_NBA_PLAY_BY_PLAY = 'http://data.nba.com/data/10s/v2015/json/mobile_teams/nba/2019/scores/pbp/'
+
 
 var PLAYER_UI_SELECTOR = '.nba-player-index__trending-item'
+
+
 
 
 module.exports = {
@@ -15,6 +19,11 @@ module.exports = {
 	NBA_MAIN_SITE: NBA_MAIN_SITE,
 	NBA_PLAYERS_URL: NBA_PLAYERS_URL,
 	PLAYER_UI_SELECTOR: PLAYER_UI_SELECTOR,
+	BASE_NBA_PLAY_BY_PLAY : BASE_NBA_PLAY_BY_PLAY,
+
+	getNbaPlayByPlayUrl(game_id) {
+		return BASE_NBA_PLAY_BY_PLAY + game_id + '_full_pbp.json'
+	},
 
 	getNbaGamesForMonthUrl() {
 		var currentDate = new Date();
@@ -44,6 +53,52 @@ module.exports = {
 		})
 	},
 
+	getTimestamps(baton, episodes, callback) {
+		baton.addMethod('getTimestamps')
+
+		var formatRawData = (ep, raw_data, callback) => {
+
+			var getCategoryId = (playType, desc) =>{
+				if(playType === 1){
+					return (desc.includes('3pt Shot: Made') ? 3 : 2)
+				}else{
+					return playType
+				}
+			}
+
+			callback([].concat.apply([], raw_data.g.pd.map(period => period.pla.map(play => {
+				return {
+					episode_id : ep.episode_id,
+					start_time:-1,
+					nba_timestamp_id: ep.nba_game_id + '.' + play.evt,
+					nba_play_description: play.cl + " | "+play.de,
+					character_id: [play.pid],
+					category_id : [getCategoryId(play.etype, play.de)]
+				}
+			}))).sort((a,b) =>{
+				return a.nba_timestamp_id - b.nba_timestamp_id
+			}))
+		}
+
+		var filterandReformat = (timestamps, callback) => {
+			callback(timestamps.map(ts =>{
+				
+				return ts
+			}))
+		}
+
+		var timestamps = []
+		episodes.forEach((ep,index) => {
+			this._makeHttpCallWithUrl(baton, this.getNbaPlayByPlayUrl(ep.nba_game_id), raw_data => {
+				formatRawData(ep, raw_data, formatted_data => {
+					timestamps = timestamps.concat(formatted_data)
+					if(index === episodes.length - 1) callback(timestamps)
+				})
+			})
+		})
+	},
+
+
 	getActivePlayers(baton, callback) {
 		var t = this;
 		baton.addMethod('getActivePlayers')
@@ -51,7 +106,7 @@ module.exports = {
 		var formatRawData = (raw_data) => {
 			return raw_data.map(player => {
 				return {
-					character_name: player.firstName + ' '+player.lastName ,
+					character_name: player.firstName + ' ' + player.lastName,
 					nba_player_id: parseInt(player.personId)
 				}
 			})
@@ -92,8 +147,8 @@ module.exports = {
 	},
 
 
-	_batonErrorExit(baton){
-		if(baton.automated_task_name) baton.done(baton.err[0])
+	_batonErrorExit(baton) {
+		if (baton.automated_task_name) baton.done(baton.err[0])
 		else actions._generateError(baton)
 	}
 }

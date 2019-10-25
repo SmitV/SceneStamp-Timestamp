@@ -857,6 +857,13 @@ module.exports = {
     }
   },
 
+
+  getTimestampData(baton, params, callback){
+    db.getAllTimestampData(baton,params, (data) => {
+      this._handleDBCall(baton, data, false /*multiple*/ , callback)
+    })
+  },
+
   //get character and categories for timestamps
   getAllTimestampData(baton, params, callback) {
     baton.addMethod('getAllTimestampData');
@@ -864,7 +871,8 @@ module.exports = {
 
     db.getAllTimestampData(baton, {
       episode_id: params.episode_ids,
-      timestamp_id: params.timestamp_ids
+      timestamp_id: params.timestamp_ids,
+      nba_timestamp_id: params.nba_timestamp_id
     }, function(data) {
       t._handleDBCall(baton, data, false /*multiple*/ , function(timestamp_data) {
         dataLoader(timestamp_data, function(results) {
@@ -949,22 +957,24 @@ module.exports = {
       })
     }
 
-    function insertNewTimestamp(params, callback) {
-      db.insertTimestamp(baton, params, function(data) {
-        t._handleDBCall(baton, data, false /*multiple*/ , callback)
-      })
-    }
-
     //execute
-    verifyParams(function(params) {
-      insertNewTimestamp(params, function(new_timestamp_data) {
+    verifyParams((params) => {
+      this.insertTimestamp(baton, params, function(new_timestamp_data) {
         baton.json(new_timestamp_data)
       })
     });
   },
 
 
+  insertTimestamp(baton, timestamps, callback) {
+    db.insertTimestamp(baton, timestamps, (data) => {
+      this._handleDBCall(baton, data, false /*multiple*/ , callback)
+    })
+  },
+
+
   post_massAddTimestamp(baton, params) {
+
 
     var addTimestampIds = (params, callback) => {
       this.getAllTimestampData(baton, {}, timestamp_data => {
@@ -1034,12 +1044,6 @@ module.exports = {
       })
     }
 
-    var insertNewTimestamps = (params, callback) => {
-      db.insertTimestamp(baton, params.timestamps, (data) => {
-        this._handleDBCall(baton, data, false /*multiple*/ , callback)
-      })
-    }
-
     var addCharactersAndCategories = (timestamps, category_ids_num, character_ids_num, suc_callback) => {
       var tasks = {}
 
@@ -1054,9 +1058,7 @@ module.exports = {
               });
             })
           })
-          db.insertTimestampCategory(baton, category_values, (data) => {
-            this._handleDBCall(baton, data, true /*multiple*/ , callback)
-          })
+          this.insertTimestampCategory(baton, category_values, /*multiple=*/ true, callback)
         }
       }
       if (character_ids_num > 0) {
@@ -1070,9 +1072,7 @@ module.exports = {
               });
             })
           })
-          db.insertTimestampCharacter(baton, character_values, (data) => {
-            this._handleDBCall(baton, data, true /*multiple*/ , callback)
-          })
+          this.insertTimestampCharacter(baton, character_values, /*multiple*/ true, callback)
         }
       }
 
@@ -1088,7 +1088,7 @@ module.exports = {
     }
 
     verifyParams((updated_params, category_id_num, character_id_num) => {
-      insertNewTimestamps(updated_params, () => {
+      this.insertTimestamp(baton, updated_params.timestamps, () => {
         addCharactersAndCategories(updated_params.timestamps, category_id_num, character_id_num, () => {
           baton.json(updated_params)
         })
@@ -1113,9 +1113,7 @@ module.exports = {
               category_id: category
             });
           })
-          db.insertTimestampCategory(baton, category_values, function(data) {
-            t._handleDBCall(baton, data, true /*multiple*/ , callback)
-          })
+          t.insertTimestampCategory(baton, category_values, /*multiple=*/ true, callback)
         }
       }
       if (params.character_ids) {
@@ -1127,9 +1125,7 @@ module.exports = {
               character_id: character
             });
           })
-          db.insertTimestampCharacter(baton, character_values, function(data) {
-            t._handleDBCall(baton, data, true /*multiple*/ , callback)
-          })
+          t.insertTimestampCharacter(baton, character_values, /*multiple*/ true, callback)
         }
       }
 
@@ -1251,6 +1247,18 @@ module.exports = {
     })
 
 
+  },
+
+  insertTimestampCategory(baton, category_values, multiple, callback) {
+    db.insertTimestampCategory(baton, category_values, (data) => {
+      this._handleDBCall(baton, data, multiple /*multiple*/ , callback)
+    })
+  },
+
+  insertTimestampCharacter(baton, character_values, multiple, callback) {
+    db.insertTimestampCharacter(baton, character_values, (data) => {
+      this._handleDBCall(baton, data, multiple /*multiple*/ , callback)
+    })
   },
 
   //categories is the category ids

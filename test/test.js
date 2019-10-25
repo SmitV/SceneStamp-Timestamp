@@ -67,8 +67,8 @@ describe('timestamp server tests', function() {
 	var sandbox;
 
 	var fakeReq;
-
 	var fakeRes;
+
 	var fakeSeriesData;
 	var fakeEpisodeData;
 	var fakeCharacterData;
@@ -79,9 +79,11 @@ describe('timestamp server tests', function() {
 	//fake nba
 	var fakeNbaGameScheduleData;
 	var fakeNbaPlayerData;
+	var getFakePlayByPlayJsonData;
 
 
 	beforeEach(function() {
+
 		sandbox = sinon.createSandbox()
 
 		fakeRes = {
@@ -136,13 +138,12 @@ describe('timestamp server tests', function() {
 			"episode_id": 5,
 			"episode_name": "Test Episode 5",
 			"nba_start_time": 10,
-			"nba_game_id": '1001'
-		},
-		{
+			"nba_game_id": '10001'
+		}, {
 			"episode_id": 6,
 			"episode_name": "Test Episode 6",
 			"nba_start_time": 15,
-			"nba_game_id": '2001'
+			"nba_game_id": '20001'
 		}];
 
 		fakeCharacterData = [{
@@ -174,6 +175,46 @@ describe('timestamp server tests', function() {
 			"category_name": "Category 2"
 		}];
 
+		fakeTimestampData = [{
+			"timestamp_id": 0,
+			"start_time": 0,
+			"episode_id": 1
+		}, {
+			"timestamp_id": 1,
+			"start_time": 0,
+			"episode_id": 1
+		}, {
+			"timestamp_id": 3,
+			"start_time": 0,
+			"episode_id": 2
+		}, {
+			"timestamp_id": 4,
+			"start_time": 0,
+			"episode_id": 2
+		}, {
+			"timestamp_id": 5,
+			"start_time": 0,
+			"episode_id": 2,
+			"nba_game_id": 20001,
+			"nba_timestamp_id": "20001.6"
+		}];
+
+		fakeTimestampCategoryData = [{
+			"timestamp_id": 3,
+			"category_id": 0
+		}, {
+			"timestamp_id": 4,
+			"category_id": 0
+		}];
+
+		fakeTimestampCharacterData = [{
+			"timestamp_id": 1,
+			"character_id": 1
+		}, {
+			"timestamp_id": 4,
+			"character_id": 1
+		}]
+
 		fakeUserData = [{
 			user_id: 101,
 			username: 'user_1',
@@ -191,19 +232,19 @@ describe('timestamp server tests', function() {
 		fakeNbaGameScheduleData = {
 			mscd: {
 				g: [{
-					gid: '1001', //episode in fakeepisodedata has this gameid
+					gid: '10001', //episode in fakeepisodedata has this gameid
 					gcode: "20191004/HOULAC",
 					"gdte": "2019-10-04",
 					"gdtutc": "2019-10-04",
 					"utctm": "05:00",
 				}, {
-					gid: '1002',
+					gid: '10002',
 					gcode: "20191005/HOULAK",
 					"gdte": "2019-10-05",
 					"gdtutc": "2019-10-05",
 					"utctm": "01:00",
 				}, {
-					gid: '1003',
+					gid: '10003',
 					gcode: "20191005/CELLAK",
 					"gdte": "2019-12-10",
 					"gdtutc": "2019-12-10",
@@ -225,6 +266,55 @@ describe('timestamp server tests', function() {
 			lastName: 'player 3',
 			personId: '10003'
 		}]
+
+		fakePlayByPlayData = {
+			10001: [{
+				evt: 1,
+				cl: '12:00',
+				de: 'InTest 10001 tipoff',
+				pid: 10001,
+				etype: 12
+			}, {
+				evt: 2,
+				cl: '12:02',
+				de: 'Made shot',
+				pid: 10002,
+				etype: 1
+			}],
+			20001: [{
+				evt: 5,
+				cl: '12:00',
+				de: '3pt Shot: Made',
+				pid: 40001,
+				etype: 1
+			}, {
+				evt: 3,
+				cl: '11:57',
+				de: 'InTest 2001 tipoff',
+				pid: 30001, //pid isn't linked to fakeCharacterData, but will do since only testing
+				etype: 12 //if timestamp & timestamp category/characters are inserted
+			}, {
+				evt: 6, // this timestamp should already exists in fake timestamp
+				cl: '11:51',
+				de: '3pt Shot: Made',
+				pid: 40001,
+				etype: 1
+			}]
+		}
+
+		getFakePlayByPlayJsonData = (game_id) => {
+			return {
+				g: {
+					pd: [{
+						p: 1,
+						pla: fakePlayByPlayData[game_id].slice(0, fakePlayByPlayData[game_id] / 2)
+					}, {
+						p: 2, //period 2
+						pla: fakePlayByPlayData[game_id].slice(fakePlayByPlayData[game_id] / 2)
+					}]
+				}
+			}
+		}
 
 		sandbox.stub(auth, 'authValidate').callsFake(function(baton, req, callback) {
 			callback()
@@ -255,7 +345,136 @@ describe('timestamp server tests', function() {
 				fakeBaton = baton;
 				return baton
 			})
+		})
 
+		describe('nba plays', () => {
+
+			var universal_timestamps;
+
+			var validNbaPlayByPlay = () => {
+				nock(nbaFetching.BASE_NBA_PLAY_BY_PLAY + '10001').get(/.*/).reply(200, getFakePlayByPlayJsonData(10001))
+				nock(nbaFetching.BASE_NBA_PLAY_BY_PLAY + '20001').get(/.*/).reply(200, getFakePlayByPlayJsonData(20001))
+			}
+
+			var getTimestampDbVersion = (ep, timestamp_id, raw_play_data) => {
+
+				var getCategoryId = (playType, desc) => {
+					if (playType === 1) {
+						return (desc.includes('3pt Shot: Made') ? 3 : 2)
+					} else {
+						return playType
+					}
+				}
+
+				return {
+					episode_id: ep.episode_id,
+					timestamp_id: timestamp_id,
+					start_time: -1,
+					nba_timestamp_id: ep.nba_game_id + '.' + raw_play_data.evt,
+					nba_play_description: raw_play_data.cl + " | " + raw_play_data.de,
+					character_id: [raw_play_data.pid],
+					category_id: [getCategoryId(raw_play_data.etype, raw_play_data.de)]
+				}
+
+			}
+
+			beforeEach(() => {
+
+				universal_timestamps = [10, 20, 30, 40, 50, 60, 70, 80]
+
+				actions._generateId.restore()
+				sandbox.stub(actions, '_generateId').callsFake((len) => {
+					return (len === 10 ? 10000 : universal_timestamps.shift())
+				})
+
+				//updating the start time of all ep with nba start time s.t. they appear as 'active game today'
+				fakeEpisodeData.map(ep => {
+					if (ep.nba_start_time !== undefined) {
+						ep.nba_start_time += (new Date()).getTime()
+					}
+					return ep
+				})
+
+
+				//stub get all series data for all tests
+				//only need to filter by time 
+				sandbox.stub(dbActions, 'getAllEpisodeData').callsFake(function(baton, queryData, callback) {
+					var result = [...fakeEpisodeData].filter(ep => {
+						return (queryData.lessThan ? ep.nba_start_time < queryData.lessThan.nba_start_time : true)
+					}).filter(ep => {
+						return (queryData.greaterThan ? ep.nba_start_time > queryData.greaterThan.nba_start_time : true)
+					})
+					callback(result)
+				})
+
+
+				//stub get all timestamp data for all tests
+				//only need to filter by nba timestamp id
+				sandbox.stub(dbActions, 'getAllTimestampData').callsFake(function(baton, data, callback) {
+					var results = [...fakeTimestampData].filter(timestamp => {
+						return (data.nba_timestamp_id && data.nba_timestamp_id.length > 0 ? data.nba_timestamp_id.includes(timestamp.nba_timestamp_id) : true)
+					})
+					callback(results)
+				})
+
+
+				//insert timestmaps
+				//NOTE; in the test, we will check if each ts has the category/character ids ; 
+				//in prod, the database insert multiple query will filter these values
+				//for these tests, we will insert those attr with this stub, and will assert it exists
+				sandbox.stub(dbActions, 'insertTimestamp').callsFake(function(baton, values, callback) {
+					fakeTimestampData = fakeTimestampData.concat(values)
+					callback(values)
+				})
+
+				sandbox.stub(dbActions, 'insertTimestampCharacter').callsFake(function(baton, values, callback) {
+					fakeTimestampCharacterData = fakeTimestampCharacterData.concat(values)
+					callback(values)
+				})
+
+				sandbox.stub(dbActions, 'insertTimestampCategory').callsFake(function(baton, values, callback) {
+					fakeTimestampCategoryData = fakeTimestampCategoryData.concat(values)
+					callback(values)
+				})
+
+			})
+
+
+
+			it('should fetch and insert new nba plays for active games', (done) => {
+				validNbaPlayByPlay()
+
+
+				var allPossibleTimestamp = [...universal_timestamps]
+				var allActiveEpisodes = fakeEpisodeData.filter(ep => ep.nba_start_time !== undefined).sort((a, b) => a.nba_game_id - b.nba_game_id) //get all active nba games, sort them by nba game id
+				var expectedDbVersionTimestamps = [].concat.apply(
+						[], allActiveEpisodes.map( //for all nba games that currently are active
+							ep => fakePlayByPlayData[ep.nba_game_id]
+							.sort((a, b) => a.evt - b.evt) //sort by play evt
+							.map(raw_ts => getTimestampDbVersion(ep, allPossibleTimestamp.shift(), raw_ts)))) //get the db formatted version of play with the timestamp 
+					.filter(ts => !fakeTimestampData.map(reg_ts => reg_ts.nba_timestamp_id).includes(ts.nba_timestamp_id))
+				automated_tasks._updateActiveGameTimestamps((fakeBaton) => {
+
+					expectedDbVersionTimestamps.forEach(expectedTs => {
+						expect(fakeTimestampData).to.deep.contains(expectedTs);
+						expectedTs.category_id.forEach(cat_id => {
+							expect(fakeTimestampCategoryData).to.deep.contain({
+								timestamp_id: expectedTs.timestamp_id,
+								category_id: cat_id
+							})
+						})
+						expectedTs.character_id.forEach(char_id => {
+							expect(fakeTimestampCategoryData).to.deep.contain({
+								timestamp_id: expectedTs.timestamp_id,
+								character_id: char_id
+							})
+						})
+					})
+					expect(fakeBaton.additionalData.added_nba_timestamps).to.deep.equal(expectedDbVersionTimestamps.length)
+					done()
+				})
+
+			})
 		})
 
 		describe('nba players', () => {
@@ -304,13 +523,13 @@ describe('timestamp server tests', function() {
 				automated_tasks._updateActivePlayers()
 				setTimeout(() => {
 					expect(fakeCharacterData).to.deep.contains({
-						character_id:10,
-						character_name:'Intest nba player 2',
+						character_id: 10,
+						character_name: 'Intest nba player 2',
 						nba_player_id: char_1
 					})
 					expect(fakeCharacterData).to.deep.contains({
-						character_id:10,
-						character_name:'Intest nba player 3',
+						character_id: 10,
+						character_name: 'Intest nba player 3',
 						nba_player_id: char_2
 					})
 					expect(fakeBaton.additionalData).to.deep.equal({
@@ -322,7 +541,7 @@ describe('timestamp server tests', function() {
 
 			it('should not add any when all players are already added', (done) => {
 				fakeCharacterData[0].nba_player_id = 10002
-				fakeCharacterData[1].nba_player_id = 10003 
+				fakeCharacterData[1].nba_player_id = 10003
 				validNbaPlayers()
 				automated_tasks._updateActivePlayers()
 				setTimeout(() => {
@@ -385,8 +604,8 @@ describe('timestamp server tests', function() {
 			})
 
 			it('should fetch and insert new episodes', (done) => {
-				var gid_1 = '1002' //game ids of games to be added
-				var gid_2 = '1003'
+				var gid_1 = '10002' //game ids of games to be added
+				var gid_2 = '10003'
 				validNBAGameSchedule()
 				automated_tasks._updateActiveNBAGames()
 				setTimeout(() => {
@@ -1187,7 +1406,7 @@ describe('timestamp server tests', function() {
 
 		it('should filter by before nba start time', function(done) {
 			var params = {
-				nbaBeforeEpochTime : 15
+				nbaBeforeEpochTime: 15
 			}
 
 			sendRequest('getEpisodeData', params).end((err, res, body) => {
@@ -1291,7 +1510,7 @@ describe('timestamp server tests', function() {
 						"episode_id": 5,
 						"episode_name": "Test Episode 5",
 						"nba_start_time": 10,
-						"nba_game_id": '1001',
+						"nba_game_id": '10001',
 						"video_offset": 10
 					})
 					done()
@@ -1795,40 +2014,6 @@ describe('timestamp server tests', function() {
 				return (len === 10 ? 10000 : universal_timestamps.shift())
 			})
 
-			fakeTimestampData = [{
-				"timestamp_id": 0,
-				"start_time": 0,
-				"episode_id": 1
-			}, {
-				"timestamp_id": 1,
-				"start_time": 0,
-				"episode_id": 1
-			}, {
-				"timestamp_id": 3,
-				"start_time": 0,
-				"episode_id": 2
-			}, {
-				"timestamp_id": 4,
-				"start_time": 0,
-				"episode_id": 2
-			}];
-
-			fakeTimestampCategoryData = [{
-				"timestamp_id": 3,
-				"category_id": 0
-			}, {
-				"timestamp_id": 4,
-				"category_id": 0
-			}];
-
-			fakeTimestampCharacterData = [{
-				"timestamp_id": 1,
-				"character_id": 1
-			}, {
-				"timestamp_id": 4,
-				"character_id": 1
-			}]
-
 			//stub get all timestamp data for all tests
 			sandbox.stub(dbActions, 'getAllTimestampData').callsFake(function(baton, data, callback) {
 				var result = [...fakeTimestampData]
@@ -2082,7 +2267,7 @@ describe('timestamp server tests', function() {
 			it('should throw error for invalid episode id', function(done) {
 				var values = {
 					start_time: "100",
-					episode_id: "100"//invalid episode id
+					episode_id: "100" //invalid episode id
 				}
 				sendRequest('newTimestamp', values).end((err, res, body) => {
 					assertErrorMessage(res, 'Invalid Episode Id')

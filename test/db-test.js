@@ -59,11 +59,14 @@ describe('db tests', () => {
 		sandbox.stub(dbActions, "_makequery").callsFake((sql, values, table, baton, callback) => {
 			sqlQuery = sql
 			sqlValues = values
-			callback(values)
+			callback([])
 		})
+
+		dbActions.setPermanentValues({categories:[]})
 	})
 
 	afterEach(function() {
+		dbActions.resetPermanantValues()
 		sandbox.restore()
 	})
 
@@ -119,8 +122,22 @@ describe('db tests', () => {
 				})
 			})
 
-
 			it('should create less than and greater that conditions', () => {
+				var queryParams = {
+					lessThan: {
+						test_attr1: 101
+					},
+					greaterThan: {
+						test_attr1: 10
+					}
+				}
+				dbActions._selectQuery(fakeBaton, 'test_table', queryParams, function() {
+					expect(sqlQuery.trim()).to.deep.equal('SELECT * FROM `test_table` WHERE test_attr1 < 101 AND test_attr1 > 10')
+				})
+			})
+
+
+			it('should create less than and greater that conditions with normal = conditions', () => {
 				var queryParams = {
 					test_attr3: ['text1', 'text2'],
 					lessThan: {
@@ -131,7 +148,7 @@ describe('db tests', () => {
 					}
 				}
 				dbActions._selectQuery(fakeBaton, 'test_table', queryParams, function() {
-					expect(sqlQuery.trim()).to.deep.equal('SELECT * FROM `test_table` WHERE test_attr3 = \'text1\' OR test_attr3 = \'text2\'  OR test_attr1 < 101 OR test_attr1 > 10')
+					expect(sqlQuery.trim()).to.deep.equal('SELECT * FROM `test_table` WHERE test_attr3 = \'text1\' OR test_attr3 = \'text2\'  AND test_attr1 < 101 AND test_attr1 > 10')
 				})
 			})
 
@@ -612,10 +629,12 @@ describe('db tests', () => {
 			}]
 
 			dbActions.insertTimestamp(fakeBaton, values, () => {
-				expect(sqlQuery).to.equal('INSERT INTO `timestamp` (episode_id,creation_time,start_time,timestamp_id,user_id) VALUES ?');
+				expect(sqlQuery).to.equal('INSERT INTO `timestamp` (episode_id,creation_time,start_time,timestamp_id,user_id,nba_timestamp_id,nba_play_description) VALUES ?');
 				values = values.map(val => {
 					val.user_id = null
 					val.creation_time = FAKE_START_TIME
+					val.nba_timestamp_id = null
+					val.nba_play_description = null
 					return val
 				})
 				expect(sqlValues).to.deep.equal([jsonToArray('timestamp', values)])
@@ -630,9 +649,11 @@ describe('db tests', () => {
 			}
 
 			dbActions.insertTimestamp(fakeBaton, values, () => {
-				expect(sqlQuery).to.equal('INSERT INTO `timestamp` (episode_id,creation_time,start_time,timestamp_id,user_id) VALUES ?');
+				expect(sqlQuery).to.equal('INSERT INTO `timestamp` (episode_id,creation_time,start_time,timestamp_id,user_id,nba_timestamp_id,nba_play_description) VALUES ?');
 				values.user_id = null
 				values.creation_time = FAKE_START_TIME
+				values.nba_timestamp_id = null
+				values.nba_play_description = null
 				expect(sqlValues).to.deep.equal([jsonToArray('timestamp', [values])])
 			})
 		})
@@ -647,9 +668,32 @@ describe('db tests', () => {
 			fakeBaton.user_id = 1001
 
 			dbActions.insertTimestamp(fakeBaton, values, () => {
-				expect(sqlQuery).to.equal('INSERT INTO `timestamp` (episode_id,creation_time,start_time,timestamp_id,user_id) VALUES ?');
+				expect(sqlQuery).to.equal('INSERT INTO `timestamp` (episode_id,creation_time,start_time,timestamp_id,user_id,nba_timestamp_id,nba_play_description) VALUES ?');
 				values.user_id = fakeBaton.user_id
 				values.creation_time = FAKE_START_TIME
+				values.nba_timestamp_id = null
+				values.nba_play_description = null
+				expect(sqlValues).to.deep.equal([jsonToArray('timestamp', [values])])
+			})
+		})
+
+		it('insert timestamp self with nba description and timestamp id', () => {
+			var values = {
+				episode_id: 101,
+				start_time: 100,
+				timestamp_id: 100,
+				nba_play_description:'InTest play description',
+				nba_timestamp_id:'Intest timestmp id'
+			}
+
+			fakeBaton.user_id = 1001
+
+			dbActions.insertTimestamp(fakeBaton, values, () => {
+				expect(sqlQuery).to.equal('INSERT INTO `timestamp` (episode_id,creation_time,start_time,timestamp_id,user_id,nba_timestamp_id,nba_play_description) VALUES ?');
+				values.user_id = fakeBaton.user_id
+				values.creation_time = FAKE_START_TIME
+				values.nba_timestamp_id = 'Intest timestmp id'
+				values.nba_play_description = 'InTest play description'
 				expect(sqlValues).to.deep.equal([jsonToArray('timestamp', [values])])
 			})
 		})

@@ -1,4 +1,5 @@
 var async = require('async');
+var moment = require('moment')
 
 var db = require('./database_actions');
 var nba_fetching = require('./nba_fetching')
@@ -11,15 +12,91 @@ var methodLogger = require('./logger').METHOD_LOGGER
 
 module.exports = {
 
-	tasksInfo() {
-		return [{
-			interval: 60 *60 * 12,
-			function: this._updateActiveNBAGames()
-		},
-		{
-			interval: 60 *60 * 12,
-			function: this._updateActivePlayers()
-		}]
+	_updateActiveGameTimestamps(callback) {
+		var baton = this._getBaton('_updateActivePlayers')
+
+		var getTodayGames = (callback) => {
+			var hourBuffer = 6
+			var startEpoch = moment().subtract(hourBuffer, 'hours');
+			var endEpoch = moment().add(hourBuffer, 'hours');
+
+			var queryParams = {
+				lessThan: {
+					nba_start_time: endEpoch
+				},
+				greaterThan: {
+					nba_start_time: startEpoch
+				}
+			}
+
+			actions.getAllEpisodeData(baton, queryParams, function(episode_data) {
+				callback(episode_data)
+			})
+		}
+
+		var getAllNewTimestamps = (timestamps, callback) => {
+			actions.getTimestampData(baton, {
+				nba_timestamp_id: timestamps.map(ts => ts.nba_timestamp_id)
+			}, (regTimestamps) => {
+				callback(timestamps.filter(ts => !regTimestamps.map(ts => ts.nba_timestamp_id).includes(ts.nba_timestamp_id)))
+			})
+		}
+
+		var prepareTimestamps = (timestamps, callback) => {
+			actions.getTimestampData(baton, {}, function(timestamp_data) {
+				callback(timestamps.map(ts => {
+					ts.timestamp_id = actions._generateId(actions.ID_LENGTH.timestamp, timestamp_data.map(function(ts) {
+						return ts.timestamp_id
+					}))
+					return ts
+				}))
+			})
+		}
+
+		var insertTimestamps = (timestamps, callback) => {
+			actions.insertTimestamp(baton, timestamps, () => {
+				callback()
+			})
+		}
+
+		var insertTimestampCategories = (timestamps, callback) => {
+			actions.insertTimestampCategory(baton, [].concat.apply([], timestamps.map(ts => ts.category_id.map(cat_id => {
+				return {
+					timestamp_id: ts.timestamp_id,
+					category_id: cat_id
+				}
+			}))), /*multiple=*/ false, callback)
+		}
+
+		var insertTimestampCharacters = (timestamps, callback) => {
+			actions.insertTimestampCategory(baton, [].concat.apply([], timestamps.map(ts => ts.character_id.map(char_id => {
+				return {
+					timestamp_id: ts.timestamp_id,
+					character_id: char_id
+				}
+			}))), /*multiple=*/ false, callback)
+		}
+
+		getTodayGames((episodes) => {
+			nba_fetching.getTimestamps(baton, episodes, (timestamps) => {
+				getAllNewTimestamps(timestamps, newTimestamps => {
+					prepareTimestamps(newTimestamps, updated_timestamps => {
+						insertTimestamps(updated_timestamps, () => {
+							insertTimestampCategories(updated_timestamps, () => {
+								insertTimestampCharacters(updated_timestamps, () => {
+									baton.done({
+										added_nba_timestamps: updated_timestamps.length
+									})
+									callback(baton)
+								})
+							})
+						})
+					})
+				})
+			})
+		})
+
+
 	},
 
 	_updateActivePlayers() {
@@ -80,7 +157,9 @@ module.exports = {
 		var baton = this._getBaton('_updateActiveEpisodes')
 
 		var getNonRegisteredNbaGameIds = (nba_game_ids, callback) => {
-			actions.getAllEpisodeData(baton, {nba_game_id: nba_game_ids}, function(episode_data) {
+			actions.getAllEpisodeData(baton, {
+				nba_game_id: nba_game_ids
+			}, function(episode_data) {
 				var nonRegEpisodes = nba_game_ids.filter(gid => !episode_data.map(ep => ep.nba_game_id).includes(gid))
 				if (nonRegEpisodes.length === 0) {
 					baton.done({
@@ -92,7 +171,7 @@ module.exports = {
 
 
 		var prepareEpisodes = (episodes, callback) => {
-			actions.getAllEpisodeData(baton,{}, function(episode_data) {
+			actions.getAllEpisodeData(baton, {}, function(episode_data) {
 				callback(episodes.map(ep => {
 					ep.episode_id = actions._generateId(actions.ID_LENGTH.episode, episode_data.map(ep => ep.episode_id))
 					ep.nba_start_time = actions.convertUtcToEpoch(ep.nba_start_time)
