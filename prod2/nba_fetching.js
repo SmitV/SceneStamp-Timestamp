@@ -13,13 +13,12 @@ var PLAYER_UI_SELECTOR = '.nba-player-index__trending-item'
 
 
 
-
 module.exports = {
 
 	NBA_MAIN_SITE: NBA_MAIN_SITE,
 	NBA_PLAYERS_URL: NBA_PLAYERS_URL,
 	PLAYER_UI_SELECTOR: PLAYER_UI_SELECTOR,
-	BASE_NBA_PLAY_BY_PLAY : BASE_NBA_PLAY_BY_PLAY,
+	BASE_NBA_PLAY_BY_PLAY: BASE_NBA_PLAY_BY_PLAY,
 
 	getNbaPlayByPlayUrl(game_id) {
 		return BASE_NBA_PLAY_BY_PLAY + game_id + '_full_pbp.json'
@@ -53,46 +52,47 @@ module.exports = {
 		})
 	},
 
-	getTimestamps(baton, episodes, callback) {
+	getTimestamps(baton, episodes, character_data,callback) {
 		baton.addMethod('getTimestamps')
 
 		var formatRawData = (ep, raw_data, callback) => {
 
-			var getCategoryId = (playType, desc) =>{
-				if(playType === 1){
+			var getCategoryId = (playType, desc) => {
+				if (playType === 1) {
 					return (desc.includes('3pt Shot: Made') ? 3 : 2)
-				}else{
+				} else {
 					return playType
 				}
 			}
 
 			callback([].concat.apply([], raw_data.g.pd.map(period => period.pla.map(play => {
+				var correlatedCharacterId = character_data.find(char => char.nba_player_id === play.pid)
 				return {
-					episode_id : ep.episode_id,
-					start_time:-1,
+					episode_id: ep.episode_id,
+					start_time: -1,
 					nba_timestamp_id: ep.nba_game_id + '.' + play.evt,
-					nba_play_description: play.cl + " | "+play.de,
-					character_id: [play.pid],
-					category_id : [getCategoryId(play.etype, play.de)]
+					nba_play_description: play.cl + " | " + play.de,
+					character_id: (correlatedCharacterId !== undefined ? [correlatedCharacterId.character_id] : []),
+					category_id: [getCategoryId(play.etype, play.de)]
 				}
-			}))).sort((a,b) =>{
+			}))).sort((a, b) => {
 				return a.nba_timestamp_id - b.nba_timestamp_id
 			}))
 		}
 
 		var filterandReformat = (timestamps, callback) => {
-			callback(timestamps.map(ts =>{
-				
+			callback(timestamps.map(ts => {
+
 				return ts
 			}))
 		}
 
 		var timestamps = []
-		episodes.forEach((ep,index) => {
+		episodes.forEach((ep, index) => {
 			this._makeHttpCallWithUrl(baton, this.getNbaPlayByPlayUrl(ep.nba_game_id), raw_data => {
 				formatRawData(ep, raw_data, formatted_data => {
 					timestamps = timestamps.concat(formatted_data)
-					if(index === episodes.length - 1) callback(timestamps)
+					if (index === episodes.length - 1) callback(timestamps)
 				})
 			})
 		})

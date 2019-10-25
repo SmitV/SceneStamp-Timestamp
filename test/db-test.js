@@ -62,7 +62,9 @@ describe('db tests', () => {
 			callback([])
 		})
 
-		dbActions.setPermanentValues({categories:[]})
+		dbActions.setPermanentValues({
+			categories: []
+		})
 	})
 
 	afterEach(function() {
@@ -682,8 +684,8 @@ describe('db tests', () => {
 				episode_id: 101,
 				start_time: 100,
 				timestamp_id: 100,
-				nba_play_description:'InTest play description',
-				nba_timestamp_id:'Intest timestmp id'
+				nba_play_description: 'InTest play description',
+				nba_timestamp_id: 'Intest timestmp id'
 			}
 
 			fakeBaton.user_id = 1001

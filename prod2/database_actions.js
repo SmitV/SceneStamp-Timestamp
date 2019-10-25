@@ -86,13 +86,13 @@ const MAIN_SCHEME = {
 		'user_id': {
 			'retrieve': 'getUserId',
 		},
-		'nba_timestamp_id':{
-			'type':'string',
-			'optional':true
+		'nba_timestamp_id': {
+			'type': 'string',
+			'optional': true
 		},
-		'nba_play_description':{
-			'type':'string',
-			'optional':true
+		'nba_play_description': {
+			'type': 'string',
+			'optional': true
 		}
 	},
 	'timestamp_category': {
@@ -215,7 +215,7 @@ module.exports = {
 		}
 		return (tableToPool[table] !== undefined ? tableToPool[table] : pools.timestamp)
 	},
-	PERMANANT_VALUES:permanentValues,
+	PERMANANT_VALUES: permanentValues,
 	setPermanentValues(val) {
 		PERMANANT_VALUES = val;
 	},
@@ -274,7 +274,7 @@ module.exports = {
 	},
 	getAllCategoryData(baton, data, callback) {
 		baton.addMethod(this._formatMethod('getAllCategoryData'))
-		this._selectQuery(baton, 'category', data, results =>{
+		this._selectQuery(baton, 'category', data, results => {
 			callback(results.concat(permanentValues.categories))
 		})
 	},
@@ -544,15 +544,15 @@ module.exports = {
 				return true
 			})
 			if (conditions.lessThan !== undefined) {
-				if(condition_string.slice(condition_string.length - 3) === 'OR ')condition_string = condition_string.slice(0, -3) + 'AND '
+				if (condition_string.slice(condition_string.length - 3) === 'OR ') condition_string = condition_string.slice(0, -3) + 'AND '
 				Object.keys(conditions.lessThan).every(attr => {
 					if (DB_SCHEME[table][attr] !== undefined) {
-						condition_string +=  attr + ' < ' + conditions.lessThan[attr] + condition_delimiter
+						condition_string += attr + ' < ' + conditions.lessThan[attr] + condition_delimiter
 					}
 				})
 			}
 			if (conditions.greaterThan !== undefined) {
-				if(condition_string.slice(condition_string.length - 3) === 'OR ')condition_string = condition_string.slice(0, -3) + 'AND '
+				if (condition_string.slice(condition_string.length - 3) === 'OR ') condition_string = condition_string.slice(0, -3) + 'AND '
 				Object.keys(conditions.greaterThan).every(attr => {
 					if (DB_SCHEME[table][attr] !== undefined) {
 						condition_string += attr + ' > ' + conditions.greaterThan[attr] + condition_delimiter

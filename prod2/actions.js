@@ -705,6 +705,7 @@ module.exports = {
     req.end()
   },
 
+
   get_allCharacterData(baton, params, res) {
     var t = this;
 
@@ -858,8 +859,8 @@ module.exports = {
   },
 
 
-  getTimestampData(baton, params, callback){
-    db.getAllTimestampData(baton,params, (data) => {
+  getTimestampData(baton, params, callback) {
+    db.getAllTimestampData(baton, params, (data) => {
       this._handleDBCall(baton, data, false /*multiple*/ , callback)
     })
   },

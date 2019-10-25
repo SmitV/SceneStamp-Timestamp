@@ -13,10 +13,10 @@ var methodLogger = require('./logger').METHOD_LOGGER
 module.exports = {
 
 	_updateActiveGameTimestamps(callback) {
-		var baton = this._getBaton('_updateActivePlayers')
+		var baton = this._getBaton('_updateActiveGameTimestamps')
 
 		var getTodayGames = (callback) => {
-			var hourBuffer = 6
+			var hourBuffer = 10
 			var startEpoch = moment().subtract(hourBuffer, 'hours');
 			var endEpoch = moment().add(hourBuffer, 'hours');
 
@@ -69,7 +69,8 @@ module.exports = {
 		}
 
 		var insertTimestampCharacters = (timestamps, callback) => {
-			actions.insertTimestampCategory(baton, [].concat.apply([], timestamps.map(ts => ts.character_id.map(char_id => {
+
+			actions.insertTimestampCharacter(baton, [].concat.apply([], timestamps.map(ts => ts.character_id.map(char_id => {
 				return {
 					timestamp_id: ts.timestamp_id,
 					character_id: char_id
@@ -78,16 +79,18 @@ module.exports = {
 		}
 
 		getTodayGames((episodes) => {
-			nba_fetching.getTimestamps(baton, episodes, (timestamps) => {
-				getAllNewTimestamps(timestamps, newTimestamps => {
-					prepareTimestamps(newTimestamps, updated_timestamps => {
-						insertTimestamps(updated_timestamps, () => {
-							insertTimestampCategories(updated_timestamps, () => {
-								insertTimestampCharacters(updated_timestamps, () => {
-									baton.done({
-										added_nba_timestamps: updated_timestamps.length
+			actions.getAllCharacterData(baton, {}, character_data => {
+				nba_fetching.getTimestamps(baton, episodes, character_data, (timestamps) => {
+					getAllNewTimestamps(timestamps, newTimestamps => {
+						prepareTimestamps(newTimestamps, updated_timestamps => {
+							insertTimestamps(updated_timestamps, () => {
+								insertTimestampCategories(updated_timestamps, () => {
+									insertTimestampCharacters(updated_timestamps, () => {
+										baton.done({
+											added_nba_timestamps: updated_timestamps.length
+										})
+										if (callback) callback(baton)
 									})
-									callback(baton)
 								})
 							})
 						})

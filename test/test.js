@@ -366,13 +366,15 @@ describe('timestamp server tests', function() {
 					}
 				}
 
+				var correlatedCharacterId = fakeCharacterData.find(char => char.nba_player_id === raw_play_data.pid)
+
 				return {
 					episode_id: ep.episode_id,
 					timestamp_id: timestamp_id,
 					start_time: -1,
 					nba_timestamp_id: ep.nba_game_id + '.' + raw_play_data.evt,
 					nba_play_description: raw_play_data.cl + " | " + raw_play_data.de,
-					character_id: [raw_play_data.pid],
+					character_id: (correlatedCharacterId !== undefined ? [correlatedCharacterId.character_id] : []),
 					category_id: [getCategoryId(raw_play_data.etype, raw_play_data.de)]
 				}
 
@@ -437,6 +439,10 @@ describe('timestamp server tests', function() {
 					callback(values)
 				})
 
+				sandbox.stub(dbActions, 'getAllCharacterData').callsFake(function(baton, queryParams, callback) {
+					callback(fakeCharacterData)
+				})
+
 			})
 
 
@@ -464,7 +470,7 @@ describe('timestamp server tests', function() {
 							})
 						})
 						expectedTs.character_id.forEach(char_id => {
-							expect(fakeTimestampCategoryData).to.deep.contain({
+							expect(fakeTimestampCharacterData).to.deep.contain({
 								timestamp_id: expectedTs.timestamp_id,
 								character_id: char_id
 							})
