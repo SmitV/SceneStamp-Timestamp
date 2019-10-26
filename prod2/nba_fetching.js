@@ -52,7 +52,7 @@ module.exports = {
 		})
 	},
 
-	getTimestamps(baton, episodes, character_data,callback) {
+	getTimestamps(baton, episodes, character_data, callback) {
 		baton.addMethod('getTimestamps')
 
 		var formatRawData = (ep, raw_data, callback) => {
@@ -63,6 +63,11 @@ module.exports = {
 				} else {
 					return playType
 				}
+			}
+
+			if (raw_data.g === undefined || !Array.isArray(raw_data.g.pd)) {
+				callback([])
+				return
 			}
 
 			callback([].concat.apply([], raw_data.g.pd.map(period => period.pla.map(play => {
@@ -126,13 +131,17 @@ module.exports = {
 			});
 
 			res.on('end', () => {
-				var parsedData = JSON.parse(Buffer.from(chunks).toString());
-				if (res.statusCode == 200) {
-					callback(parsedData)
-				} else {
-					baton.setError(parsedData)
-					this._batonErrorExit(baton)
-					return
+				try {
+					var parsedData = JSON.parse(Buffer.from(chunks).toString());
+					if (res.statusCode == 200) {
+						callback(parsedData)
+					} else {
+						baton.setError(parsedData)
+						this._batonErrorExit(baton)
+						return
+					}
+				} catch (e) {
+					callback({})
 				}
 			})
 		}).on('error', (err) => {

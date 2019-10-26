@@ -13,19 +13,24 @@ var methodLogger = require('./logger').METHOD_LOGGER
 module.exports = {
 
 	_updateActiveGameTimestamps(callback) {
-		var baton = this._getBaton('_updateActiveGameTimestamps')
+		var baton = this._getBaton('_updateActiveGameTimestamps',callback)
 
 		var getTodayGames = (callback) => {
 			var hourBuffer = 5
-			var startEpoch = moment().subtract(hourBuffer, 'hours');
-			var endEpoch = moment().add(hourBuffer, 'hours');
+			var startEpoch = moment().utc().subtract(hourBuffer, 'hours');
+			var endEpoch = moment().utc();
+
+			var formatEpoch = (epoch) => {
+				while(epoch.toString().length < 13) epoch =  parseInt(epoch.toString() + '0')
+					return epoch 
+			}
 
 			var queryParams = {
 				lessThan: {
-					nba_start_time: endEpoch
+					nba_start_time: formatEpoch(endEpoch.valueOf())
 				},
 				greaterThan: {
-					nba_start_time: startEpoch
+					nba_start_time: formatEpoch(startEpoch.valueOf())
 				}
 			}
 
@@ -35,6 +40,10 @@ module.exports = {
 		}
 
 		var getAllNewTimestamps = (timestamps, callback) => {
+			if(timestamps.length === 0) {
+				baton.done({no_timestamps_to_add : true})
+				return
+			}
 			actions.getTimestampData(baton, {
 				nba_timestamp_id: timestamps.map(ts => ts.nba_timestamp_id)
 			}, (regTimestamps) => {
@@ -43,6 +52,10 @@ module.exports = {
 		}
 
 		var prepareTimestamps = (timestamps, callback) => {
+			if(timestamps.length === 0) {
+				baton.done({no_timestamps_to_add : true})
+				return
+			}
 			actions.getTimestampData(baton, {}, function(timestamp_data) {
 				callback(timestamps.map(ts => {
 					ts.timestamp_id = actions._generateId(actions.ID_LENGTH.timestamp, timestamp_data.map(function(ts) {
@@ -59,23 +72,30 @@ module.exports = {
 			})
 		}
 
-		var insertTimestampCategories = (timestamps, callback) => {
-			actions.insertTimestampCategory(baton, [].concat.apply([], timestamps.map(ts => ts.category_id.map(cat_id => {
-				return {
+		var getDbValues = (timestamps, attr) =>{
+			return [].concat.apply([], timestamps.map(ts => ts[attr].map(id => {
+				var result = {
 					timestamp_id: ts.timestamp_id,
-					category_id: cat_id
 				}
-			}))), /*multiple=*/ false, callback)
+				result[attr] = id
+				return result
+			})))
+		}
+
+		var insertTimestampCategories = (timestamps, callback) => {
+			if(getDbValues(timestamps, 'category_id').length === 0){
+				callback()
+				return
+			}
+			actions.insertTimestampCategory(baton,getDbValues(timestamps, 'category_id') , /*multiple=*/ false, callback)
 		}
 
 		var insertTimestampCharacters = (timestamps, callback) => {
-
-			actions.insertTimestampCharacter(baton, [].concat.apply([], timestamps.map(ts => ts.character_id.map(char_id => {
-				return {
-					timestamp_id: ts.timestamp_id,
-					character_id: char_id
-				}
-			}))), /*multiple=*/ false, callback)
+			if(getDbValues(timestamps, 'character_id').length === 0){
+				callback()
+				return
+			} 
+			actions.insertTimestampCharacter(baton,getDbValues(timestamps, 'character_id'), /*multiple=*/ false, callback)
 		}
 
 		getTodayGames((episodes) => {
@@ -89,7 +109,6 @@ module.exports = {
 										baton.done({
 											added_nba_timestamps: updated_timestamps.length
 										})
-										if (callback) callback(baton)
 									})
 								})
 							})
@@ -213,7 +232,7 @@ module.exports = {
 
 	//this is the special baton created for automated tasks
 	//since there is no endpoint call
-	_getBaton(task_name) {
+	_getBaton(task_name,end_callback) {
 		var t = this;
 		var time = new Date();
 		return {
@@ -234,6 +253,7 @@ module.exports = {
 				this.lastMethod()
 				this.additionalData = data
 				automatedSystemLogger.info(this.printable())
+				if(end_callback) end_callback(this)
 			},
 			addMethod: function(meth) {
 				if (this.methods.length == 0) {

@@ -356,6 +356,11 @@ describe('timestamp server tests', function() {
 				nock(nbaFetching.BASE_NBA_PLAY_BY_PLAY + '20001').get(/.*/).reply(200, getFakePlayByPlayJsonData(20001))
 			}
 
+			var emptyNbaPlayByPlay = () => {
+				nock(nbaFetching.BASE_NBA_PLAY_BY_PLAY + '10001').get(/.*/).reply(200, {})
+				nock(nbaFetching.BASE_NBA_PLAY_BY_PLAY + '20001').get(/.*/).reply(200, {})
+			}
+
 			var getTimestampDbVersion = (ep, timestamp_id, raw_play_data) => {
 
 				var getCategoryId = (playType, desc) => {
@@ -392,7 +397,7 @@ describe('timestamp server tests', function() {
 				//updating the start time of all ep with nba start time s.t. they appear as 'active game today'
 				fakeEpisodeData.map(ep => {
 					if (ep.nba_start_time !== undefined) {
-						ep.nba_start_time += (new Date()).getTime()
+						ep.nba_start_time = (new Date()).getTime() - ep.nba_start_time*1000
 					}
 					return ep
 				})
@@ -446,8 +451,9 @@ describe('timestamp server tests', function() {
 			})
 
 
-
 			it('should fetch and insert new nba plays for active games', (done) => {
+
+				this.timeout(5000)
 				validNbaPlayByPlay()
 
 
@@ -479,8 +485,19 @@ describe('timestamp server tests', function() {
 					expect(fakeBaton.additionalData.added_nba_timestamps).to.deep.equal(expectedDbVersionTimestamps.length)
 					done()
 				})
-
 			})
+
+			it('should stop if nba plays are empty', (done) => {
+
+				this.timeout(5000)
+				emptyNbaPlayByPlay()
+
+				automated_tasks._updateActiveGameTimestamps((fakeBaton) => {
+					expect(fakeBaton.additionalData.no_timestamps_to_add).to.equal(true)
+					done()
+				})
+			})
+
 		})
 
 		describe('nba players', () => {
