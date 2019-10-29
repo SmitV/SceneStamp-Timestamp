@@ -295,6 +295,12 @@ module.exports = {
 			callback(values)
 		});
 	},
+	updateTimestamps(baton, values, condition_attr, callback) {
+		baton.addMethod(this._formatMethod('updateTimestamp'))
+		this._massUpdate(baton, 'timestamp', values, condition_attr, function() {
+			callback(values)
+		});
+	},
 	getAllTimestampCategory(baton, data, callback) {
 		baton.addMethod(this._formatMethod('getAllTimestampCategory'))
 		this._selectQuery(baton, 'timestamp_category', data, callback)
@@ -379,6 +385,37 @@ module.exports = {
 	getAllRoleActionData(baton, data, callback) {
 		baton.addMethod(this._formatMethod('getAllRoleActionData'))
 		this._selectQuery(baton, 'role_action', data, callback)
+	},
+
+
+	//UPDATE table SET {values attributed}=CASE WHEN (condition_attr)=_1_ THEN _2_ ... END WHERE (condition_attr) IN (_1_)
+
+	//assumption that the values contains two attr, one being the condition_attr and the other the attr to be updated
+	_massUpdate(baton, table, values, condition_attr, suc_callback) {
+
+		var handleAttr = (attr, val) => {
+			return (DB_SCHEME[table][attr].type === 'string' ? "'" + val + "'" : val)
+		}
+
+
+		var changing_attr = Object.keys(values[0]).find(attr => attr !== condition_attr)
+		var set_string = []
+		var in_string = []
+		var setUp = (callback) => {
+			values.forEach((value, index) => {
+				set_string.push('WHEN ' + condition_attr + '=' + handleAttr(condition_attr, value[condition_attr]) + ' THEN ' + handleAttr(changing_attr, value[changing_attr]))
+				in_string.push(handleAttr(condition_attr, value[condition_attr]))
+				if (index === values.length - 1) callback()
+			})
+
+		}
+
+		var createMassUpdateQuery = () => {
+			return 'UPDATE ' + table + ' set ' + changing_attr + '=CASE ' + set_string.join(' ') + ' ELSE ' + changing_attr + ' END WHERE ' + condition_attr + ' IN (' + in_string.join(',') + ')'
+		}
+		setUp(() => {
+			this._makequery(createMassUpdateQuery(), /*values=*/ null, table, baton, suc_callback)
+		})
 	},
 
 	//@param values json where attr and value are new values to be set

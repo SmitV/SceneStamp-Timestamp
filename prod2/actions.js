@@ -865,6 +865,12 @@ module.exports = {
     })
   },
 
+  updateTimestamps(baton, values, condition_attr, callback) {
+    db.updateTimestamps(baton, values, condition_attr, (data) => {
+      this._handleDBCall(baton, data, false /*multiple*/ , callback)
+    })
+  },
+
   //get character and categories for timestamps
   getAllTimestampData(baton, params, callback) {
     baton.addMethod('getAllTimestampData');

@@ -12,36 +12,53 @@ var methodLogger = require('./logger').METHOD_LOGGER
 
 module.exports = {
 
-	_updateActiveGameTimestamps(callback) {
-		var baton = this._getBaton('_updateActiveGameTimestamps',callback)
 
-		var getTodayGames = (callback) => {
-			var hourBuffer = 5
-			var startEpoch = moment().utc().subtract(hourBuffer, 'hours');
-			var endEpoch = moment().utc();
+	_updateTodayGamePlaysWithTimestamp(callback) {
+		var baton = this._getBaton('_updateTodayGamePlaysWithTimestamp', callback)
 
-			var formatEpoch = (epoch) => {
-				while(epoch.toString().length < 13) epoch =  parseInt(epoch.toString() + '0')
-					return epoch 
+		var updateRegTimestamps = (timestamps, callback) => {
+			actions.updateTimestamps(baton, timestamps, 'nba_timestamp_id', callback)
+		}
+
+		var getNonUpdatedTimestamps = (timestamps, callback) => {
+			if (timestamps.length === 0) {
+				baton.done({
+					no_timestamps_to_update: true
+				})
+				return
 			}
-
-			var queryParams = {
-				lessThan: {
-					nba_start_time: formatEpoch(endEpoch.valueOf())
-				},
-				greaterThan: {
-					nba_start_time: formatEpoch(startEpoch.valueOf())
-				}
-			}
-
-			actions.getAllEpisodeData(baton, queryParams, function(episode_data) {
-				callback(episode_data)
+			actions.getTimestampData(baton, {
+				nba_timestamp_id: timestamps.map(ts => ts.nba_timestamp_id)
+			}, (regTimestamps) => {
+				var neededTimestamps = regTimestamps.filter(ts => ts.start_time === -1).map(ts => ts.nba_timestamp_id)
+				callback(timestamps.filter(ts => neededTimestamps.includes(ts.nba_timestamp_id)))
 			})
 		}
 
+
+		this._getTodayGames(baton, (episodes) => {
+			nba_fetching.getTimestampedPlays(baton, episodes, (formatted_timestamps) => {
+				getNonUpdatedTimestamps(formatted_timestamps, (need_to_be_updated_timestamp) => {
+					updateRegTimestamps(need_to_be_updated_timestamp, () => {
+						baton.done({
+							updated_nba_timestamps: need_to_be_updated_timestamp.map(ts => ts.nba_timestamp_id)
+						})
+					})
+				})
+			})
+		})
+
+
+	},
+
+	_updateActiveGameTimestamps(callback) {
+		var baton = this._getBaton('_updateActiveGameTimestamps', callback)
+
 		var getAllNewTimestamps = (timestamps, callback) => {
-			if(timestamps.length === 0) {
-				baton.done({no_timestamps_to_add : true})
+			if (timestamps.length === 0) {
+				baton.done({
+					no_timestamps_to_add: true
+				})
 				return
 			}
 			actions.getTimestampData(baton, {
@@ -52,8 +69,10 @@ module.exports = {
 		}
 
 		var prepareTimestamps = (timestamps, callback) => {
-			if(timestamps.length === 0) {
-				baton.done({no_timestamps_to_add : true})
+			if (timestamps.length === 0) {
+				baton.done({
+					no_timestamps_to_add: true
+				})
 				return
 			}
 			actions.getTimestampData(baton, {}, function(timestamp_data) {
@@ -72,7 +91,7 @@ module.exports = {
 			})
 		}
 
-		var getDbValues = (timestamps, attr) =>{
+		var getDbValues = (timestamps, attr) => {
 			return [].concat.apply([], timestamps.map(ts => ts[attr].map(id => {
 				var result = {
 					timestamp_id: ts.timestamp_id,
@@ -83,22 +102,22 @@ module.exports = {
 		}
 
 		var insertTimestampCategories = (timestamps, callback) => {
-			if(getDbValues(timestamps, 'category_id').length === 0){
+			if (getDbValues(timestamps, 'category_id').length === 0) {
 				callback()
 				return
 			}
-			actions.insertTimestampCategory(baton,getDbValues(timestamps, 'category_id') , /*multiple=*/ false, callback)
+			actions.insertTimestampCategory(baton, getDbValues(timestamps, 'category_id'), /*multiple=*/ false, callback)
 		}
 
 		var insertTimestampCharacters = (timestamps, callback) => {
-			if(getDbValues(timestamps, 'character_id').length === 0){
+			if (getDbValues(timestamps, 'character_id').length === 0) {
 				callback()
 				return
-			} 
-			actions.insertTimestampCharacter(baton,getDbValues(timestamps, 'character_id'), /*multiple=*/ false, callback)
+			}
+			actions.insertTimestampCharacter(baton, getDbValues(timestamps, 'character_id'), /*multiple=*/ false, callback)
 		}
 
-		getTodayGames((episodes) => {
+		this._getTodayGames(baton, (episodes) => {
 			actions.getAllCharacterData(baton, {}, character_data => {
 				nba_fetching.getTimestamps(baton, episodes, character_data, (timestamps) => {
 					getAllNewTimestamps(timestamps, newTimestamps => {
@@ -117,8 +136,37 @@ module.exports = {
 				})
 			})
 		})
+	},
 
 
+	_getTodayGames(baton, callback) {
+		var hourBuffer = 12
+		var startEpoch = moment().utc().subtract(hourBuffer, 'hours');
+		var endEpoch = moment().utc();
+
+		var formatEpoch = (epoch) => {
+			while (epoch.toString().length < 13) epoch = parseInt(epoch.toString() + '0')
+			return epoch
+		}
+
+		var queryParams = {
+			lessThan: {
+				nba_start_time: formatEpoch(endEpoch.valueOf())
+			},
+			greaterThan: {
+				nba_start_time: formatEpoch(startEpoch.valueOf())
+			}
+		}
+
+		actions.getAllEpisodeData(baton, queryParams, function(episode_data) {
+			if (episode_data.length === 0) {
+				baton.done({
+					no_current_games: true
+				})
+				return
+			}
+			callback(episode_data)
+		})
 	},
 
 	_updateActivePlayers() {
@@ -232,7 +280,7 @@ module.exports = {
 
 	//this is the special baton created for automated tasks
 	//since there is no endpoint call
-	_getBaton(task_name,end_callback) {
+	_getBaton(task_name, end_callback) {
 		var t = this;
 		var time = new Date();
 		return {
@@ -243,6 +291,7 @@ module.exports = {
 			err: [],
 			//the res for the request
 			sendError: function(data, errorCode) {
+				automatedSystemLogger.error(this.printable())
 				this.lastMethod();
 				res.status((errorCode ? errorCode : 500)).json(data)
 			},
@@ -253,7 +302,7 @@ module.exports = {
 				this.lastMethod()
 				this.additionalData = data
 				automatedSystemLogger.info(this.printable())
-				if(end_callback) end_callback(this)
+				if (end_callback) end_callback(this)
 			},
 			addMethod: function(meth) {
 				if (this.methods.length == 0) {

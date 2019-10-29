@@ -1,13 +1,13 @@
 var actions = require('./actions')
 var http = require('follow-redirects').http;
-
+var moment = require('moment-timezone')
 const Nightmare = require('nightmare')
 
 const NBA_MAIN_SITE = 'http://www.nba.com'
 const NBA_DATA_SITE = 'http://data.nba.net'
 const NBA_PLAYERS_URL = NBA_MAIN_SITE + '/players/active_players.json'
 const BASE_NBA_PLAY_BY_PLAY = 'http://data.nba.com/data/10s/v2015/json/mobile_teams/nba/2019/scores/pbp/'
-
+const BASE_PBP_WITH_TIMESTAMP = 'http://stats.nba.com/stats/playbyplayv2?GameId='
 
 var PLAYER_UI_SELECTOR = '.nba-player-index__trending-item'
 
@@ -19,6 +19,11 @@ module.exports = {
 	NBA_PLAYERS_URL: NBA_PLAYERS_URL,
 	PLAYER_UI_SELECTOR: PLAYER_UI_SELECTOR,
 	BASE_NBA_PLAY_BY_PLAY: BASE_NBA_PLAY_BY_PLAY,
+	BASE_PBP_WITH_TIMESTAMP: BASE_PBP_WITH_TIMESTAMP,
+
+	getNbaPbpWithTimestamps(game_id) {
+		return BASE_PBP_WITH_TIMESTAMP + game_id + '&StartPeriod=0&EndPeriod=14'
+	},
 
 	getNbaPlayByPlayUrl(game_id) {
 		return BASE_NBA_PLAY_BY_PLAY + game_id + '_full_pbp.json'
@@ -103,6 +108,49 @@ module.exports = {
 		})
 	},
 
+	getTimestampedPlays(baton, episodes, suc_callback) {
+		baton.addMethod('getTimestampedPlays')
+
+		var formatRawData = (episode, raw_data, callback) => {
+
+			var convertStringToEpochTime = (string) => {
+
+				var today = new Date(episode.nba_start_time)
+				var splitString = string.substring(0, 5)
+				var hour = parseInt(splitString.split(':')[0]) + (string.substring(5, 8).trim() === 'PM' ? 12 : 0)
+				var playUtcTime = moment([today.getFullYear(), today.getMonth(), today.getDate(), hour, splitString.split(':')[1], 0, 0]).subtract(3, 'hours').valueOf()
+				return playUtcTime
+			}
+
+			if (raw_data === undefined || raw_data.resultSets === undefined || !Array.isArray(raw_data.resultSets[0].headers) || !Array.isArray(raw_data.resultSets[0].rowSet)) {
+				callback([])
+				return
+			}
+
+			var playNumIndex = raw_data.resultSets[0].headers.indexOf('EVENTNUM')
+			var playTimestampIndex = raw_data.resultSets[0].headers.indexOf('WCTIMESTRING')
+
+			callback(raw_data.resultSets[0].rowSet.map(play => {
+				return {
+					nba_timestamp_id: episode.nba_game_id + '.' + play[playNumIndex],
+					start_time: convertStringToEpochTime(play[playTimestampIndex])
+				}
+			}))
+		}
+
+		var timestamps = []
+		episodes.forEach((ep, index) => {
+			this._makeHttpCallWithUrl(baton, this.getNbaPbpWithTimestamps(ep.nba_game_id), raw_data => {
+				formatRawData(ep, raw_data, (formatted_timestamps) => {
+					timestamps = timestamps.concat(formatted_timestamps)
+					if (index === episodes.length - 1) {
+						suc_callback(timestamps)
+					}
+				})
+			})
+		})
+	},
+
 
 	getActivePlayers(baton, callback) {
 		var t = this;
@@ -125,7 +173,7 @@ module.exports = {
 	_makeHttpCallWithUrl(baton, url, callback) {
 		baton.addMethod('_makeHttpCallWithUrl')
 		var chunks = ''
-		var req = http.get(url, (res) => {
+		var req = http.get(url,{headers: {'content-type': 'application/json'}}, (res) => {
 			res.on('data', function(data) {
 				chunks += data
 			});
@@ -144,15 +192,7 @@ module.exports = {
 					callback({})
 				}
 			})
-		}).on('error', (err) => {
-			baton.setError({
-				error: err.toString(),
-				error_details: 'Error from making https call to get nba game data'
-			})
-			this._batonErrorExit(baton)
-			return
 		})
-		req.end()
 	},
 
 

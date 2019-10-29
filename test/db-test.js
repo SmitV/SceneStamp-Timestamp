@@ -229,6 +229,22 @@ describe('db tests', () => {
 			dbActions.resetScheme()
 		})
 
+		it('should make mass update query', (done) => {
+			var condition_attr = 'test_attr1'
+			var values = [{
+				test_attr1: 101,
+				test_attr3: "InTest 1 String Mass Update"
+			}, {
+				test_attr1: 201,
+				test_attr3: "InTest 2 String Mass Update"
+			}]
+
+			dbActions._massUpdate(fakeBaton, 'test_table', values, condition_attr, () => {
+				expect(sqlQuery.trim()).to.equal('UPDATE test_table set test_attr3=CASE WHEN test_attr1=101 THEN \'InTest 1 String Mass Update\' WHEN test_attr1=201 THEN \'InTest 2 String Mass Update\' ELSE test_attr3 END WHERE test_attr1 IN (101,201)')
+				done()
+			})
+		})
+
 
 		it('should make update query', (done) => {
 			var values = {

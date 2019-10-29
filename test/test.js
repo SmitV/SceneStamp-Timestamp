@@ -8,6 +8,7 @@ var bcrypt = require('bcrypt')
 var jwt = require('jsonwebtoken')
 var AccessControl = require('accesscontrol')
 var winston = require('winston')
+var moment = require('moment')
 
 var server = require('../index').server
 
@@ -137,13 +138,13 @@ describe('timestamp server tests', function() {
 		}, {
 			"episode_id": 5,
 			"episode_name": "Test Episode 5",
-			"nba_start_time": 10,
-			"nba_game_id": '10001'
+			"nba_start_time": '7:00:00', //PST miltary time of the start time of game; specific to test ONLY
+			"nba_game_id": '10001' //the start time matches with the EST time of the plays in the timestamped plays
 		}, {
 			"episode_id": 6,
 			"episode_name": "Test Episode 6",
-			"nba_start_time": 15,
-			"nba_game_id": '20001'
+			"nba_start_time": '14:05:00', //PSTmiltary time of the start time of game; specific to test ONLY
+			"nba_game_id": '20001' //the start time matches with the EST time of the plays in the timestamped plays
 		}];
 
 		fakeCharacterData = [{
@@ -193,7 +194,7 @@ describe('timestamp server tests', function() {
 			"episode_id": 2
 		}, {
 			"timestamp_id": 5,
-			"start_time": 0,
+			"start_time": -1, // this is the default start time for all timestamps w/ nba linking
 			"episode_id": 2,
 			"nba_game_id": 20001,
 			"nba_timestamp_id": "20001.6"
@@ -316,6 +317,41 @@ describe('timestamp server tests', function() {
 			}
 		}
 
+		fakePbpTimestamp = {
+			10001: [{
+				EVENTNUM: 1,
+				WCTIMESTRING: "10:02 PM" //est time of the play occurance
+			}, {
+				EVENTNUM: 2,
+				WCTIMESTRING: "10:04 PM"
+			}, ],
+			20001: [{
+				EVENTNUM: 5,
+				WCTIMESTRING: "5:10 PM"
+			}, {
+				EVENTNUM: 3,
+				WCTIMESTRING: "5:00 PM"
+			}, {
+				EVENTNUM: 6,
+				WCTIMESTRING: "5:12 PM"
+			}]
+		}
+
+		getFakePbpTimestampData = (game_id) => {
+			return {
+				resultSets: [{
+					headers: [
+						'EVENTNUM',
+						'WCTIMESTRING'
+					],
+					rowSet: fakePbpTimestamp[game_id].map(play => {
+						return [play.EVENTNUM, play.WCTIMESTRING]
+					})
+				}]
+			}
+		}
+
+
 		sandbox.stub(auth, 'authValidate').callsFake(function(baton, req, callback) {
 			callback()
 		})
@@ -347,6 +383,7 @@ describe('timestamp server tests', function() {
 			})
 		})
 
+
 		describe('nba plays', () => {
 
 			var universal_timestamps;
@@ -359,6 +396,19 @@ describe('timestamp server tests', function() {
 			var emptyNbaPlayByPlay = () => {
 				nock(nbaFetching.BASE_NBA_PLAY_BY_PLAY + '10001').get(/.*/).reply(200, {})
 				nock(nbaFetching.BASE_NBA_PLAY_BY_PLAY + '20001').get(/.*/).reply(200, {})
+			}
+
+			var setAllTimestampsToReg = () => {
+				//hardcorded values of the nba timestamp id from fakeNbaPlayData
+				['10001.1', '10001.2', '20001.5', '20001.3', '20001.6'].forEach((nti, index) => {
+					fakeTimestampData[index].nba_timestamp_id = nti
+					fakeTimestampData[index].start_time = -1
+				})
+			}
+
+			var validNbaPbpTimestamp = () => {
+				nock(nbaFetching.BASE_PBP_WITH_TIMESTAMP + '10001').get(/.*/).reply(200, getFakePbpTimestampData(10001))
+				nock(nbaFetching.BASE_PBP_WITH_TIMESTAMP + '20001').get(/.*/).reply(200, getFakePbpTimestampData(20001))
 			}
 
 			var getTimestampDbVersion = (ep, timestamp_id, raw_play_data) => {
@@ -397,21 +447,21 @@ describe('timestamp server tests', function() {
 				//updating the start time of all ep with nba start time s.t. they appear as 'active game today'
 				fakeEpisodeData.map(ep => {
 					if (ep.nba_start_time !== undefined) {
-						ep.nba_start_time = (new Date()).getTime() - ep.nba_start_time*1000
+
+						var today = new Date()
+						var splitString = ep.nba_start_time.split(':')
+						ep.nba_start_time = moment([today.getFullYear(), today.getMonth(), today.getDate(), splitString[0], splitString[1], splitString[2], 0]).valueOf()
 					}
 					return ep
 				})
 
 
 				//stub get all series data for all tests
-				//only need to filter by time 
+				//for the test purpose, this is only called to filter by the time to get the active games
+				//return back all episodes with nba_start_times
 				sandbox.stub(dbActions, 'getAllEpisodeData').callsFake(function(baton, queryData, callback) {
-					var result = [...fakeEpisodeData].filter(ep => {
-						return (queryData.lessThan ? ep.nba_start_time < queryData.lessThan.nba_start_time : true)
-					}).filter(ep => {
-						return (queryData.greaterThan ? ep.nba_start_time > queryData.greaterThan.nba_start_time : true)
-					})
-					callback(result)
+
+					callback(fakeEpisodeData.filter(ep => ep.nba_start_time))
 				})
 
 
@@ -432,6 +482,18 @@ describe('timestamp server tests', function() {
 				sandbox.stub(dbActions, 'insertTimestamp').callsFake(function(baton, values, callback) {
 					fakeTimestampData = fakeTimestampData.concat(values)
 					callback(values)
+				})
+
+				sandbox.stub(dbActions, 'updateTimestamps').callsFake(function(baton, values, condition_attr, callback) {
+					var changing_attr = Object.keys(values[0]).find(attr => attr !== condition_attr)
+
+					fakeTimestampData.map(fake_ts => {
+						var correspondingValues = values.find(ts => ts[condition_attr] === fake_ts[condition_attr])
+						if (correspondingValues !== undefined) {
+							fake_ts[changing_attr] = correspondingValues[changing_attr]
+						}
+					})
+					callback()
 				})
 
 				sandbox.stub(dbActions, 'insertTimestampCharacter').callsFake(function(baton, values, callback) {
@@ -496,6 +558,42 @@ describe('timestamp server tests', function() {
 					expect(fakeBaton.additionalData.no_timestamps_to_add).to.equal(true)
 					done()
 				})
+			})
+
+			it('should stop if no new nba plays to add', (done) => {
+				this.timeout(5000)
+				setAllTimestampsToReg()
+
+				automated_tasks._updateActiveGameTimestamps((fakeBaton) => {
+					expect(fakeBaton.additionalData.no_timestamps_to_add).to.equal(true)
+					done()
+				})
+			})
+
+			it('should get pbp data with timestamp', (done) => {
+				this.timeout(5000)
+				validNbaPbpTimestamp()
+				setAllTimestampsToReg()
+
+				automated_tasks._updateTodayGamePlaysWithTimestamp((fakeBaton) => {
+					expect(fakeBaton.additionalData.updated_nba_timestamps).to.deep.equal(fakeTimestampData.map(ts => ts.nba_timestamp_id))
+					done()
+				})
+
+			})
+
+			it('should get pbp data with timestamp when not all reg timestamps are nba timestamps', (done) => {
+				this.timeout(5000)
+				validNbaPbpTimestamp()
+				//by default, 20001.6 is a reg timestamp, so that should be the only updated timestamps
+				expect(fakeTimestampData.find(ts => ts.nba_timestamp_id === '20001.6').start_time).to.equal(-1)
+
+				automated_tasks._updateTodayGamePlaysWithTimestamp((fakeBaton) => {
+					expect(fakeBaton.additionalData.updated_nba_timestamps).to.deep.equal(['20001.6'])
+					expect(fakeTimestampData.find(ts => ts.nba_timestamp_id === '20001.6').start_time).to.not.equal(-1)
+					done()
+				})
+
 			})
 
 		})
@@ -1532,7 +1630,7 @@ describe('timestamp server tests', function() {
 					expect(fakeEpisodeData).to.deep.contains({
 						"episode_id": 5,
 						"episode_name": "Test Episode 5",
-						"nba_start_time": 10,
+						"nba_start_time": '7:00:00',
 						"nba_game_id": '10001',
 						"video_offset": 10
 					})
