@@ -141,7 +141,7 @@ var startIntervalTasks = () => {
 
 		setInterval(() => this._updateActiveNBAGames(), 1000 * 60 * 60)
 		setInterval(() => this._updateActivePlayers(), 1000 * 60 * 60)
-		//setInterval(() => automated_tasks._updateActiveGameTimestamps(), 10000)
+		setInterval(() => automated_tasks._updateActiveGameTimestamps(), 10000)
 		//setInterval(() => automated_tasks._updateTodayGamePlaysWithTimestamp(), 10000)
 	}
 	//automated_tasks._updateActiveGameTimestamps()

@@ -133,7 +133,7 @@ module.exports = {
 			callback(raw_data.resultSets[0].rowSet.map(play => {
 				return {
 					nba_timestamp_id: episode.nba_game_id + '.' + play[playNumIndex],
-					start_time: convertStringToEpochTime(play[playTimestampIndex])
+					start_time: episode.nba_start_time - convertStringToEpochTime(play[playTimestampIndex])
 				}
 			}))
 		}

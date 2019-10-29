@@ -140,7 +140,7 @@ module.exports = {
 
 
 	_getTodayGames(baton, callback) {
-		var hourBuffer = 12
+		var hourBuffer = 4
 		var startEpoch = moment().utc().subtract(hourBuffer, 'hours');
 		var endEpoch = moment().utc();
 
@@ -165,7 +165,9 @@ module.exports = {
 				})
 				return
 			}
-			callback(episode_data)
+			//FOR NOW, only return one game 
+			if(process.env.NODE_ENV === 'production') callback([episode_data[0]])
+			else callback(episode_data)
 		})
 	},
 
