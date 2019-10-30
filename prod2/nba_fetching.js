@@ -1,5 +1,5 @@
 var actions = require('./actions')
-var http = require('follow-redirects').http;
+var request = require('request')
 var moment = require('moment-timezone')
 const Nightmare = require('nightmare')
 
@@ -7,7 +7,7 @@ const NBA_MAIN_SITE = 'http://www.nba.com'
 const NBA_DATA_SITE = 'http://data.nba.net'
 const NBA_PLAYERS_URL = NBA_MAIN_SITE + '/players/active_players.json'
 const BASE_NBA_PLAY_BY_PLAY = 'http://data.nba.com/data/10s/v2015/json/mobile_teams/nba/2019/scores/pbp/'
-const BASE_PBP_WITH_TIMESTAMP = 'http://stats.nba.com/stats/playbyplayv2?GameId='
+const BASE_PBP_WITH_TIMESTAMP = 'https://stats.nba.com/stats/playbyplayv2?GameId='
 
 var PLAYER_UI_SELECTOR = '.nba-player-index__trending-item'
 
@@ -43,6 +43,11 @@ module.exports = {
 		}
 
 		var formatRawData = (raw_data) => {
+
+			if(raw_data === null){
+				return []
+			}
+
 			return raw_data.mscd.g.map(game => {
 				return {
 					nba_game_id: game.gid,
@@ -70,7 +75,7 @@ module.exports = {
 				}
 			}
 
-			if (raw_data.g === undefined || !Array.isArray(raw_data.g.pd)) {
+			if (raw_data === null || !Array.isArray(raw_data.g.pd)) {
 				callback([])
 				return
 			}
@@ -122,7 +127,7 @@ module.exports = {
 				return playUtcTime
 			}
 
-			if (raw_data === undefined || raw_data.resultSets === undefined || !Array.isArray(raw_data.resultSets[0].headers) || !Array.isArray(raw_data.resultSets[0].rowSet)) {
+			if (raw_data === null || !Array.isArray(raw_data.resultSets[0].headers) || !Array.isArray(raw_data.resultSets[0].rowSet)) {
 				callback([])
 				return
 			}
@@ -133,13 +138,14 @@ module.exports = {
 			callback(raw_data.resultSets[0].rowSet.map(play => {
 				return {
 					nba_timestamp_id: episode.nba_game_id + '.' + play[playNumIndex],
-					start_time: episode.nba_start_time - convertStringToEpochTime(play[playTimestampIndex])
+					start_time: convertStringToEpochTime(play[playTimestampIndex]) - episode.nba_start_time 
 				}
 			}))
 		}
 
 		var timestamps = []
 		episodes.forEach((ep, index) => {
+			console.log('episode:' + ep.nba_game_id)
 			this._makeHttpCallWithUrl(baton, this.getNbaPbpWithTimestamps(ep.nba_game_id), raw_data => {
 				formatRawData(ep, raw_data, (formatted_timestamps) => {
 					timestamps = timestamps.concat(formatted_timestamps)
@@ -157,6 +163,10 @@ module.exports = {
 		baton.addMethod('getActivePlayers')
 
 		var formatRawData = (raw_data) => {
+			console.log('rw')
+			if (raw_data === null ){
+				return []
+			}
 			return raw_data.map(player => {
 				return {
 					character_name: player.firstName + ' ' + player.lastName,
@@ -173,26 +183,28 @@ module.exports = {
 	_makeHttpCallWithUrl(baton, url, callback) {
 		baton.addMethod('_makeHttpCallWithUrl')
 		var chunks = ''
-		var req = http.get(url,{headers: {'content-type': 'application/json'}}, (res) => {
-			res.on('data', function(data) {
-				chunks += data
-			});
 
-			res.on('end', () => {
-				try {
-					var parsedData = JSON.parse(Buffer.from(chunks).toString());
-					if (res.statusCode == 200) {
-						callback(parsedData)
-					} else {
-						baton.setError(parsedData)
-						this._batonErrorExit(baton)
-						return
-					}
-				} catch (e) {
-					callback({})
-				}
-			})
-		})
+		options = {
+			"method": "GET",
+			"url": url,
+			"headers": {
+				"Accept": "application/json"
+			},
+			"timeout": 5000,
+			agent: false, pool: {maxSockets: 100}
+		}
+		console.log(url)
+		request(options, (err, response) => {
+
+			if (err || response.statusCode !== 200) {
+				baton.setError((err ? err : response.body))
+				callback(null)
+				return
+			} else {
+				callback(JSON.parse(response.body))
+			}
+		});
+
 	},
 
 

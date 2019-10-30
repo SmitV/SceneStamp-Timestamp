@@ -394,8 +394,8 @@ describe('timestamp server tests', function() {
 			}
 
 			var emptyNbaPlayByPlay = () => {
-				nock(nbaFetching.BASE_NBA_PLAY_BY_PLAY + '10001').get(/.*/).reply(200, {})
-				nock(nbaFetching.BASE_NBA_PLAY_BY_PLAY + '20001').get(/.*/).reply(200, {})
+				nock(nbaFetching.BASE_NBA_PLAY_BY_PLAY + '10001').get(/.*/).reply(200, {g: {pd: []}})
+				nock(nbaFetching.BASE_NBA_PLAY_BY_PLAY + '20001').get(/.*/).reply(200, {g: {pd: []}})
 			}
 
 			var setAllTimestampsToReg = () => {
@@ -590,7 +590,7 @@ describe('timestamp server tests', function() {
 
 				automated_tasks._updateTodayGamePlaysWithTimestamp((fakeBaton) => {
 					expect(fakeBaton.additionalData.updated_nba_timestamps).to.deep.equal(['20001.6'])
-					expect(fakeTimestampData.find(ts => ts.nba_timestamp_id === '20001.6').start_time).to.not.equal(-1)
+					expect(fakeTimestampData.find(ts => ts.nba_timestamp_id === '20001.6').start_time > -1).to.equal(true)
 					done()
 				})
 
@@ -673,14 +673,14 @@ describe('timestamp server tests', function() {
 				}, 50)
 			})
 
-			it('should finish flow when invalid req to nba server', (done) => {
+			it('should finish flow when invalid req to nba server for players', (done) => {
 				var err = {
 					err: 'InTest Error'
 				}
 				invalidNBAPlayers(err)
 				automated_tasks._updateActivePlayers()
 				setTimeout(() => {
-					expect(fakeBaton.additionalData).to.deep.equal(err)
+					expect(fakeBaton.additionalData.no_players_to_add).to.equal(true)
 					done()
 				}, 50)
 			})
@@ -761,14 +761,14 @@ describe('timestamp server tests', function() {
 				}, 50)
 			})
 
-			it('should finish flow when invalid req to nba server', (done) => {
+			it('should finish flow when invalid req to nba server for game schedule', (done) => {
 				var err = {
 					err: 'InTest Error'
 				}
 				invalidNBAGameSchedule(err)
 				automated_tasks._updateActiveNBAGames()
 				setTimeout(() => {
-					expect(fakeBaton.additionalData).to.deep.equal(err)
+					expect(fakeBaton.additionalData.no_games_to_add).to.equal(true)
 					done()
 				}, 50)
 			})

@@ -166,7 +166,7 @@ module.exports = {
 				return
 			}
 			//FOR NOW, only return one game 
-			if(process.env.NODE_ENV === 'production') callback([episode_data[0]])
+			if (process.env.NODE_ENV === 'production') callback([episode_data[0]])
 			else callback(episode_data)
 		})
 	},
@@ -175,6 +175,14 @@ module.exports = {
 		var baton = this._getBaton('_updateActivePlayers')
 
 		var getNonRegisteredNbaCharacters = (nba_characters, callback) => {
+
+			if (nba_characters.length === 0) {
+				baton.done({
+					no_players_to_add: true
+				})
+				return
+			}
+
 			actions.getAllCharacterData(baton, {
 				nba_player_id: nba_characters.map(char => char.nba_player_id)
 			}, function(character_data) {
@@ -229,6 +237,14 @@ module.exports = {
 		var baton = this._getBaton('_updateActiveEpisodes')
 
 		var getNonRegisteredNbaGameIds = (nba_game_ids, callback) => {
+
+			if (nba_game_ids.length === 0) {
+				baton.done({
+					no_games_to_add: true
+				})
+				return
+			}
+
 			actions.getAllEpisodeData(baton, {
 				nba_game_id: nba_game_ids
 			}, function(episode_data) {
@@ -307,6 +323,7 @@ module.exports = {
 				if (end_callback) end_callback(this)
 			},
 			addMethod: function(meth) {
+				console.log(meth)
 				if (this.methods.length == 0) {
 					this.methods.push({
 						correlation_id: this.id,
