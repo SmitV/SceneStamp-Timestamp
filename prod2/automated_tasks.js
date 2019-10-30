@@ -323,7 +323,6 @@ module.exports = {
 				if (end_callback) end_callback(this)
 			},
 			addMethod: function(meth) {
-				console.log(meth)
 				if (this.methods.length == 0) {
 					this.methods.push({
 						correlation_id: this.id,

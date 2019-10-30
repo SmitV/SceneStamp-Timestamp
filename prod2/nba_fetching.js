@@ -44,7 +44,7 @@ module.exports = {
 
 		var formatRawData = (raw_data) => {
 
-			if(raw_data === null){
+			if (raw_data === null) {
 				return []
 			}
 
@@ -138,14 +138,13 @@ module.exports = {
 			callback(raw_data.resultSets[0].rowSet.map(play => {
 				return {
 					nba_timestamp_id: episode.nba_game_id + '.' + play[playNumIndex],
-					start_time: convertStringToEpochTime(play[playTimestampIndex]) - episode.nba_start_time 
+					start_time: convertStringToEpochTime(play[playTimestampIndex]) - episode.nba_start_time
 				}
 			}))
 		}
 
 		var timestamps = []
 		episodes.forEach((ep, index) => {
-			console.log('episode:' + ep.nba_game_id)
 			this._makeHttpCallWithUrl(baton, this.getNbaPbpWithTimestamps(ep.nba_game_id), raw_data => {
 				formatRawData(ep, raw_data, (formatted_timestamps) => {
 					timestamps = timestamps.concat(formatted_timestamps)
@@ -163,8 +162,7 @@ module.exports = {
 		baton.addMethod('getActivePlayers')
 
 		var formatRawData = (raw_data) => {
-			console.log('rw')
-			if (raw_data === null ){
+			if (raw_data === null) {
 				return []
 			}
 			return raw_data.map(player => {
@@ -191,9 +189,12 @@ module.exports = {
 				"Accept": "application/json"
 			},
 			"timeout": 5000,
-			agent: false, pool: {maxSockets: 100}
+			agent: false,
+			pool: {
+				maxSockets: 100
+			}
 		}
-		console.log(url)
+		
 		request(options, (err, response) => {
 
 			if (err || response.statusCode !== 200) {

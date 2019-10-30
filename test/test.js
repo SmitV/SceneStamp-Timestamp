@@ -394,8 +394,16 @@ describe('timestamp server tests', function() {
 			}
 
 			var emptyNbaPlayByPlay = () => {
-				nock(nbaFetching.BASE_NBA_PLAY_BY_PLAY + '10001').get(/.*/).reply(200, {g: {pd: []}})
-				nock(nbaFetching.BASE_NBA_PLAY_BY_PLAY + '20001').get(/.*/).reply(200, {g: {pd: []}})
+				nock(nbaFetching.BASE_NBA_PLAY_BY_PLAY + '10001').get(/.*/).reply(200, {
+					g: {
+						pd: []
+					}
+				})
+				nock(nbaFetching.BASE_NBA_PLAY_BY_PLAY + '20001').get(/.*/).reply(200, {
+					g: {
+						pd: []
+					}
+				})
 			}
 
 			var setAllTimestampsToReg = () => {
