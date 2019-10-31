@@ -141,10 +141,12 @@ var server = app.listen(process.env.PORT || 8081, function() {
 
 var startIntervalTasks = () => {
 	if (process.env.NODE_ENV === 'production') {
+		console.log(process.env)
 		setInterval(() => automated_tasks._updateActiveNBAGames(), 1000 * 60 * 60)
 		setInterval(() => automated_tasks._updateActivePlayers(), 1000 * 60 * 60)
 		setInterval(() => automated_tasks._updateActiveGameTimestamps(), 10000)
-		setInterval(() => automated_tasks._updateTodayGamePlaysWithTimestamp(), 10000)
+		//setInterval(() => automated_tasks._updateTodayGamePlaysWithTimestamp(), 10000)
+		automated_tasks._updateTodayGamePlaysWithTimestamp()
 	}
 }
 
