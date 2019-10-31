@@ -14,6 +14,9 @@ app.use(bodyParser.urlencoded({
 	extended: false
 }));
 
+//for nba fetching http requests
+process.env.UV_THREADPOOL_SIZE = 128;
+
 
 var timestamp_endpoints = [{
 	url: 'getSeriesData',
