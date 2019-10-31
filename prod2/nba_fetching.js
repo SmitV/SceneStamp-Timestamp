@@ -189,7 +189,7 @@ module.exports = {
 				"Accept": "application/json, text/plain, */*",
 				"User-Agent": "axios/0.18.0"
 			},
-			"timeout": 5000,
+			"timeout": 20000,
 			agent: false,
 			pool: {
 				maxSockets: 100
