@@ -186,7 +186,8 @@ module.exports = {
 			"method": "GET",
 			"url": url,
 			"headers": {
-				"Accept": "application/json"
+				"Accept": "application/json, text/plain, */*",
+				"User-Agent": "axios/0.18.0"
 			},
 			"timeout": 5000,
 			agent: false,
@@ -194,7 +195,7 @@ module.exports = {
 				maxSockets: 100
 			}
 		}
-		
+
 		request(options, (err, response) => {
 
 			if (err || response.statusCode !== 200) {
