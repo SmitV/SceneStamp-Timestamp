@@ -2,6 +2,7 @@ var mysql = require('mysql');
 
 
 var MAIN_POOLS = {
+	//aws credentials
 	pool: mysql.createPool({
 		connectionLimit: 9,
 		host: "database-1.cdolegs6ibeo.us-east-2.rds.amazonaws.com",
@@ -15,7 +16,22 @@ var MAIN_POOLS = {
 		user: "admin",
 		password: "TimestampDatabase101",
 		database: "ss-timestamp-2"
-	})
+	})/*
+	pool: mysql.createPool({		
+		connectionLimit: 9,			
+		host: "us-cdbr-iron-east-02.cleardb.net",
+		user: "ba52740f8673f9",			
+		password: "6704fa0a",			
+		database: "heroku_2648a9aa380b8d4"
+	}),		
+	user_pool: mysql.createPool({		
+		connectionLimit: 9,			
+		host: "us-cdbr-iron-east-02.cleardb.net",
+		user: "ba52740f8673f9",			
+		password: "6704fa0a",			
+		database: "heroku_2648a9aa380b8d4"
+	}),*/		
+	
 }
 var VIDEO_SERVER_URL = 'http://ubuntu@ec2-18-221-3-92.us-east-2.compute.amazonaws.com'
 var VIDEO_SERVER_PORT = 8081
