@@ -141,9 +141,10 @@ var startIntervalTasks = () => {
 	if (process.env.NODE_ENV === 'production') {
 		setInterval(() => automated_tasks._updateActiveNBAGames(), 1000 * 60 * 60)
 		setInterval(() => automated_tasks._updateActivePlayers(), 1000 * 60 * 60)
-		//setInterval(() => automated_tasks._updateActiveGameTimestamps(), 10000)
-		//setInterval(() => automated_tasks._updateTodayGamePlaysWithTimestamp(), 10000)
+		setInterval(() => automated_tasks._updateActiveGameTimestamps(), 10000)
+		setInterval(() => automated_tasks._updateTodayGamePlaysWithTimestamp(), 10000)
 	}
+
 }
 
 module.exports = {

@@ -17,6 +17,12 @@ module.exports = {
 		var baton = this._getBaton('_updateTodayGamePlaysWithTimestamp', callback)
 
 		var updateRegTimestamps = (timestamps, callback) => {
+			if (timestamps.length === 0) {
+				baton.done({
+					no_timestamps_to_update: true
+				})
+				return
+			}
 			actions.updateTimestamps(baton, timestamps, 'nba_timestamp_id', callback)
 		}
 
@@ -34,7 +40,6 @@ module.exports = {
 				callback(timestamps.filter(ts => neededTimestamps.includes(ts.nba_timestamp_id)))
 			})
 		}
-
 
 		this._getTodayGames(baton, (episodes) => {
 			nba_fetching.getTimestampedPlays(baton, episodes, (formatted_timestamps) => {
@@ -166,7 +171,7 @@ module.exports = {
 				return
 			}
 			//FOR NOW, only return one game 
-			if (process.env.NODE_ENV === 'production') callback([episode_data[0]])
+			if (process.env.NODE_ENV === 'production') callback([episode_data])
 			else callback(episode_data)
 		})
 	},
