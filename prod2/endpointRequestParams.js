@@ -103,6 +103,10 @@ var MAIN_VALIDATION = {
       type: "number",
       optional: true,
       multiple: true
+    },
+    offset : {
+      type: 'number',
+      optional: true
     }
   },
   newTimestamp: {

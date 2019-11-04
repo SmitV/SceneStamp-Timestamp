@@ -597,7 +597,8 @@ module.exports = {
 				})
 			}
 		}
-		this._makequery("SELECT * FROM `" + table + "`" + (condition_string == "" ? "" : " WHERE " + condition_string.slice(0, -3)), null, table, baton, callback)
+		var limitSection = (baton.db_limit[table] ? "ORDER BY "+baton.db_limit[table].order_attr+" DESC LIMIT 100 OFFSET "+(baton.db_limit[table].offset-1)*100 : "" )
+		this._makequery("SELECT * FROM `" + table + "`" + (condition_string == "" ? "" : " WHERE " + condition_string.slice(0, -3))+ limitSection, null, table, baton, callback)
 	},
 
 	/**

@@ -47,6 +47,7 @@ describe('db tests', () => {
 			methods: [],
 			err: [],
 			start_time: FAKE_START_TIME,
+			db_limit: {},
 			addMethod: function(method) {
 				this.methods.push(method)
 			},
@@ -124,6 +125,26 @@ describe('db tests', () => {
 				})
 			})
 
+			it('should add limit query if set in baton', () => {
+				fakeBaton.db_limit.test_table = {
+					offset: 2,
+					order_attr : 'test_attr1'
+				}
+				dbActions._selectQuery(fakeBaton, 'test_table', {}, function() {
+					expect(sqlQuery.trim()).to.deep.equal('SELECT * FROM `test_table`ORDER BY test_attr1 DESC LIMIT 100 OFFSET 100')
+				})
+			})
+
+			it('should add limit query if set in baton, where offset is 1', () => {
+				fakeBaton.db_limit.test_table = {
+					offset: 1,
+					order_attr : 'test_attr2'
+				}
+				dbActions._selectQuery(fakeBaton, 'test_table', {}, function() {
+					expect(sqlQuery.trim()).to.deep.equal('SELECT * FROM `test_table`ORDER BY test_attr2 DESC LIMIT 100 OFFSET 0')
+				})
+			})
+
 			it('should create less than and greater that conditions', () => {
 				var queryParams = {
 					lessThan: {
@@ -153,6 +174,8 @@ describe('db tests', () => {
 					expect(sqlQuery.trim()).to.deep.equal('SELECT * FROM `test_table` WHERE test_attr3 = \'text1\' OR test_attr3 = \'text2\'  AND test_attr1 < 101 AND test_attr1 > 10')
 				})
 			})
+
+
 
 		})
 

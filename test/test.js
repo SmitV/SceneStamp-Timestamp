@@ -2173,9 +2173,14 @@ describe('timestamp server tests', function() {
 			//stub for the category/character for timestamp
 			sandbox.stub(dbActions, 'getAllTimestampCharacter').callsFake(function(baton, params, callback) {
 				var result = [...fakeTimestampCharacterData]
-				if (params.timestamp_ids && params.timestamp_ids > 0) {
+				if (params.timestamp_id && params.timestamp_id > 0) {
 					result = result.filter(function(tc) {
-						return params.timestamp_ids.includes(tc.timestamp_id)
+						return params.timestamp_id.includes(tc.timestamp_id)
+					});
+				}
+				if (params.character_id && params.character_id > 0) {
+					result = result.filter(function(tc) {
+						return params.character_id.includes(tc.character_id)
 					});
 				}
 				return callback(result)
@@ -2184,11 +2189,42 @@ describe('timestamp server tests', function() {
 
 		it('should return all timestamp data', function(done) {
 
+			var fakeBaton;
+			sandbox.stub(actions, '_getBaton').callsFake(function(endpoint, params, res) {
+				var baton = actions._getBaton.wrappedMethod.apply(this, arguments)
+				fakeBaton = baton;
+				return baton
+			})
+
+
 			sendRequest('getTimestampData', {}).end((err, res, body) => {
 				assertSuccess(res)
 				expect(res.body).to.deep.equal(fakeTimestampData)
+				expect(fakeBaton.db_limit['timestamp']).to.deep.equal({offset: 1, order_attr:'creation_time'})
 				done()
 			})
+		})
+
+		it('should have updated offset when passed', (done)=> {
+
+
+			var fakeBaton;
+			sandbox.stub(actions, '_getBaton').callsFake(function(endpoint, params, res) {
+				var baton = actions._getBaton.wrappedMethod.apply(this, arguments)
+				fakeBaton = baton;
+				return baton
+			})
+
+			var queryParams = {
+				offset : 2
+			}
+
+			sendRequest('getTimestampData', queryParams).end((err, res, body) => {
+				assertSuccess(res)
+				expect(fakeBaton.db_limit['timestamp']).to.deep.equal({offset: 2, order_attr:'creation_time'})
+				done()
+			})
+
 		})
 
 		it('should filter for episode id', function(done) {

@@ -848,6 +848,10 @@ module.exports = {
 
   get_allTimestampData(baton, params, res) {
     var t = this;
+    baton.db_limit.timestamp = {
+      order_attr: 'creation_time',
+      offset: (params.offset &&  params.offset > -1 ? params.offset : 1 )
+    }
 
     getTimestampData(params)
 
@@ -876,27 +880,29 @@ module.exports = {
     baton.addMethod('getAllTimestampData');
     var t = this;
 
-    db.getAllTimestampData(baton, {
-      episode_id: params.episode_ids,
-      timestamp_id: params.timestamp_ids,
-      nba_timestamp_id: params.nba_timestamp_id
-    }, function(data) {
-      t._handleDBCall(baton, data, false /*multiple*/ , function(timestamp_data) {
-        dataLoader(timestamp_data, function(results) {
-          if (params.character_ids) {
-            timestamp_data = timestamp_data.filter(function(timestamp) {
-              return t._intersection(params.character_ids, timestamp.characters).length > 0
-            });
-          }
-          if (params.category_ids) {
-            timestamp_data = timestamp_data.filter(function(timestamp) {
-              return t._intersection(params.category_ids, timestamp.categories).length > 0
-            });
-          }
-          callback(timestamp_data)
+    var getTimestampsWithCharactersAndCategories = (filtered_timestamp_ids) => {
+      db.getAllTimestampData(baton, {
+        episode_id: params.episode_ids,
+        timestamp_id: (filtered_timestamp_ids ? filtered_timestamp_ids : params.timestamp_ids),
+        nba_timestamp_id: params.nba_timestamp_id
+      }, function(data) {
+        t._handleDBCall(baton, data, false /*multiple*/ , function(timestamp_data) {
+          dataLoader(timestamp_data, function(results) {
+            if (params.character_ids) {
+              timestamp_data = timestamp_data.filter(function(timestamp) {
+                return t._intersection(params.character_ids, timestamp.characters).length > 0
+              });
+            }
+            if (params.category_ids) {
+              timestamp_data = timestamp_data.filter(function(timestamp) {
+                return t._intersection(params.category_ids, timestamp.categories).length > 0
+              });
+            }
+            callback(timestamp_data)
+          })
         })
       })
-    })
+    }
 
 
     function dataLoader(timestamp_data, suc_callback) {
@@ -942,13 +948,14 @@ module.exports = {
         });
     }
 
+    getTimestampsWithCharactersAndCategories()
   },
 
   post_newTimestamp(baton, params, res) {
     var t = this;
 
     function createTimestampId(params, callback) {
-      t.getAllTimestampData(baton, {}, function(timestamp_data) {
+      t.getTimestampData(baton, {}, function(timestamp_data) {
         params.timestamp_id = t._generateId(ID_LENGTH.timestamp, timestamp_data.map(function(ts) {
           return ts.timestamp_id
         }))
@@ -1348,8 +1355,8 @@ module.exports = {
   ensure_TimestampIdExists(baton, params, callback) {
     var t = this;
     baton.addMethod('ensure_TimestampIdExists');
-    this.getAllTimestampData(baton, {
-      timestamp_ids: params.timestamp_id
+    this.getTimestampData(baton, {
+      timestamp_id: params.timestamp_id
     }, function(timestamp_data) {
       if (timestamp_data.length !== params.timestamp_id.length) {
         baton.setError({
@@ -1424,6 +1431,10 @@ module.exports = {
         res.status((this.requestType == "GET" ? 200 : 201)).json(data)
       },
       endpoint: method,
+      //database limit records flag
+      //attr: table named
+      //value: {offset : offset section number, order_attr: attr to order results by }
+      db_limit:{},
       //method sequence
       methods: [],
       addMethod: function(meth) {
