@@ -42,6 +42,7 @@ module.exports = {
 		}
 
 		this._getTodayGames(baton, (episodes) => {
+			console.log('_updateTodayGamePlaysWithTimestamp')
 			nba_fetching.getTimestampedPlays(baton, episodes, (formatted_timestamps) => {
 				getNonUpdatedTimestamps(formatted_timestamps, (need_to_be_updated_timestamp) => {
 					updateRegTimestamps(need_to_be_updated_timestamp, () => {
