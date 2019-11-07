@@ -1,5 +1,6 @@
 var actions = require('./actions')
-var request = require('request')
+var req = require('request')
+var request = req.defaults()
 var moment = require('moment-timezone')
 const Nightmare = require('nightmare')
 
@@ -184,6 +185,7 @@ module.exports = {
 		options = {
 			"method": "GET",
 			"url": url,
+			"timeout":1000
 		}
 		request(options, (err, response) => {
 			if (err) {
