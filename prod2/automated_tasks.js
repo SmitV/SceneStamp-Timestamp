@@ -171,7 +171,6 @@ module.exports = {
 				return
 			}
 			//FOR NOW, only return one game 
-			if (process.env.NODE_ENV === 'production') callback([episode_data])
 			else callback(episode_data)
 		})
 	},

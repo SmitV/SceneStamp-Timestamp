@@ -119,11 +119,10 @@ module.exports = {
 		var formatRawData = (episode, raw_data, callback) => {
 
 			var convertStringToEpochTime = (string) => {
-
 				var today = new Date(episode.nba_start_time)
 				var splitString = string.substring(0, 5)
 				var hour = parseInt(splitString.split(':')[0]) + (string.substring(5, 8).trim() === 'PM' ? 12 : 0)
-				var playUtcTime = moment([today.getFullYear(), today.getMonth(), today.getDate(), hour, splitString.split(':')[1], 0, 0]).subtract(3, 'hours').valueOf()
+				var playUtcTime = moment([today.getFullYear(), today.getMonth(), today.getDate(), hour, splitString.split(':')[0], 0, 0]).subtract(3, 'hours').valueOf()
 				return playUtcTime
 			}
 
@@ -195,14 +194,16 @@ module.exports = {
 				maxSockets: 100
 			}
 		}
-
 		request(options, (err, response) => {
-
-			if (err || response.statusCode !== 200) {
-				baton.setError((err ? err : response.body))
+			if (err) {
+				baton.setError(err)
 				callback(null)
 				return
-			} else {
+			} 
+			else if(response.statusCode !== 200){
+				callback(null)
+				return
+			}else {
 				callback(JSON.parse(response.body))
 			}
 		});
