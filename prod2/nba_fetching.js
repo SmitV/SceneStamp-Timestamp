@@ -9,15 +9,11 @@ const NBA_PLAYERS_URL = NBA_MAIN_SITE + '/players/active_players.json'
 const BASE_NBA_PLAY_BY_PLAY = 'http://data.nba.com/data/10s/v2015/json/mobile_teams/nba/2019/scores/pbp/'
 const BASE_PBP_WITH_TIMESTAMP = 'https://stats.nba.com/stats/playbyplayv2?GameId='
 
-var PLAYER_UI_SELECTOR = '.nba-player-index__trending-item'
-
-
 
 module.exports = {
 
 	NBA_MAIN_SITE: NBA_MAIN_SITE,
 	NBA_PLAYERS_URL: NBA_PLAYERS_URL,
-	PLAYER_UI_SELECTOR: PLAYER_UI_SELECTOR,
 	BASE_NBA_PLAY_BY_PLAY: BASE_NBA_PLAY_BY_PLAY,
 	BASE_PBP_WITH_TIMESTAMP: BASE_PBP_WITH_TIMESTAMP,
 
@@ -184,15 +180,6 @@ module.exports = {
 		options = {
 			"method": "GET",
 			"url": url,
-			"headers": {
-				"Accept": "application/json, text/plain, */*",
-				"User-Agent": "axios/0.18.0"
-			},
-			"timeout": 20000,
-			agent: false,
-			pool: {
-				maxSockets: 100
-			}
 		}
 		request(options, (err, response) => {
 			if (err) {
