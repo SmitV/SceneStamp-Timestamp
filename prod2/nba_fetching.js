@@ -185,7 +185,6 @@ module.exports = {
 		options = {
 			"method": "GET",
 			"url": url,
-			"timeout":1900,
 			"forever":true,
 			"pool": {"maxSockets": Infinity}
 		}
