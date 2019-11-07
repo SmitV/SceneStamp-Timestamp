@@ -172,8 +172,8 @@ module.exports = {
 				})
 				return
 			}
-			//FOR NOW, only return one game 
-			else callback(episode_data)
+			//FOR NOW, only return one game
+			callback(episode_data)
 		})
 	},
 
