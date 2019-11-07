@@ -2,7 +2,8 @@
   "name": "scenestamp_server",
   "version": "1.0.0",
   "engines": {
-    "node": "10.15.0"
+    "node": "10.15.0",
+    "npm": "6.10.2"
   },
   "description": "server implementation for scenestamp client",
   "main": "index.js",
