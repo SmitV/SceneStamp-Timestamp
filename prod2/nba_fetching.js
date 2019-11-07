@@ -189,6 +189,8 @@ module.exports = {
 			"pool": {"maxSockets": Infinity}
 		}
 		request(options, (err, response) => {
+			console.log('http response done')
+			console.log(url)
 			if (err) {
 				baton.setError(err)
 				callback(null)
