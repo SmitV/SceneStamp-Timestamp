@@ -42,8 +42,9 @@ module.exports = {
 			})
 		}
 
+		console.log('_updateTodayGamePlaysWithTimestamp')
 		this._getTodayGames(baton, (episodes) => {
-			console.log('_updateTodayGamePlaysWithTimestamp')
+			console.log('ep found')
 			nba_fetching.getTimestampedPlays(baton, episodes, (formatted_timestamps) => {
 				getNonUpdatedTimestamps(formatted_timestamps, (need_to_be_updated_timestamp) => {
 					updateRegTimestamps(need_to_be_updated_timestamp, () => {
@@ -166,13 +167,8 @@ module.exports = {
 		}
 
 		actions.getAllEpisodeData(baton, queryParams, function(episode_data) {
-			if (episode_data.length === 0) {
-				baton.done({
-					no_current_games: true
-				})
-				return
-			}
-			//FOR NOW, only return one game
+
+						//FOR NOW, only return one game
 			if (process.env.NODE_ENV === 'production') {
 				callback([{
 					"episode_id": 128728,
@@ -185,7 +181,16 @@ module.exports = {
 					"nba_start_time": 1573095600000,
 					"video_offset": null
 				}])
+				return
 			}
+
+			if (episode_data.length === 0) {
+				baton.done({
+					no_current_games: true
+				})
+				return
+			}
+
 			callback(episode_data)
 		})
 	},
