@@ -185,7 +185,8 @@ module.exports = {
 		options = {
 			"method": "GET",
 			"url": url,
-			"timeout":1000
+			"timeout":1900,
+			"forever":true
 		}
 		request(options, (err, response) => {
 			if (err) {
