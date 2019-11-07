@@ -142,6 +142,7 @@ module.exports = {
 		episodes.forEach((ep, index) => {
 			console.log(this.getNbaPbpWithTimestamps(ep.nba_game_id))
 			this._makeHttpCallWithUrl(baton, this.getNbaPbpWithTimestamps(ep.nba_game_id), raw_data => {
+				console.log('done with call')
 				formatRawData(ep, raw_data, (formatted_timestamps) => {
 					timestamps = timestamps.concat(formatted_timestamps)
 					if (index === episodes.length - 1) {
