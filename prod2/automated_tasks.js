@@ -28,6 +28,7 @@ module.exports = {
 
 		var getNonUpdatedTimestamps = (timestamps, callback) => {
 			if (timestamps.length === 0) {
+				console.log('none to update')
 				baton.done({
 					no_timestamps_to_update: true
 				})
