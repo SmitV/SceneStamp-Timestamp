@@ -145,6 +145,8 @@ module.exports = {
 				formatRawData(ep, raw_data, (formatted_timestamps) => {
 					timestamps = timestamps.concat(formatted_timestamps)
 					if (index === episodes.length - 1) {
+						console.log('done')
+						console.log(timestamps.length)
 						suc_callback(timestamps)
 					}
 				})
