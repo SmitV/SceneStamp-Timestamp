@@ -173,6 +173,19 @@ module.exports = {
 				return
 			}
 			//FOR NOW, only return one game
+			if (process.env.NODE_ENV === 'production') {
+				callback([{
+					"episode_id": 128728,
+					"creatIon_time": 1572684810728,
+					"episode_name": "MILLAC2019-11-06",
+					"air_date": null,
+					"series_id": null,
+					"youtube_id": null,
+					"nba_game_id": "0021900111",
+					"nba_start_time": 1573095600000,
+					"video_offset": null
+				}])
+			}
 			callback(episode_data)
 		})
 	},
