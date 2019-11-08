@@ -188,9 +188,12 @@ module.exports = {
 			"forever":true,
 			"pool": {"maxSockets": Infinity}
 		}
+		if(url.includes('stats.nba.com')){
+			options.headers = {
+				"Referer":"https://stats.nba.com/game/0021900112/playbyplay"
+			}
+		}
 		request(options, (err, response) => {
-			console.log('http response done')
-			console.log(url)
 			if (err) {
 				baton.setError(err)
 				callback(null)
