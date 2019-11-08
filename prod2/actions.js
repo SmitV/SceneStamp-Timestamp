@@ -1281,7 +1281,7 @@ module.exports = {
     t.getAllCategoryData(baton, /*queryParams=*/ {
       category_id: categories.filter(this._onlyUnique)
     }, (category_data) => {
-      if (category_data.length !== categories.length) {
+      if (category_data.filter(cat => categories.includes(cat.category_id)).length !== categories.length) {
         callback({
           category_ids: categories.filter(ct => !category_data.map(cd => cd.category_id).includes(ct)),
           error: "Invalid category ids",
