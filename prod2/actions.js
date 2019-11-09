@@ -850,7 +850,7 @@ module.exports = {
     var t = this;
     baton.db_limit.timestamp = {
       order_attr: 'creation_time',
-      offset: (params.offset &&  params.offset > -1 ? params.offset : 1 )
+      offset: (params.offset && params.offset > -1 ? params.offset : 1)
     }
 
     getTimestampData(params)
@@ -880,9 +880,69 @@ module.exports = {
     baton.addMethod('getAllTimestampData');
     var t = this;
 
+    /*
+
+      1) Get all timestamps ids that have category / character ids
+          if both filter options are null, set as null
+      2) get all timestamps data for said timestamp ids
+          if both fiter options are null, just get timestamp data filtered by nba_timestamp, episode_id, and timestamp_id
+      3) get all category and character data for each timestamp, and propogate all timestamps with data
+    */
+
+
+    var getFilteredTimestampIdsFromCharactersAndCategories = (suc_callback) => {
+      var tasks = {}
+      tasks.filteredCategories = (callback) => {
+        if (!params.category_ids) {
+          callback(null, null)
+          return
+        }
+        db.getAllTimestampCategory(baton, {
+          category_id: params.category_ids
+        }, function(data) {
+          t._handleDBCall(baton, data, true /*multiple*/ , callback)
+        })
+      }
+      tasks.filteredCharacters = function(callback) {
+        if (!params.character_ids) {
+          callback(null, null)
+          return
+        }
+        db.getAllTimestampCharacter(baton, {
+          character_id: params.character_ids
+        }, function(data) {
+          t._handleDBCall(baton, data, true /*multiple*/ , callback)
+        })
+      }
+
+      async.parallel(tasks,
+        (err, results) => {
+          if (err) {
+            t._generateError(baton);
+            return
+          } else {
+            if (!results.filteredCharacters && !results.filteredCategories) {
+              suc_callback(null)
+              return
+            }
+            suc_callback([]
+              .concat((results.filteredCategories ? results.filteredCategories.map(ts => ts.timestamp_id) : []))
+              .concat((results.filteredCharacters ? results.filteredCharacters.map(ts => ts.timestamp_id) : []))
+              .filter(this._onlyUnique)
+            )
+          }
+        });
+    }
+
+
+
     var getTimestampsWithCharactersAndCategories = (filtered_timestamp_ids) => {
       db.getAllTimestampData(baton, {
         episode_id: params.episode_ids,
+        /* either filter by:
+          1)filtered timestamps, which come from character and category ids
+          2)passed timestamp ids, which will be null if none avaliable
+        */
         timestamp_id: (filtered_timestamp_ids ? filtered_timestamp_ids : params.timestamp_ids),
         nba_timestamp_id: params.nba_timestamp_id
       }, function(data) {
@@ -948,7 +1008,10 @@ module.exports = {
         });
     }
 
-    getTimestampsWithCharactersAndCategories()
+    getFilteredTimestampIdsFromCharactersAndCategories(filtered_timestamps => {
+      getTimestampsWithCharactersAndCategories(filtered_timestamps)
+    })
+
   },
 
   post_newTimestamp(baton, params, res) {
@@ -1434,7 +1497,7 @@ module.exports = {
       //database limit records flag
       //attr: table named
       //value: {offset : offset section number, order_attr: attr to order results by }
-      db_limit:{},
+      db_limit: {},
       //method sequence
       methods: [],
       addMethod: function(meth) {

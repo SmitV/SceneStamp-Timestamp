@@ -28,7 +28,6 @@ module.exports = {
 
 		var getNonUpdatedTimestamps = (timestamps, callback) => {
 			if (timestamps.length === 0) {
-				console.log('none to update')
 				baton.done({
 					no_timestamps_to_update: true
 				})
@@ -42,9 +41,7 @@ module.exports = {
 			})
 		}
 
-		console.log('_updateTodayGamePlaysWithTimestamp')
 		this._getTodayGames(baton, (episodes) => {
-			console.log('ep found')
 			nba_fetching.getTimestampedPlays(baton, episodes, (formatted_timestamps) => {
 				getNonUpdatedTimestamps(formatted_timestamps, (need_to_be_updated_timestamp) => {
 					updateRegTimestamps(need_to_be_updated_timestamp, () => {
