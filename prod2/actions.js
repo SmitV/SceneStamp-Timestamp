@@ -240,7 +240,7 @@ module.exports = {
     function getEpisodeData() {
       var queryParams = {
         series_id: params.series_ids,
-        youtube_id: (params.youtube_link ? t.youtubeLinkParser(params.youtube_link) : null),
+        youtube_id: (params.youtube_link ? [t.youtubeLinkParser(params.youtube_link)] : null),
         nba_game_id: params.nba_game_ids
       }
       if (params.nbaBeforeEpochTime) queryParams.lessThan = {
@@ -249,7 +249,6 @@ module.exports = {
       if (params.nbaAfterEpochTime) queryParams.greaterThan = {
         nba_start_time: params.nbaAfterEpochTime
       }
-
       t.getAllEpisodeData(baton, queryParams, function(data) {
         baton.json(data)
       })
