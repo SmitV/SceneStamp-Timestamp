@@ -936,8 +936,6 @@ module.exports = {
 
 
     var getTimestampsWithCharactersAndCategories = (filtered_timestamp_ids,callback) => {
-      console.log('start')
-      console.log(new Date().getTime())
       db.getAllTimestampData(baton, {
         episode_id: params.episode_ids,
         /* either filter by:
@@ -947,8 +945,6 @@ module.exports = {
         timestamp_id: (filtered_timestamp_ids ? filtered_timestamp_ids : params.timestamp_ids),
         nba_timestamp_id: params.nba_timestamp_id
       }, function(data) {
-        console.log('done getting timestamp raw')
-        console.log(new Date().getTime())
         t._handleDBCall(baton, data, false /*multiple*/ , function(timestamp_data) {
           dataLoader(timestamp_data, function(results) {
             if (params.character_ids) {
@@ -969,7 +965,6 @@ module.exports = {
 
 
     function dataLoader(timestamp_data, suc_callback) {
-      console.log('dataloader')
       var timestamp_ids = timestamp_data.map(function(timestamp) {
         return timestamp.timestamp_id
       })
@@ -995,7 +990,6 @@ module.exports = {
             t._generateError(baton);
             return
           } else {
-            console.log('done with getting sub data')
             suc_callback(timestamp_data.map(function(timestamp) {
               timestamp.characters = results.allCharacter.filter(function(ch) {
                 return ch.timestamp_id == timestamp.timestamp_id
@@ -1013,11 +1007,8 @@ module.exports = {
         });
     }
 
-    console.log('gettimestampdata')
     getFilteredTimestampIdsFromCharactersAndCategories(filtered_timestamps => {
-      console.log('get filteredtimestamps')
       getTimestampsWithCharactersAndCategories(filtered_timestamps, (timestamp_data) =>{
-        console.log('done with all')
         callback(timestamp_data)
       })
     })
