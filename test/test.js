@@ -14,7 +14,7 @@ var server = require('../index').server
 
 chai.use(chaiHttp);
 
-var logger = require('../prod2/logger').MAIN_LOGGER
+var batonHandler = require('../prod2/baton')
 var actions = require('../prod2/actions')
 var dbActions = require('../prod2/database_actions')
 var auth = require('../prod2/auth')
@@ -376,8 +376,9 @@ describe('timestamp server tests', function() {
 
 		beforeEach(function() {
 
-			sandbox.stub(automated_tasks, '_getBaton').callsFake(function(task_name) {
-				var baton = automated_tasks._getBaton.wrappedMethod.apply(this, arguments)
+
+			sandbox.stub(batonHandler, 'createAutomatedBaton').callsFake(function(endpoint, params, res) {
+				var baton = batonHandler.createAutomatedBaton.wrappedMethod.apply(this, arguments)
 				fakeBaton = baton;
 				return baton
 			})
@@ -1019,6 +1020,10 @@ describe('timestamp server tests', function() {
 
 		describe('authenticate', function() {
 
+			var createBatonForTest = () => {
+				fakeBaton = actions._getBaton('authActionTest', fakeReq.body, fakeRes)
+			}
+
 			it('should validate auth token', function(done) {
 				fakeReq.headers = {
 					auth_token: {
@@ -1027,7 +1032,7 @@ describe('timestamp server tests', function() {
 					test_mode: true
 				}
 				authVerify();
-				fakeBaton = actions._getBaton('authActionTest', fakeReq.body, fakeRes)
+				createBatonForTest();
 				auth.authValidate(fakeBaton, fakeReq, function() {
 					expect(fakeBaton.user_id).to.equal(101)
 					done()
@@ -1042,7 +1047,7 @@ describe('timestamp server tests', function() {
 					//test_mode:true
 				}
 				authVerify();
-				fakeBaton = actions._getBaton('authActionTest', fakeReq.body, fakeRes)
+				createBatonForTest();
 				auth.authValidate(fakeBaton, fakeReq, function() {
 					expect(fakeBaton.user_id).to.equal(null)
 					done()
@@ -1056,7 +1061,7 @@ describe('timestamp server tests', function() {
 					test_mode: true
 				}
 				authVerifyFail();
-				fakeBaton = actions._getBaton('authActionTest', fakeReq.body, fakeRes)
+				createBatonForTest();
 				auth.authValidate(fakeBaton, fakeReq, () => {})
 				setTimeout(() => {
 					expect(fakeBaton.err[0].public_message).to.equal('Auth token invalid')
@@ -1138,6 +1143,10 @@ describe('timestamp server tests', function() {
 				user.role = role_id
 			}
 
+			var createBatonForTest = (method) => {
+				fakeBaton = actions._getBaton(method, fakeReq.body, fakeRes)
+			}
+
 			beforeEach(function() {
 				auth._validateRole.restore()
 
@@ -1166,7 +1175,7 @@ describe('timestamp server tests', function() {
 					},
 					test_mode: true
 				}
-				fakeBaton = actions._getBaton('getTimestampData', fakeReq.body, fakeRes)
+				createBatonForTest('getTimestampData');
 				auth.authValidate(fakeBaton, fakeReq, function() {
 					//means the authentication was sucsessful
 					done()
@@ -1183,7 +1192,7 @@ describe('timestamp server tests', function() {
 					},
 					test_mode: true
 				}
-				fakeBaton = actions._getBaton('getEpisodeData', fakeReq.body, fakeRes)
+				createBatonForTest('getEpisodeData');
 				auth.authValidate(fakeBaton, fakeReq, () => {})
 				setTimeout(() => {
 					expect(fakeBaton.err[0].public_message).to.equal('Permission Denied')
@@ -1201,7 +1210,7 @@ describe('timestamp server tests', function() {
 					},
 					test_mode: true
 				}
-				fakeBaton = actions._getBaton('getEpisodeData', fakeReq.body, fakeRes)
+				createBatonForTest('getEpisodeData');
 				auth.authValidate(fakeBaton, fakeReq, () => {})
 				setTimeout(() => {
 					expect(fakeBaton.err[0].public_message).to.equal('Permission Denied')
@@ -2190,8 +2199,8 @@ describe('timestamp server tests', function() {
 		it('should return all timestamp data', function(done) {
 
 			var fakeBaton;
-			sandbox.stub(actions, '_getBaton').callsFake(function(endpoint, params, res) {
-				var baton = actions._getBaton.wrappedMethod.apply(this, arguments)
+			sandbox.stub(batonHandler, 'createBaton').callsFake(function(endpoint, params, res) {
+				var baton = batonHandler.createBaton.wrappedMethod.apply(this, arguments)
 				fakeBaton = baton;
 				return baton
 			})
@@ -2209,8 +2218,8 @@ describe('timestamp server tests', function() {
 
 
 			var fakeBaton;
-			sandbox.stub(actions, '_getBaton').callsFake(function(endpoint, params, res) {
-				var baton = actions._getBaton.wrappedMethod.apply(this, arguments)
+			sandbox.stub(batonHandler, 'createBaton').callsFake(function(endpoint, params, res) {
+				var baton = batonHandler.createBaton.wrappedMethod.apply(this, arguments)
 				fakeBaton = baton;
 				return baton
 			})

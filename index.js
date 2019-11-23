@@ -144,7 +144,6 @@ var startIntervalTasks = () => {
 		//setInterval(() => automated_tasks._updateActiveGameTimestamps(), 10000)
 		//setInterval(() => automated_tasks._updateTodayGamePlaysWithTimestamp(), 10000)
 	}
-
 }
 
 module.exports = {

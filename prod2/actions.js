@@ -2,7 +2,7 @@ var db = require('./database_actions');
 var stub_db = require('./stub_database');
 var cred = require('./credentials')
 var logger = require('./logger').MAIN_LOGGER
-var methodLogger = require('./logger').METHOD_LOGGER
+var baton = require('./baton')
 var endpointRequestParams = require('./endpointRequestParams')
 var async = require('async');
 var http = require('http')
@@ -935,7 +935,7 @@ module.exports = {
 
 
 
-    var getTimestampsWithCharactersAndCategories = (filtered_timestamp_ids,callback) => {
+    var getTimestampsWithCharactersAndCategories = (filtered_timestamp_ids, callback) => {
       db.getAllTimestampData(baton, {
         episode_id: params.episode_ids,
         /* either filter by:
@@ -1008,7 +1008,7 @@ module.exports = {
     }
 
     getFilteredTimestampIdsFromCharactersAndCategories(filtered_timestamps => {
-      getTimestampsWithCharactersAndCategories(filtered_timestamps, (timestamp_data) =>{
+      getTimestampsWithCharactersAndCategories(filtered_timestamps, (timestamp_data) => {
         callback(timestamp_data)
       })
     })
@@ -1471,92 +1471,7 @@ module.exports = {
    * uses 'call-by-sharing' ; like call-by-reference, but only for properties of objects
    */
   _getBaton(method, params, res) {
-    var t = this;
-    var time = new Date();
-    return {
-      //id to reference detail log
-      id: this._generateId(10),
-      start_time: time.getTime(),
-      err: [],
-      //the res for the request
-      res: res,
-      requestType: "GET",
-      params: params,
-      user_id: null,
-      sendError: function(data, errorCode) {
-        this.lastMethod();
-        res.status((errorCode ? errorCode : 500)).json(data)
-      },
-      json: function(data) {
-        var end_time = new Date()
-        this.duration = end_time.getTime() - this.start_time
-        this.lastMethod()
-        logger.info(this.printable())
-        res.setHeader("Set-Cookie", "HttpOnly;Secure;SameSite=Strict");
-        res.status((this.requestType == "GET" ? 200 : 201)).json(data)
-      },
-      endpoint: method,
-      //database limit records flag
-      //attr: table named
-      //value: {offset : offset section number, order_attr: attr to order results by }
-      db_limit: {},
-      //method sequence
-      methods: [],
-      addMethod: function(meth) {
-        if (this.methods.length == 0) {
-          this.methods.push({
-            correlation_id: this.id,
-            method: meth,
-            time: new Date().getTime()
-          })
-        } else {
-          this.methods[this.methods.length - 1].duration = new Date().getTime() - this.methods[this.methods.length - 1].time
-          delete this.methods[this.methods.length - 1].time
-          methodLogger.info(this.methods[this.methods.length - 1])
-          this.methods.push({
-            correlation_id: this.id,
-            method: meth,
-            time: new Date().getTime()
-          })
-        }
-      },
-      lastMethod: function() {
-        if (this.methods.length > 0) {
-          this.methods[this.methods.length - 1].duration = new Date().getTime() - this.methods[this.methods.length - 1].time
-          delete this.methods[this.methods.length - 1].time
-          methodLogger.info(this.methods[this.methods.length - 1])
-        }
-      },
-      //the error object & public message to display
-      setError: function(error) {
-        var end_time = new Date()
-        this.duration = end_time.getTime() - this.start_time
-        this.err.push(error);
-      },
-      printable: function() {
-        return t.printableBaton(this)
-      }
-    }
-  },
-
-  printableBaton(baton) {
-    var printableBaton = {}
-    Object.keys(baton).forEach(function(key) {
-      if (typeof baton[key] !== 'function') printableBaton[key] = baton[key]
-    });
-    delete printableBaton.res
-    delete printableBaton.methods
-    return printableBaton
-  },
-
-  _generateError(baton, errorCode) {
-    logger.error(baton.printable())
-    baton.sendError({
-      'id': baton.id,
-      'error_message': baton.err.map(function(err) {
-        return err.public_message
-      }).join('.')
-    }, errorCode);
+    return baton.createBaton(this._generateId(10), method, params, res)
   },
   _generateId(length, ids) {
     var id = (Math.pow(10, length - 1)) + Math.floor(+Math.random() * 9 * Math.pow(10, (length - 1)));
@@ -1566,6 +1481,15 @@ module.exports = {
       }
     }
     return id;
+  },
+  _generateError(baton, errorCode) {
+    logger.error(baton.printable())
+    baton.sendError({
+      'id': baton.id,
+      'error_message': baton.err.map(function(err) {
+        return err.public_message
+      }).join('.')
+    }, errorCode);
   },
   /**
    * Returns the intersection of two arrays

@@ -1,10 +1,10 @@
 var async = require('async');
 var moment = require('moment')
 
+var batonHandler = require('./baton')
 var db = require('./database_actions');
 var nba_fetching = require('./nba_fetching')
 var actions = require('./actions')
-var automatedSystemLogger = require('./logger').AUTOMATED_SYSTEM_LOGGER
 var methodLogger = require('./logger').METHOD_LOGGER
 
 
@@ -12,9 +12,8 @@ var methodLogger = require('./logger').METHOD_LOGGER
 
 module.exports = {
 
-
 	_updateTodayGamePlaysWithTimestamp(callback) {
-		var baton = this._getBaton('_updateTodayGamePlaysWithTimestamp', callback)
+		var baton = batonHandler.createAutomatedBaton(actions._generateId(10), '_updateTodayGamePlaysWithTimestamp', callback)
 
 		var updateRegTimestamps = (timestamps, callback) => {
 			if (timestamps.length === 0) {
@@ -57,7 +56,7 @@ module.exports = {
 	},
 
 	_updateActiveGameTimestamps(callback) {
-		var baton = this._getBaton('_updateActiveGameTimestamps', callback)
+		var baton = batonHandler.createAutomatedBaton(actions._generateId(10), '_updateActiveGameTimestamps', callback)
 
 		var getAllNewTimestamps = (timestamps, callback) => {
 			if (timestamps.length === 0) {
@@ -165,7 +164,7 @@ module.exports = {
 
 		actions.getAllEpisodeData(baton, queryParams, function(episode_data) {
 
-						//FOR NOW, only return one game
+			//FOR NOW, only return one game
 			if (process.env.NODE_ENV === 'production') {
 				callback([{
 					"episode_id": 128728,
@@ -193,7 +192,7 @@ module.exports = {
 	},
 
 	_updateActivePlayers() {
-		var baton = this._getBaton('_updateActivePlayers')
+		var baton = batonHandler.createAutomatedBaton(actions._generateId(10), '_updateActivePlayers')
 
 		var getNonRegisteredNbaCharacters = (nba_characters, callback) => {
 
@@ -255,7 +254,7 @@ module.exports = {
 	},
 
 	_updateActiveNBAGames() {
-		var baton = this._getBaton('_updateActiveEpisodes')
+		var baton = batonHandler.createAutomatedBaton(actions._generateId(10), '_updateActiveEpisodes')
 
 		var getNonRegisteredNbaGameIds = (nba_game_ids, callback) => {
 
@@ -315,74 +314,5 @@ module.exports = {
 				})
 			})
 		})
-	},
-
-	//this is the special baton created for automated tasks
-	//since there is no endpoint call
-	_getBaton(task_name, end_callback) {
-		var t = this;
-		var time = new Date();
-		return {
-			automated_task_name: task_name,
-			//id to reference detail log
-			id: actions._generateId(10),
-			start_time: time.getTime(),
-			err: [],
-			//the res for the request
-			sendError: function(data, errorCode) {
-				automatedSystemLogger.error(this.printable())
-				this.lastMethod();
-				res.status((errorCode ? errorCode : 500)).json(data)
-			},
-			methods: [],
-			done: function(data) {
-				var end_time = new Date()
-				this.duration = end_time.getTime() - this.start_time
-				this.lastMethod()
-				this.additionalData = data
-				automatedSystemLogger.info(this.printable())
-				if (end_callback) end_callback(this)
-			},
-			addMethod: function(meth) {
-				if (this.methods.length == 0) {
-					this.methods.push({
-						correlation_id: this.id,
-						method: meth,
-						time: new Date().getTime()
-					})
-				} else {
-					this.methods[this.methods.length - 1].duration = new Date().getTime() - this.methods[this.methods.length - 1].time
-					delete this.methods[this.methods.length - 1].time
-					methodLogger.info(this.methods[this.methods.length - 1])
-					this.methods.push({
-						correlation_id: this.id,
-						method: meth,
-						time: new Date().getTime()
-					})
-				}
-			},
-			lastMethod: function() {
-				if (this.methods.length > 0) {
-					this.methods[this.methods.length - 1].duration = new Date().getTime() - this.methods[this.methods.length - 1].time
-					delete this.methods[this.methods.length - 1].time
-					methodLogger.info(this.methods[this.methods.length - 1])
-				}
-			},
-			//the error object & public message to display
-			setError: function(error) {
-				var end_time = new Date()
-				this.duration = end_time.getTime() - this.start_time
-				this.err.push(error);
-			},
-			printable: function() {
-				var printableBaton = {}
-				Object.keys(this).forEach((key) => {
-					if (typeof this[key] !== 'function') printableBaton[key] = this[key]
-				});
-				delete printableBaton.methods
-				return printableBaton
-			},
-
-		}
-	},
+	}
 }
